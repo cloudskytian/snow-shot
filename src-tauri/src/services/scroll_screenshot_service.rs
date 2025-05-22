@@ -1,5 +1,5 @@
-use fast_image_resize::{images::Image, PixelType, Resizer};
 use fast_image_resize::{FilterType, ResizeAlg, ResizeOptions};
+use fast_image_resize::{PixelType, Resizer, images::Image};
 use hora::core::ann_index::ANNIndex;
 use hora::core::metrics::Metric;
 use hora::index::{hnsw_idx::HNSWIndex, hnsw_params::HNSWParams};
@@ -34,20 +34,6 @@ impl ScrollOffset {
     pub fn new(x: i32, y: i32) -> Self {
         Self { x, y }
     }
-}
-
-fn draw_image_corners(image: &image::DynamicImage, corners: &[ScrollOffset], file_name: &str) {
-    let mut image = image.to_rgba8();
-    for corner in corners {
-        image.put_pixel(
-            corner.x as u32,
-            corner.y as u32,
-            image::Rgba([255, 0, 0, 255]),
-        );
-    }
-    image
-        .save(format!("image_corners_{}.png", file_name))
-        .unwrap();
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -565,7 +551,7 @@ impl ScrollScreenshotService {
             self.image_width as i32
         };
         let min_diff = if scroll_image_list == ScrollImageList::Bottom {
-            -(self.bottom_image_size - image_scroll_side_size + 1) + index.position
+            -(self.bottom_image_size - image_scroll_side_size) + index.position
         } else {
             (self.top_image_size + 1) + index.position
         };
