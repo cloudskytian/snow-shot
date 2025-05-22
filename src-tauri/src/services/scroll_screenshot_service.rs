@@ -551,9 +551,9 @@ impl ScrollScreenshotService {
             self.image_width as i32
         };
         let min_diff = if scroll_image_list == ScrollImageList::Bottom {
-            -(self.bottom_image_size - image_scroll_side_size) + index.position
+            -(self.bottom_image_size - image_scroll_side_size + 1) + index.position
         } else {
-            (self.top_image_size) + index.position
+            (self.top_image_size + 1) + index.position
         };
 
         let offsets: Vec<(i32, &'a ScrollIndex, usize, usize)> = image_descriptors
