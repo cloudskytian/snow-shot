@@ -1,15 +1,14 @@
+use fast_image_resize::{images::Image, PixelType, Resizer};
 use fast_image_resize::{FilterType, ResizeAlg, ResizeOptions};
-use fast_image_resize::{PixelType, Resizer, images::Image};
 use hora::core::ann_index::ANNIndex;
 use hora::core::metrics::Metric;
-use hora::index;
 use hora::index::{hnsw_idx::HNSWIndex, hnsw_params::HNSWParams};
 use image::{DynamicImage, GenericImageView, GrayImage};
 use imageproc::corners;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 
-#[derive(PartialEq, Serialize, Deserialize)]
+#[derive(PartialEq, Serialize, Deserialize, Debug, Clone, Copy)]
 pub enum ScrollDirection {
     /// 垂直滚动
     Vertical = 0,
@@ -35,13 +34,20 @@ impl ScrollOffset {
     pub fn new(x: i32, y: i32) -> Self {
         Self { x, y }
     }
+}
 
-    pub fn recovery_scale(&self, scale: f32) -> Self {
-        Self {
-            x: (self.x as f32 / scale) as i32,
-            y: (self.y as f32 / scale) as i32,
-        }
+fn draw_image_corners(image: &image::DynamicImage, corners: &[ScrollOffset], file_name: &str) {
+    let mut image = image.to_rgba8();
+    for corner in corners {
+        image.put_pixel(
+            corner.x as u32,
+            corner.y as u32,
+            image::Rgba([255, 0, 0, 255]),
+        );
     }
+    image
+        .save(format!("image_corners_{}.png", file_name))
+        .unwrap();
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -69,6 +75,21 @@ pub struct ScrollIndex {
     pub ann_index: HNSWIndex<f32, usize>,
     pub corners: Vec<ScrollOffset>,
     pub descriptors: Vec<Vec<f32>>,
+}
+
+impl ScrollIndex {
+    pub fn new(dimension: usize) -> Self {
+        let mut index_params = HNSWParams::<f32>::default();
+        index_params.ef_search = 24;
+        index_params.ef_build = 12;
+
+        Self {
+            position: 0,
+            ann_index: HNSWIndex::new(dimension, &index_params),
+            corners: vec![],
+            descriptors: vec![],
+        }
+    }
 }
 
 pub struct ScrollScreenshotService {
@@ -99,17 +120,27 @@ pub struct ScrollScreenshotService {
     /// 描述符块大小
     pub descriptor_patch_size: usize,
     /// 特征点索引（上或右）
-    pub top_image_ann_index_list: Vec<ScrollIndex>,
-    /// 特征点索引（上或右）
-    pub bottom_image_ann_index_list: Vec<ScrollIndex>,
+    pub top_image_ann_index: ScrollIndex,
+    /// 特征点索引（下或左）
+    pub bottom_image_ann_index: ScrollIndex,
     /// 最小变化量（高于该值才会建立索引）
     pub min_size_delta: i32,
+    /// 缩放的图片宽度
+    pub image_dst_width: u32,
+    /// 缩放的图片高度
+    pub image_dst_height: u32,
+    /// 滚动方向的图片尺寸
+    pub image_scroll_side_size: i32,
 }
 
 impl ScrollScreenshotService {
+    fn get_descriptor_size(&self) -> usize {
+        self.descriptor_patch_size & !1
+    }
+
     fn compute_descriptor(&self, img: &image::GrayImage, corner: &ScrollOffset) -> Vec<f32> {
         let descriptor_size = self.descriptor_patch_size;
-        let mut descriptor = Vec::with_capacity(descriptor_size * 2);
+        let mut descriptor = Vec::with_capacity(self.get_descriptor_size());
         let half_size = descriptor_size as i32 / 2;
 
         let corner_x = corner.x;
@@ -163,44 +194,6 @@ impl ScrollScreenshotService {
             });
         }
 
-        // 计算左上到右下对角线特征
-        let mut sum = 0.0;
-        let mut valid_pixels = 0;
-        for i in 0..(descriptor_size / 2) {
-            let x = corner_x + (-half_size + i as i32 * 2);
-            let y = corner_y + (-half_size + i as i32 * 2);
-
-            if x >= 0 && x < width && y >= 0 && y < height {
-                let pixel = unsafe { img.unsafe_get_pixel(x as u32, y as u32) };
-                sum += pixel[0] as f32 / 255.0;
-                valid_pixels += 1;
-            }
-        }
-        descriptor.push(if valid_pixels > 0 {
-            sum / valid_pixels as f32
-        } else {
-            0.0
-        });
-
-        // 计算右上到左下对角线特征
-        let mut sum = 0.0;
-        let mut valid_pixels = 0;
-        for i in 0..(descriptor_size / 2) {
-            let x = corner_x + (half_size - i as i32 * 2);
-            let y = corner_y + (-half_size + i as i32 * 2);
-
-            if x >= 0 && x < width && y >= 0 && y < height {
-                let pixel = unsafe { img.unsafe_get_pixel(x as u32, y as u32) };
-                sum += pixel[0] as f32 / 255.0;
-                valid_pixels += 1;
-            }
-        }
-        descriptor.push(if valid_pixels > 0 {
-            sum / valid_pixels as f32
-        } else {
-            0.0
-        });
-
         descriptor
     }
 
@@ -228,16 +221,19 @@ impl ScrollScreenshotService {
             corner_threshold: 64,
             descriptor_patch_size: 9,
             min_size_delta: 64,
-            top_image_ann_index_list: vec![],
-            bottom_image_ann_index_list: vec![],
+            image_dst_width: 0,
+            image_dst_height: 0,
+            image_scroll_side_size: 0,
+            top_image_ann_index: ScrollIndex::new(0),
+            bottom_image_ann_index: ScrollIndex::new(0),
         }
     }
 
     pub fn clear(&mut self) {
         self.top_image_list.clear();
         self.bottom_image_list.clear();
-        self.top_image_ann_index_list.clear();
-        self.bottom_image_ann_index_list.clear();
+        self.top_image_ann_index = ScrollIndex::new(0);
+        self.bottom_image_ann_index = ScrollIndex::new(0);
     }
 
     pub fn init(
@@ -264,23 +260,35 @@ impl ScrollScreenshotService {
         self.min_size_delta = min_size_delta;
         self.top_image_index_size = 0;
         self.bottom_image_index_size = 0;
-        self.top_image_ann_index_list.clear();
-        self.bottom_image_ann_index_list.clear();
+        self.top_image_ann_index = ScrollIndex::new(self.get_descriptor_size());
+        self.bottom_image_ann_index = ScrollIndex::new(self.get_descriptor_size());
 
-        let scale_side_size;
+        let image_scale_side_size;
         if self.current_direction == ScrollDirection::Vertical {
-            scale_side_size = image_width as f32;
+            image_scale_side_size = image_width as f32;
         } else {
-            scale_side_size = image_height as f32;
+            image_scale_side_size = image_height as f32;
         }
 
-        let target_side_size = (scale_side_size * sample_rate)
+        let target_side_size = (image_scale_side_size * sample_rate)
             .min(max_sample_size as f32)
             .max(min_sample_size as f32);
 
-        let width_scale = target_side_size / scale_side_size;
+        self.image_scale = (target_side_size / image_scale_side_size).min(1.0);
 
-        self.image_scale = width_scale.min(1.0);
+        if self.current_direction == ScrollDirection::Vertical {
+            self.image_dst_width = (image_width as f32 * self.image_scale) as u32;
+            self.image_dst_height = image_height;
+        } else {
+            self.image_dst_width = image_width;
+            self.image_dst_height = (image_height as f32 * self.image_scale) as u32;
+        }
+
+        self.image_scroll_side_size = if self.current_direction == ScrollDirection::Vertical {
+            self.image_height as i32
+        } else {
+            self.image_width as i32
+        };
     }
 
     fn get_descriptors(
@@ -313,23 +321,19 @@ impl ScrollScreenshotService {
         )
         .unwrap();
 
-        let mut dst_image = Image::new(
-            (image_width as f32 * self.image_scale) as u32,
-            (image_height as f32 * self.image_scale) as u32,
-            PixelType::U8,
-        );
+        let mut dst_image = Image::new(self.image_dst_width, self.image_dst_height, PixelType::U8);
 
         self.image_resizer
             .resize(
                 &src_image,
                 &mut dst_image,
-                &ResizeOptions::new().resize_alg(ResizeAlg::Convolution(FilterType::CatmullRom)),
+                &ResizeOptions::new().resize_alg(ResizeAlg::Nearest),
             )
             .unwrap();
 
         GrayImage::from_vec(
-            (image_width as f32 * self.image_scale) as u32,
-            (image_height as f32 * self.image_scale) as u32,
+            self.image_dst_width,
+            self.image_dst_height,
             dst_image.into_vec(),
         )
         .unwrap()
@@ -408,22 +412,25 @@ impl ScrollScreenshotService {
         edge_position: i32,
         index_edge_position_distance: i32,
     ) {
-        let image_descriptors = self.get_descriptors(&gray_image, &image_corners);
+        let mut new_scroll_index = ScrollIndex::new(self.get_descriptor_size());
+
+        new_scroll_index.descriptors = self.get_descriptors(&gray_image, &image_corners);
+
+        new_scroll_index.corners = image_corners.to_vec();
 
         let mut index_params = HNSWParams::<f32>::default();
         index_params.ef_search = 32;
         index_params.ef_build = 16;
-        let mut image_index =
-            HNSWIndex::<f32, usize>::new(image_descriptors[0].len(), &index_params);
 
-        image_descriptors
+        new_scroll_index
+            .descriptors
             .iter()
             .enumerate()
             .for_each(|(i, descriptor)| {
-                image_index.add(descriptor, i).unwrap();
+                new_scroll_index.ann_index.add(descriptor, i).unwrap();
             });
 
-        image_index.build(Metric::Euclidean).unwrap();
+        new_scroll_index.ann_index.build(Metric::Euclidean).unwrap();
 
         let index_position = if edge_position > 0 {
             self.bottom_image_index_size - index_edge_position_distance
@@ -431,20 +438,12 @@ impl ScrollScreenshotService {
             -(self.top_image_index_size - index_edge_position_distance)
         };
 
+        new_scroll_index.position = index_position;
+
         if edge_position > 0 {
-            self.bottom_image_ann_index_list.push(ScrollIndex {
-                ann_index: image_index,
-                corners: image_corners.to_owned(),
-                descriptors: image_descriptors,
-                position: index_position,
-            });
+            self.bottom_image_ann_index = new_scroll_index;
         } else {
-            self.top_image_ann_index_list.push(ScrollIndex {
-                ann_index: image_index,
-                corners: image_corners.to_owned(),
-                descriptors: image_descriptors,
-                position: index_position,
-            });
+            self.top_image_ann_index = new_scroll_index;
         }
     }
 
@@ -458,11 +457,7 @@ impl ScrollScreenshotService {
     ) -> (image::DynamicImage, i32) {
         let mut index_delta_size = 0;
 
-        let image_scroll_side_size = if self.current_direction == ScrollDirection::Vertical {
-            self.image_height as i32
-        } else {
-            self.image_width as i32
-        };
+        let image_scroll_side_size = self.image_scroll_side_size;
 
         let index_edge_position_distance = if delta_size > 0 {
             self.bottom_image_index_size - (edge_position - image_scroll_side_size)
@@ -506,8 +501,7 @@ impl ScrollScreenshotService {
                 x: origin_position.x - new_position.x + index_position,
                 y: origin_position.y - new_position.y,
             }
-        }
-        .recovery_scale(self.image_scale);
+        };
 
         let image_scroll_side_size = if self.current_direction == ScrollDirection::Vertical {
             self.image_height as i32
@@ -571,10 +565,11 @@ impl ScrollScreenshotService {
             self.image_width as i32
         };
         let min_diff = if scroll_image_list == ScrollImageList::Bottom {
-            -(self.bottom_image_size - image_scroll_side_size + 80) + index.position
+            -(self.bottom_image_size - image_scroll_side_size + 1) + index.position
         } else {
-            (self.top_image_size + 80) + index.position
+            (self.top_image_size + 1) + index.position
         };
+
         let offsets: Vec<(i32, &'a ScrollIndex, usize, usize)> = image_descriptors
             .par_iter()
             .enumerate()
@@ -607,14 +602,12 @@ impl ScrollScreenshotService {
                 };
 
                 // 保留 0 的偏移防止，出现画面不变，记录意料外的截图
-                if diff != 0 {
-                    if min_diff < 0 && min_diff < diff {
-                        return None;
-                    }
+                if min_diff < 0 && min_diff < diff {
+                    return None;
+                }
 
-                    if min_diff > 0 && min_diff > diff {
-                        return None;
-                    }
+                if min_diff > 0 && min_diff > diff {
+                    return None;
                 }
 
                 if dist < 0.1 {
@@ -643,6 +636,16 @@ impl ScrollScreenshotService {
             }
         }
 
+        // let mut sorted_offsets: Vec<_> = offset_counts.iter().collect();
+        // sorted_offsets.sort_by_key(|(_, (count, _, _, _))| -count);
+        // println!(
+        //     "sorted_offsets: {:?}",
+        //     sorted_offsets[..10.min(sorted_offsets.len())]
+        //         .iter()
+        //         .map(|(offset, (count, _, _, _))| (offset, count))
+        //         .collect::<Vec<_>>()
+        // );
+
         let mut max_count = 0;
         let mut second_max_count = 0;
         let mut max_offset = None;
@@ -661,6 +664,10 @@ impl ScrollScreenshotService {
             Some(offset) => offset,
             None => return None,
         };
+
+        if max_count < (image_corners.len() as i32 / 10) {
+            return None;
+        }
 
         if max_count < second_max_count * 2 {
             return None;
@@ -697,81 +704,58 @@ impl ScrollScreenshotService {
             return None;
         }
 
-        // 针对滚动方向，裁切特征点
-        let crop_valid_size = if self.current_direction == ScrollDirection::Vertical {
-            self.image_height as i32 - 100
-        } else {
-            self.image_width as i32 - 100
-        };
-        let crop_valid_size = if scroll_image_list == ScrollImageList::Top {
-            crop_valid_size
-        } else {
-            -crop_valid_size
-        };
-        let crop_valid_region = self.get_crop_region(crop_valid_size);
-
-        let crop_valid_image_corners =
-            self.filter_corners_with_region(&image_corners, &crop_valid_region);
-
-        let image_descriptors = self.get_descriptors(&gray_image, &crop_valid_image_corners);
+        let image_descriptors = self.get_descriptors(&gray_image, &image_corners);
 
         if self.top_image_list.is_empty() && self.bottom_image_list.is_empty() {
-            return Some(self.push_image(
+            let bottom_image = self.push_image(
                 image,
                 gray_image,
-                image_corners,
+                image_corners.clone(),
                 0,
                 ScrollOffset { x: 0, y: 0 },
                 ScrollOffset { x: 0, y: 0 },
-            ));
+            );
+
+            let mut new_top_image_ann_index = ScrollIndex::new(self.get_descriptor_size());
+            new_top_image_ann_index.descriptors = image_descriptors;
+            new_top_image_ann_index.corners = image_corners;
+            new_top_image_ann_index
+                .descriptors
+                .iter()
+                .enumerate()
+                .for_each(|(i, descriptor)| {
+                    new_top_image_ann_index
+                        .ann_index
+                        .add(descriptor, i)
+                        .unwrap();
+                });
+
+            new_top_image_ann_index
+                .ann_index
+                .build(Metric::Euclidean)
+                .unwrap();
+
+            self.top_image_ann_index = new_top_image_ann_index;
+
+            return Some(bottom_image);
         }
 
-        let mut offsets: Option<(&ScrollIndex, usize, usize)> = None;
-
-        let top_index_list_iter = self.top_image_ann_index_list.iter().rev();
-        let bottom_index_list_iter = self.bottom_image_ann_index_list.iter().rev();
-
-        let (mut first_index_list_iter, mut second_index_list_iter) =
-            if scroll_image_list == ScrollImageList::Top {
-                (top_index_list_iter, bottom_index_list_iter)
-            } else {
-                (bottom_index_list_iter, top_index_list_iter)
-            };
-
-        let mut first_index_list_iter_done = false;
-        let mut second_index_list_iter_done = false;
+        let target_index = if scroll_image_list == ScrollImageList::Top {
+            &self.top_image_ann_index
+        } else {
+            &self.bottom_image_ann_index
+        };
 
         // 从边缘遍历
-        while !first_index_list_iter_done || !second_index_list_iter_done {
-            if let Some(scroll_index) = first_index_list_iter.next() {
-                offsets = self.get_offsets(
-                    scroll_index,
-                    &image_descriptors,
-                    &crop_valid_image_corners,
-                    scroll_image_list,
-                );
-            } else {
-                first_index_list_iter_done = true;
-            }
+        let offsets = self.get_offsets(
+            target_index,
+            &image_descriptors,
+            &image_corners,
+            scroll_image_list,
+        );
 
-            if offsets.is_some() {
-                break;
-            }
-
-            if let Some(scroll_index) = second_index_list_iter.next() {
-                offsets = self.get_offsets(
-                    scroll_index,
-                    &image_descriptors,
-                    &crop_valid_image_corners,
-                    scroll_image_list,
-                );
-            } else {
-                second_index_list_iter_done = true;
-            }
-
-            if offsets.is_some() {
-                break;
-            }
+        if offsets.is_none() {
+            return None;
         }
 
         let (dominant_scroll_index, dominant_origin_position_index, dominant_new_position_index) =
@@ -781,7 +765,7 @@ impl ScrollScreenshotService {
             };
 
         let origin_position = dominant_scroll_index.corners[dominant_origin_position_index];
-        let new_position = crop_valid_image_corners[dominant_new_position_index];
+        let new_position = image_corners[dominant_new_position_index];
 
         // 将偏移的图片推到列表中
         Some(self.push_image(

@@ -92,7 +92,7 @@ export const ScrollScreenshot = () => {
                           behavior: 'smooth',
                       },
             );
-        }, 64);
+        }, 128);
     }, [scrollDirectionRef]);
 
     const updateImageUrlList = useCallback(

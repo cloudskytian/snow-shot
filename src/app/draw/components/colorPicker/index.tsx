@@ -202,7 +202,8 @@ const ColorPickerCore: React.FC<{
                 case ColorPickerColorFormat.HEX:
                     return currentColor.hex().toString();
                 case ColorPickerColorFormat.HSL:
-                    return currentColor.hsl().string();
+                    const hsl = currentColor.hsl();
+                    return `hsl(${hsl.hue().toFixed(1)}, ${hsl.saturationl().toFixed(1)}%, ${hsl.lightness().toFixed(1)}%)`;
                 case ColorPickerColorFormat.RGB:
                 default:
                     return currentColor.rgb().string();
