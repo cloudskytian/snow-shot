@@ -116,7 +116,7 @@ pub async fn scroll_screenshot_capture(
 
     thumbnail
         .to_rgb8()
-        .write_with_encoder(JpegEncoder::new_with_quality(&mut buf, 90))
+        .write_with_encoder(JpegEncoder::new_with_quality(&mut buf, 83))
         .unwrap();
 
     // 添加边缘位置信息到缓冲区末尾
