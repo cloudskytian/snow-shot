@@ -385,8 +385,6 @@ const TranslatorCore: React.FC<{
             currentRequestSignRef.current++;
             const requestSign = currentRequestSignRef.current;
 
-            console.log('requestSign', requestSign);
-
             if (typeof params.translationType === 'string') {
                 const result = await customTranslation({
                     requestSign,
