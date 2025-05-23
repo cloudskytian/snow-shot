@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { Base64 } from 'js-base64';
+import { ImageFormat } from '@/utils/file';
 
 export enum ImageEncoder {
     Png = 'png',
@@ -98,10 +99,15 @@ export const getMousePosition = async () => {
     return result;
 };
 
-export const saveFile = async (filePath: string, data: ArrayBuffer | Uint8Array) => {
+export const saveFile = async (
+    filePath: string,
+    data: ArrayBuffer | Uint8Array,
+    fileType: ImageFormat,
+) => {
     const result = await invoke<void>('save_file', data, {
         headers: {
             'x-file-path': Base64.encode(filePath),
+            'x-file-type': Base64.encode(fileType),
         },
     });
     return result;

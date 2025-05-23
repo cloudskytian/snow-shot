@@ -51,11 +51,14 @@ import {
     executeTranslate,
     executeTranslateSelectedText,
 } from '@/functions/tools';
+import { TrayIconStatePublisher } from './trayIcon';
 
 export default function Home() {
     const { token } = theme.useToken();
 
     const disableShortcutKeyRef = useRef(false);
+    const [getTrayIconState] = useStateSubscriber(TrayIconStatePublisher, undefined);
+
     const {
         configs: defaultAppFunctionComponentConfigs,
         groupConfigs: defaultAppFunctionComponentGroupConfigs,
@@ -78,7 +81,7 @@ export default function Home() {
                                 }}
                             />
                         );
-                        buttonIcon = <FixedIcon style={{ fontSize: '1.2em' }} />;
+                        buttonIcon = <FixedIcon style={{ fontSize: '1.3em' }} />;
                         buttonOnClick = () => executeScreenshot(ScreenshotType.Fixed);
                         break;
                     case AppFunction.ScreenshotOcr:
@@ -168,6 +171,10 @@ export default function Home() {
                                     return;
                                 }
 
+                                if (getTrayIconState()?.disableShortcut) {
+                                    return;
+                                }
+
                                 onClick();
                             });
                         } catch (error) {
@@ -197,7 +204,7 @@ export default function Home() {
         );
 
         return { configs, groupConfigs };
-    }, []);
+    }, [getTrayIconState]);
 
     const [shortcutKeyStatus, setShortcutKeyStatus] =
         useState<Record<AppFunction, ShortcutKeyStatus>>();

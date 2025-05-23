@@ -291,6 +291,7 @@ const TranslatorCore: React.FC<{
 
     const customTranslation = useCallback(
         async (params: {
+            requestSign: number;
             sourceContent: string;
             sourceLanguage: string;
             targetLanguage: string;
@@ -334,8 +335,16 @@ const TranslatorCore: React.FC<{
                 stream: true,
             });
 
+            if (currentRequestSignRef.current !== params.requestSign) {
+                return false;
+            }
+
             setTranslatedContent('');
             for await (const event of stream_response) {
+                if (currentRequestSignRef.current !== params.requestSign) {
+                    return false;
+                }
+
                 setLoading(true);
                 setStartLoading(false);
 
@@ -373,8 +382,14 @@ const TranslatorCore: React.FC<{
             translationType: TranslationType | string;
             translationDomain: TranslationDomain;
         }) => {
+            currentRequestSignRef.current++;
+            const requestSign = currentRequestSignRef.current;
+
+            console.log('requestSign', requestSign);
+
             if (typeof params.translationType === 'string') {
                 const result = await customTranslation({
+                    requestSign,
                     ...params,
                     translationType: params.translationType,
                 });
@@ -384,8 +399,6 @@ const TranslatorCore: React.FC<{
             }
 
             setStartLoading(true);
-            currentRequestSignRef.current++;
-            const requestSign = currentRequestSignRef.current;
             await translate(
                 {
                     isInvalid: () => currentRequestSignRef.current !== requestSign,

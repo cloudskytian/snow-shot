@@ -28,7 +28,6 @@ const HistoryControlsCore: React.FC<{ disable: boolean }> = ({ disable }) => {
             <ToolButton
                 componentKey={KeyEventKey.UndoTool}
                 icon={<UndoOutlined />}
-                disableOnDrawing
                 drawState={DrawState.Undo}
                 disable={!canUndo || disable}
                 onClick={() => {
@@ -40,7 +39,6 @@ const HistoryControlsCore: React.FC<{ disable: boolean }> = ({ disable }) => {
             <ToolButton
                 componentKey={KeyEventKey.RedoTool}
                 icon={<RedoOutlined />}
-                disableOnDrawing
                 drawState={DrawState.Redo}
                 disable={!canRedo || disable}
                 onClick={() => {

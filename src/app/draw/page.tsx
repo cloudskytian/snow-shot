@@ -20,7 +20,11 @@ import {
     ScreenshotTypePublisher,
     DrawEventPublisher,
 } from './extra';
-import { DrawToolbar, DrawToolbarActionType } from './components/drawToolbar';
+import {
+    DrawToolbar,
+    DrawToolbarActionType,
+    DrawToolbarStatePublisher,
+} from './components/drawToolbar';
 import { BaseLayerEventActionType } from './components/baseLayer';
 import { ColorPicker, ColorPickerActionType } from './components/colorPicker';
 import { HistoryContext, withCanvasHistory } from './components/historyContext';
@@ -50,8 +54,11 @@ import {
     scrollScreenshotClear,
     scrollScreenshotSaveToClipboard,
 } from '@/commands/scrollScreenshot';
-import { showImageDialog } from '@/utils/file';
+import { getImageFormat, showImageDialog } from '@/utils/file';
 import { scrollScreenshotSaveToFile } from '@/commands/scrollScreenshot';
+import { AppSettingsActionContext, AppSettingsGroup } from '../contextWrap';
+import { AppSettingsPublisher } from '../contextWrap';
+import { ExtraTool } from './components/drawToolbar/components/tools/extraTool';
 
 const DrawCacheLayer = dynamic(
     async () => (await import('./components/drawCacheLayer')).DrawCacheLayer,
@@ -85,6 +92,8 @@ const DrawPageCore: React.FC = () => {
 
     // 状态
     const mousePositionRef = useRef<MousePosition>(new MousePosition(0, 0));
+    const [getAppSettings] = useStateSubscriber(AppSettingsPublisher, undefined);
+    const { updateAppSettings } = useContext(AppSettingsActionContext);
     const [getScreenshotType, setScreenshotType, resetScreenshotType] = useStateSubscriber(
         ScreenshotTypePublisher,
         undefined,
@@ -311,12 +320,42 @@ const DrawPageCore: React.FC = () => {
         [setScreenshotType, setCaptureEvent, showWindow, readyCapture],
     );
 
+    const saveCurrentSelectRect = useCallback(() => {
+        updateAppSettings(
+            AppSettingsGroup.Cache,
+            {
+                prevSelectRect: selectLayerActionRef.current?.getSelectRect(),
+            },
+            false,
+            true,
+            false,
+            true,
+            false,
+        );
+    }, [updateAppSettings]);
+
     const onSave = useCallback(async () => {
+        saveCurrentSelectRect();
+
         if (getDrawState() === DrawState.ScrollScreenshot) {
-            const imagePath = await showImageDialog();
+            const imagePath = await showImageDialog(
+                getAppSettings()[AppSettingsGroup.Cache].prevImageFormat,
+            );
             if (!imagePath) {
                 return;
             }
+
+            updateAppSettings(
+                AppSettingsGroup.Cache,
+                {
+                    prevImageFormat: imagePath.imageFormat,
+                },
+                false,
+                true,
+                false,
+                true,
+                false,
+            );
 
             scrollScreenshotSaveToFile(imagePath.filePath);
             finishCapture();
@@ -335,11 +374,24 @@ const DrawPageCore: React.FC = () => {
             selectLayerActionRef.current,
             drawLayerActionRef.current,
             drawCacheLayerActionRef.current,
-            async () => {
+            async (filePath: string) => {
+                updateAppSettings(
+                    AppSettingsGroup.Cache,
+                    {
+                        prevImageFormat: getImageFormat(filePath),
+                    },
+                    false,
+                    true,
+                    false,
+                    true,
+                    false,
+                );
+
                 finishCapture(true);
             },
+            getAppSettings()[AppSettingsGroup.Cache].prevImageFormat,
         );
-    }, [finishCapture, getDrawState]);
+    }, [finishCapture, getAppSettings, getDrawState, saveCurrentSelectRect, updateAppSettings]);
 
     const onFixed = useCallback(async () => {
         if (
@@ -354,6 +406,8 @@ const DrawPageCore: React.FC = () => {
             return;
         }
 
+        saveCurrentSelectRect();
+
         await fixedToScreen(
             imageBufferRef.current,
             appWindowRef.current,
@@ -364,10 +418,11 @@ const DrawPageCore: React.FC = () => {
             fixedImageActionRef.current,
             ocrBlocksActionRef.current,
             setCaptureStep,
+            getAppSettings()[AppSettingsGroup.FunctionScreenshot].autoOcrAfterFixed,
         );
 
         switchLayer(undefined, drawLayerActionRef.current, selectLayerActionRef.current);
-    }, [setCaptureStep]);
+    }, [saveCurrentSelectRect, setCaptureStep, getAppSettings]);
 
     const onTopWindow = useCallback(async () => {
         const windowId = selectLayerActionRef.current?.getWindowId();
@@ -400,6 +455,8 @@ const DrawPageCore: React.FC = () => {
     }, []);
 
     const onCopyToClipboard = useCallback(async () => {
+        saveCurrentSelectRect();
+
         if (getDrawState() === DrawState.ScrollScreenshot) {
             scrollScreenshotSaveToClipboard();
             finishCapture();
@@ -408,7 +465,11 @@ const DrawPageCore: React.FC = () => {
 
         const selected = window.getSelection();
 
-        if (getDrawState() === DrawState.OcrDetect && selected && selected.toString()) {
+        if (
+            (getDrawState() === DrawState.OcrDetect || getDrawState() === DrawState.ScanQrcode) &&
+            selected &&
+            selected.toString()
+        ) {
             navigator.clipboard.writeText(selected.toString());
             finishCapture();
             return;
@@ -430,7 +491,7 @@ const DrawPageCore: React.FC = () => {
                 finishCapture(true);
             },
         );
-    }, [finishCapture, getDrawState]);
+    }, [finishCapture, getDrawState, saveCurrentSelectRect]);
 
     useEffect(() => {
         if (isFixed) {
@@ -486,12 +547,20 @@ const DrawPageCore: React.FC = () => {
             mousePositionRef.current = new MousePosition(e.clientX, e.clientY);
         };
 
+        const doubleClick = (e: MouseEvent) => {
+            if (e.button === 0) {
+                onCopyToClipboard();
+            }
+        };
+
         document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('dblclick', doubleClick);
 
         return () => {
             document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('dblclick', doubleClick);
         };
-    }, [isFixed]);
+    }, [isFixed, onCopyToClipboard]);
 
     const ocrInitRef = useRef(false);
     useEffect(() => {
@@ -522,6 +591,9 @@ const DrawPageCore: React.FC = () => {
                         setIsFixed(true);
                     }}
                 />
+
+                <ExtraTool finishCapture={finishCapture} />
+
                 <OcrBlocks actionRef={ocrBlocksActionRef} />
                 {!isFixed && (
                     <>
@@ -572,6 +644,7 @@ export default React.memo(
             ExcalidrawOnHandleEraserPublisher,
             ScreenshotTypePublisher,
             DrawEventPublisher,
+            DrawToolbarStatePublisher,
         ),
     ),
 );

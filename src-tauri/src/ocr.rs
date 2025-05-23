@@ -97,7 +97,7 @@ pub async fn ocr_detect(
 }
 
 #[command]
-pub fn ocr_release(ocr_instance: tauri::State<'_, Mutex<OcrLiteWrap>>) -> Result<(), ()> {
+pub async fn ocr_release(ocr_instance: tauri::State<'_, Mutex<OcrLiteWrap>>) -> Result<(), ()> {
     let mut ocr_instance = match ocr_instance.lock() {
         Ok(ocr_instance) => ocr_instance,
         Err(_) => return Err(()),

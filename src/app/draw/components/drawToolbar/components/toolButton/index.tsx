@@ -10,19 +10,19 @@ import { HotkeysScope } from '@/components/globalLayoutExtra';
 
 const ToolButtonCore: React.FC<{
     componentKey: KeyEventKey;
-    disableOnDrawing?: boolean;
     icon: React.ReactNode;
     onClick: () => void;
     drawState: DrawState;
+    extraDrawState?: DrawState[];
     disable?: boolean;
     confirmTip?: React.ReactNode;
     hotkeyScope?: HotkeysScope;
 }> = ({
     componentKey,
-    disableOnDrawing,
     icon,
     onClick,
     drawState: propDrawState,
+    extraDrawState,
     disable,
     confirmTip,
     hotkeyScope,
@@ -30,9 +30,13 @@ const ToolButtonCore: React.FC<{
     const [buttonType, setButtonType] = useState(getButtonTypeByState(false));
     const updateButtonType = useCallback(
         (drawState: DrawState) => {
-            setButtonType(getButtonTypeByState(drawState === propDrawState));
+            setButtonType(
+                getButtonTypeByState(
+                    drawState === propDrawState || (extraDrawState?.includes(drawState) ?? false),
+                ),
+            );
         },
-        [propDrawState],
+        [propDrawState, extraDrawState],
     );
 
     useStateSubscriber(DrawStatePublisher, updateButtonType);
@@ -40,7 +44,6 @@ const ToolButtonCore: React.FC<{
         <KeyEventWrap
             onKeyUpEventPropName="onClick"
             componentKey={componentKey}
-            disableOnDrawing={disableOnDrawing}
             confirmTip={confirmTip}
             enable={disable ? false : undefined}
             hotkeyScope={hotkeyScope}

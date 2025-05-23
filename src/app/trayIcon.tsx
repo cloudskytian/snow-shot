@@ -2,7 +2,7 @@
 
 import { defaultWindowIcon } from '@tauri-apps/api/app';
 import { TrayIcon, TrayIconOptions } from '@tauri-apps/api/tray';
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import React from 'react';
 import { Menu } from '@tauri-apps/api/menu';
@@ -22,9 +22,27 @@ import {
     executeTranslateSelectedText,
 } from '@/functions/tools';
 import { openUrl } from '@tauri-apps/plugin-opener';
+import { createPublisher } from '@/hooks/useStatePublisher';
+
+export const TrayIconStatePublisher = createPublisher<{
+    disableShortcut: boolean;
+}>({
+    disableShortcut: false,
+});
 
 const TrayIconLoaderComponent = () => {
     const intl = useIntl();
+
+    const [disableShortcut, _setDisableShortcut] = useState(false);
+    const [, setTrayIconState] = useStateSubscriber(
+        TrayIconStatePublisher,
+        useCallback(
+            (state: { disableShortcut: boolean }) => {
+                _setDisableShortcut(state.disableShortcut);
+            },
+            [_setDisableShortcut],
+        ),
+    );
 
     const [shortcutKeys, setShortcutKeys, shortcutKeysRef] = useStateRef<
         Record<AppFunction, AppFunctionConfig> | undefined
@@ -50,7 +68,6 @@ const TrayIconLoaderComponent = () => {
     );
 
     useEffect(() => {
-        console.log(shortcutKeys);
         if (!shortcutKeys) {
             return;
         }
@@ -77,7 +94,9 @@ const TrayIconLoaderComponent = () => {
                         {
                             id: `${appWindow.label}-screenshot`,
                             text: intl.formatMessage({ id: 'home.screenshot' }),
-                            accelerator: shortcutKeys[AppFunction.Screenshot].shortcutKey,
+                            accelerator: disableShortcut
+                                ? undefined
+                                : shortcutKeys[AppFunction.Screenshot].shortcutKey,
                             action: async () => {
                                 executeScreenshot();
                             },
@@ -90,7 +109,9 @@ const TrayIconLoaderComponent = () => {
                                     text: intl.formatMessage({ id: 'draw.fixedTool' }),
                                 },
                             ),
-                            accelerator: shortcutKeys[AppFunction.ScreenshotFixed].shortcutKey,
+                            accelerator: disableShortcut
+                                ? undefined
+                                : shortcutKeys[AppFunction.ScreenshotFixed].shortcutKey,
                             action: async () => {
                                 executeScreenshot(ScreenshotType.Fixed);
                             },
@@ -103,7 +124,9 @@ const TrayIconLoaderComponent = () => {
                                     text: intl.formatMessage({ id: 'draw.ocrDetectTool' }),
                                 },
                             ),
-                            accelerator: shortcutKeys[AppFunction.ScreenshotOcr].shortcutKey,
+                            accelerator: disableShortcut
+                                ? undefined
+                                : shortcutKeys[AppFunction.ScreenshotOcr].shortcutKey,
                             action: async () => {
                                 executeScreenshot(ScreenshotType.OcrDetect);
                             },
@@ -114,7 +137,9 @@ const TrayIconLoaderComponent = () => {
                         {
                             id: `${appWindow.label}-chat`,
                             text: intl.formatMessage({ id: 'home.chat' }),
-                            accelerator: shortcutKeys[AppFunction.Chat].shortcutKey,
+                            accelerator: disableShortcut
+                                ? undefined
+                                : shortcutKeys[AppFunction.Chat].shortcutKey,
                             action: async () => {
                                 executeChat();
                             },
@@ -122,7 +147,9 @@ const TrayIconLoaderComponent = () => {
                         {
                             id: `${appWindow.label}-chat-selectText`,
                             text: intl.formatMessage({ id: 'home.chatSelectText' }),
-                            accelerator: shortcutKeys[AppFunction.ChatSelectText].shortcutKey,
+                            accelerator: disableShortcut
+                                ? undefined
+                                : shortcutKeys[AppFunction.ChatSelectText].shortcutKey,
                             action: async () => {
                                 executeChatSelectedText();
                             },
@@ -133,7 +160,9 @@ const TrayIconLoaderComponent = () => {
                         {
                             id: `${appWindow.label}-translation`,
                             text: intl.formatMessage({ id: 'home.translation' }),
-                            accelerator: shortcutKeys[AppFunction.Translation].shortcutKey,
+                            accelerator: disableShortcut
+                                ? undefined
+                                : shortcutKeys[AppFunction.Translation].shortcutKey,
                             action: async () => {
                                 executeTranslate();
                             },
@@ -141,10 +170,25 @@ const TrayIconLoaderComponent = () => {
                         {
                             id: `${appWindow.label}-translation-selectText`,
                             text: intl.formatMessage({ id: 'home.translationSelectText' }),
-                            accelerator:
-                                shortcutKeys[AppFunction.TranslationSelectText].shortcutKey,
+                            accelerator: disableShortcut
+                                ? undefined
+                                : shortcutKeys[AppFunction.TranslationSelectText].shortcutKey,
                             action: async () => {
                                 executeTranslateSelectedText();
+                            },
+                        },
+                        {
+                            item: 'Separator',
+                        },
+                        {
+                            id: `${appWindow.label}-disableShortcut`,
+                            text: disableShortcut
+                                ? intl.formatMessage({ id: 'home.enableShortcut' })
+                                : intl.formatMessage({ id: 'home.disableShortcut' }),
+                            action: async () => {
+                                setTrayIconState({
+                                    disableShortcut: !disableShortcut,
+                                });
                             },
                         },
                         {
@@ -192,7 +236,7 @@ const TrayIconLoaderComponent = () => {
             closeTrayIcon();
             window.removeEventListener('beforeunload', closeTrayIcon);
         };
-    }, [intl, shortcutKeys]);
+    }, [disableShortcut, intl, setTrayIconState, shortcutKeys]);
 
     return null;
 };

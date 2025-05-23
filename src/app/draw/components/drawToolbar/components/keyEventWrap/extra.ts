@@ -43,6 +43,8 @@ export enum KeyEventKey {
     RotateWithDiscreteAnglePicker = 'rotateWithDiscreteAnglePicker',
     AutoAlignPicker = 'autoAlignPicker',
     SwitchColorFormat = 'switchColorFormat',
+    ExtraToolsTool = 'extraToolsTool',
+    SelectPrevRectTool = 'selectPrevRectTool',
 }
 
 export const defaultDrawToolbarKeyEventSettings: Record<KeyEventKey, KeyEventValue> = {
@@ -110,6 +112,10 @@ export const defaultDrawToolbarKeyEventSettings: Record<KeyEventKey, KeyEventVal
         hotKey: 'Ctrl+C',
         unique: true,
     },
+    [KeyEventKey.ExtraToolsTool]: {
+        hotKey: 'Ctrl+E',
+        unique: true,
+    },
     [KeyEventKey.OcrDetectTool]: {
         hotKey: 'Ctrl+D',
         unique: true,
@@ -144,6 +150,10 @@ export const defaultDrawToolbarKeyEventSettings: Record<KeyEventKey, KeyEventVal
     },
     [KeyEventKey.RemoveTool]: {
         hotKey: 'Delete',
+        unique: true,
+    },
+    [KeyEventKey.SelectPrevRectTool]: {
+        hotKey: 'R',
         unique: true,
     },
     [KeyEventKey.ColorPickerMoveUp]: {

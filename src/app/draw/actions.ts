@@ -6,7 +6,7 @@ import { Window as AppWindow, PhysicalPosition, PhysicalSize } from '@tauri-apps
 import { CaptureStep } from './types';
 import { FixedImageActionType } from './components/fixedImage';
 import { OcrBlocksActionType } from './components/ocrBlocks';
-import { showImageDialog } from '@/utils/file';
+import { showImageDialog, ImageFormat } from '@/utils/file';
 
 export const getCanvas = async (
     selectRect: ElementRect,
@@ -43,6 +43,7 @@ export const saveToFile = async (
     drawLayerAction: DrawLayerActionType,
     drawCacheLayerAction: DrawCacheLayerActionType,
     beforeSaveFile?: (filePath: string) => Promise<void>,
+    prevImageFormat?: ImageFormat,
 ) => {
     const selectRect = selectLayerAction.getSelectRect();
     if (!selectRect) {
@@ -51,20 +52,28 @@ export const saveToFile = async (
 
     const canvasPromise = getCanvas(selectRect, drawLayerAction, drawCacheLayerAction);
 
-    const imagePath = await showImageDialog();
+    const imagePath = await showImageDialog(prevImageFormat);
 
     if (!imagePath) {
         return;
     }
 
     const imageDataPromise = canvasPromise
-        .then((canvas) => {
+        .then(async (canvas) => {
             if (!canvas) {
                 return;
             }
 
+            let blobType: string = imagePath.imageFormat;
+            if (
+                imagePath.imageFormat === ImageFormat.AVIF ||
+                imagePath.imageFormat === ImageFormat.JPEG_XL
+            ) {
+                blobType = 'image/webp';
+            }
+
             return new Promise<Blob | null>((resolve) => {
-                canvas.toBlob(resolve, imagePath.imageFormat, 1);
+                canvas.toBlob(resolve, blobType, 1);
             });
         })
         .then((blob) => {
@@ -72,7 +81,11 @@ export const saveToFile = async (
                 return;
             }
 
-            return blob.arrayBuffer();
+            if (blob instanceof Blob) {
+                return blob.arrayBuffer();
+            }
+
+            return blob;
         });
 
     if (beforeSaveFile) {
@@ -85,7 +98,7 @@ export const saveToFile = async (
         return;
     }
 
-    await saveFile(imagePath.filePath, imageData).then(() => {
+    await saveFile(imagePath.filePath, imageData, imagePath.imageFormat).then(() => {
         if (process.env.NODE_ENV !== 'development') {
             location.reload();
         }
@@ -102,6 +115,7 @@ export const fixedToScreen = async (
     fixedImageAction: FixedImageActionType,
     ocrBlocksAction: OcrBlocksActionType,
     setCaptureStep: (step: CaptureStep) => void,
+    autoOcrAfterFixed: boolean,
 ) => {
     const selectRect = selectLayerAction.getSelectRect();
     if (!selectRect) {
@@ -123,27 +137,31 @@ export const fixedToScreen = async (
     }
 
     await Promise.all([
-        fixedImageAction.init(selectRect, imageBuffer, imageCanvas).then(async () => {
-            await hidePromise;
-            layerContainerElement.style.opacity = '1';
-            layerContainerElement.style.transform = `translate(-${selectRect.min_x / imageBuffer.monitorScaleFactor}px, -${selectRect.min_y / imageBuffer.monitorScaleFactor}px)`;
-            await Promise.all([
-                appWindow.setPosition(new PhysicalPosition(selectRect.min_x, selectRect.min_y)),
-                appWindow.setSize(
-                    new PhysicalSize(
-                        selectRect.max_x - selectRect.min_x,
-                        selectRect.max_y - selectRect.min_y,
+        fixedImageAction
+            .init(selectRect, imageBuffer, imageCanvas, autoOcrAfterFixed)
+            .then(async () => {
+                await hidePromise;
+                layerContainerElement.style.opacity = '1';
+                layerContainerElement.style.transform = `translate(-${selectRect.min_x / imageBuffer.monitorScaleFactor}px, -${selectRect.min_y / imageBuffer.monitorScaleFactor}px)`;
+                await Promise.all([
+                    appWindow.setPosition(new PhysicalPosition(selectRect.min_x, selectRect.min_y)),
+                    appWindow.setSize(
+                        new PhysicalSize(
+                            selectRect.max_x - selectRect.min_x,
+                            selectRect.max_y - selectRect.min_y,
+                        ),
                     ),
-                ),
-            ]);
-            await new Promise((resolve) => {
-                requestAnimationFrame(() => {
-                    requestAnimationFrame(resolve);
+                ]);
+                await new Promise((resolve) => {
+                    requestAnimationFrame(() => {
+                        requestAnimationFrame(resolve);
+                    });
                 });
-            });
-            await Promise.all([appWindow.show(), appWindow.setAlwaysOnTop(true)]);
-        }),
-        ocrBlocksAction.init(selectRect, imageBuffer, imageCanvas),
+                await Promise.all([appWindow.show(), appWindow.setAlwaysOnTop(true)]);
+            }),
+        autoOcrAfterFixed
+            ? ocrBlocksAction.init(selectRect, imageBuffer, imageCanvas)
+            : Promise.resolve(),
     ]);
 };
 

@@ -18,6 +18,8 @@ import { withStatePublisher } from '@/hooks/useStatePublisher';
 import { ExcalidrawKeyEventHandler } from './components/excalidrawKeyEventHandler';
 import {
     convertLocalToLocalCode,
+    ExcalidrawEventCallbackPublisher,
+    ExcalidrawEventCallbackType,
     ExcalidrawKeyEventPublisher,
     ExcalidrawOnChangePublisher,
     ExcalidrawOnHandleEraserPublisher,
@@ -31,6 +33,30 @@ import { pickerRenders } from './excalidrawRenders';
 import { ElementRect } from '@/commands';
 import { ExcalidrawAppStateStore } from '@/utils/appStore';
 import { debounce } from 'es-toolkit';
+import { DrawStatePublisher } from '../../extra';
+import { DrawState } from '../../types';
+
+const strokeWidthList = [1, 2, 4];
+const fontSizeList = [16, 20, 28, 36];
+
+// 在 DrawCacheLayerCore 组件外部添加一个辅助函数
+const getNextValueInList = <T,>(currentValue: T, valueList: T[], isIncrease: boolean): T => {
+    const currentIndex = valueList.indexOf(currentValue);
+    if (currentIndex !== -1) {
+        if (isIncrease) {
+            // 选择下一个值（循环到开头）
+            const nextIndex = (currentIndex + 1) % valueList.length;
+            return valueList[nextIndex];
+        } else {
+            // 选择上一个值（循环到结尾）
+            const prevIndex = (currentIndex - 1 + valueList.length) % valueList.length;
+            return valueList[prevIndex];
+        }
+    } else {
+        // 如果当前值不在列表中
+        return isIncrease ? valueList[0] : valueList[valueList.length - 1];
+    }
+};
 
 const storageKey = 'global';
 const DrawCacheLayerCore: React.FC<{
@@ -47,6 +73,7 @@ const DrawCacheLayerCore: React.FC<{
         };
     }, []);
 
+    const [getDrawState] = useStateSubscriber(DrawStatePublisher, undefined);
     const [, setExcalidrawOnChangeEvent] = useStateSubscriber(
         ExcalidrawOnChangePublisher,
         undefined,
@@ -56,6 +83,10 @@ const DrawCacheLayerCore: React.FC<{
         undefined,
     );
     const [getExcalidrawKeyEvent] = useStateSubscriber(ExcalidrawKeyEventPublisher, undefined);
+    const [, setExcalidrawEventCallback] = useStateSubscriber(
+        ExcalidrawEventCallbackPublisher,
+        undefined,
+    );
     const drawCacheLayerElementRef = useRef<HTMLDivElement>(null);
     const excalidrawAPIRef = useRef<ExcalidrawImperativeAPI>(undefined);
     const excalidrawAPI = useCallback((api: ExcalidrawImperativeAPI) => {
@@ -67,11 +98,13 @@ const DrawCacheLayerCore: React.FC<{
         excalidrawAPIRef.current?.updateScene(...args);
     }, []);
 
+    const enableRef = useRef<boolean>(false);
     const setEnable = useCallback<DrawCacheLayerActionType['setEnable']>((enable: boolean) => {
         if (!drawCacheLayerElementRef.current) {
             return;
         }
 
+        enableRef.current = enable;
         if (enable) {
             drawCacheLayerElementRef.current.style.pointerEvents = 'auto';
             drawCacheLayerElementRef.current.style.opacity = '1';
@@ -250,6 +283,84 @@ const DrawCacheLayerCore: React.FC<{
     }, []);
     const saveAppStateDebounce = useMemo(() => debounce(saveAppState, 1000), [saveAppState]);
 
+    const handleWheel = useCallback(
+        (
+            event: WheelEvent | React.WheelEvent<HTMLDivElement | HTMLCanvasElement>,
+            zoomAction: () => void,
+        ) => {
+            if (!enableRef.current) {
+                return;
+            }
+
+            if (!excalidrawAPIRef.current) {
+                return;
+            }
+
+            if (event.metaKey || event.ctrlKey) {
+                zoomAction();
+                return;
+            }
+
+            const appState = excalidrawAPIRef.current.getAppState();
+            if (!appState) {
+                return;
+            }
+
+            const isIncrease = event.deltaY < 0;
+
+            if (getDrawState() === DrawState.Blur) {
+                const currentBlur = appState.currentItemBlur;
+                const targetBlur = Math.max(
+                    Math.min(currentBlur + (isIncrease ? 1 : -1) * 10, 100),
+                    0,
+                );
+
+                excalidrawAPIRef.current?.updateScene({
+                    appState: {
+                        ...appState,
+                        currentItemBlur: targetBlur,
+                    },
+                });
+                return;
+            } else if (getDrawState() === DrawState.Text) {
+                const currentFontSize = appState.currentItemFontSize;
+
+                const targetFontSize = getNextValueInList(
+                    currentFontSize,
+                    fontSizeList,
+                    isIncrease,
+                );
+
+                setExcalidrawEventCallback({
+                    event: ExcalidrawEventCallbackType.ChangeFontSize,
+                    params: {
+                        fontSize: targetFontSize,
+                    },
+                });
+                setExcalidrawOnChangeEvent(undefined);
+
+                return;
+            } else {
+                const currentStrokeWidth = appState.currentItemStrokeWidth;
+                const targetStrokeWidth = getNextValueInList(
+                    currentStrokeWidth,
+                    strokeWidthList,
+                    isIncrease,
+                );
+
+                excalidrawAPIRef.current?.updateScene({
+                    appState: {
+                        ...appState,
+                        currentItemStrokeWidth: targetStrokeWidth,
+                    },
+                });
+
+                return;
+            }
+        },
+        [getDrawState, setExcalidrawEventCallback, setExcalidrawOnChangeEvent],
+    );
+
     return (
         <div ref={drawCacheLayerElementRef} className="draw-cache-layer">
             <Excalidraw
@@ -276,6 +387,7 @@ const DrawCacheLayerCore: React.FC<{
                 customOptions={{
                     disableKeyEvents: true,
                     hideFooter: true,
+                    onWheel: handleWheel,
                     hideMainToolbar: true,
                     hideContextMenu: true,
                     shouldResizeFromCenter,
@@ -387,5 +499,9 @@ const DrawCacheLayerCore: React.FC<{
 };
 
 export const DrawCacheLayer = React.memo(
-    withStatePublisher(DrawCacheLayerCore, ExcalidrawKeyEventPublisher),
+    withStatePublisher(
+        DrawCacheLayerCore,
+        ExcalidrawKeyEventPublisher,
+        ExcalidrawEventCallbackPublisher,
+    ),
 );

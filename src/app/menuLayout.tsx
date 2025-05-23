@@ -35,7 +35,7 @@ import '@ant-design/v5-patch-for-react-19';
 import { useAppSettingsLoad } from '@/hooks/useAppSettingsLoad';
 import { zhHans } from '@/messages/zhHans';
 import { useIntl } from 'react-intl';
-import { TrayIconLoader } from './trayIcon';
+import { TrayIconLoader, TrayIconStatePublisher } from './trayIcon';
 import { EventListener } from '@/components/eventListener';
 import { zhHant } from '@/messages/zhHant';
 import { en } from '@/messages/en';
@@ -43,6 +43,7 @@ import { ItemType, MenuItemType } from 'antd/es/menu/interface';
 import { PageNav, PageNavActionType } from './components/pageNav';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
 import { GlobalEventHandler } from './components/globalEventHandler';
+import { withStatePublisher } from '@/hooks/useStatePublisher';
 
 type MenuItem = ItemType<MenuItemType>;
 
@@ -598,15 +599,15 @@ const MenuLayoutCore: React.FC<{ children: React.ReactNode }> = ({ children }) =
     );
 };
 
+const ML = React.memo(withStatePublisher(MenuLayoutCore, TrayIconStatePublisher));
+
 export const MenuLayout = ({ children }: { children: React.ReactNode }) => {
     const pathname = usePathname();
     const noLayout = pathname === '/draw';
     const mainWindow = !noLayout;
     return (
         <MenuLayoutContext.Provider value={{ noLayout, pathname, mainWindow }}>
-            <EventListener>
-                {noLayout ? children : <MenuLayoutCore>{children}</MenuLayoutCore>}
-            </EventListener>
+            <EventListener>{noLayout ? children : <ML>{children}</ML>}</EventListener>
         </MenuLayoutContext.Provider>
     );
 };

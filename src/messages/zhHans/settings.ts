@@ -6,6 +6,8 @@ export const settings = {
     'settings.controlNode.circle': '圆形',
     'settings.controlNode.polyline': '多边形',
     'settings.screenshotSettings': '截图设置',
+    'settings.fixedBorderColor': '固定屏幕边框颜色',
+    'settings.enableQrcodeScan': '启用二维码识别',
     'settings.findChildrenElements': '查找窗口子元素',
     'settings.performanceMode': '性能优先',
     'settings.performanceMode.tip1':
@@ -80,13 +82,15 @@ export const settings = {
         '如果你需要将该模型用于翻译，不建议开启此选项',
     'settings.functionSettings.screenshotSettings': '截图设置',
     'settings.functionSettings.screenshotSettings.findChildrenElements': '查找窗口子元素',
-    'settings.functionSettings.screenshotSettings.alwaysShowColorPicker': '始终显示颜色拾取器',
-    'settings.functionSettings.screenshotSettings.alwaysShowColorPicker.tip':
-        '超出选区范围时，保持显示颜色拾取器',
+    'settings.functionSettings.screenshotSettings.colorPickerShowMode': '颜色拾取器模式',
+    'settings.functionSettings.screenshotSettings.beyondSelectRect': '超出选区后隐藏',
+    'settings.functionSettings.screenshotSettings.alwaysShowColorPicker': '始终显示',
+    'settings.functionSettings.screenshotSettings.neverShowColorPicker': '从不显示',
     'settings.functionSettings.screenshotSettings.beyondSelectRectElementOpacity':
         '超出选区范围的元素透明度',
     'settings.functionSettings.screenshotSettings.beyondSelectRectElementOpacity.tip':
         '选定截图区域后，绘制的元素在超出选区范围时显示的透明度',
+    'settings.functionSettings.screenshotSettings.autoOcrAfterFixed': '固定屏幕后自动 OCR',
     'settings.systemSettings.scrollScreenshotSettings': '滚动截图设置',
     'settings.systemSettings.scrollScreenshotSettings.imageFeatureThreshold': '图片特征阈值',
     'settings.systemSettings.scrollScreenshotSettings.imageFeatureThreshold.tip':

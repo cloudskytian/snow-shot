@@ -50,7 +50,7 @@ export const ResizeToolbar: React.FC<{
                 return;
             }
 
-            const dragRes = updateElementPosition(
+            const { isBeyond } = updateElementPosition(
                 resizeToolbar,
                 0,
                 0,
@@ -60,8 +60,26 @@ export const ResizeToolbar: React.FC<{
                     selectedRect.min_y / imageBuffer.monitorScaleFactor,
                 ),
                 undefined,
+                true,
             );
-            resizeToolbar.style.transform = `translate(${dragRes.rect.min_x}px, ${dragRes.rect.min_y}px)`;
+            if (isBeyond) {
+                updateElementPosition(
+                    resizeToolbar,
+                    0,
+                    0,
+                    new MousePosition(
+                        -(selectedRect.max_x - selectedRect.min_x) /
+                            imageBuffer.monitorScaleFactor -
+                            token.marginXXS,
+                        0,
+                    ),
+                    new MousePosition(
+                        selectedRect.min_x / imageBuffer.monitorScaleFactor,
+                        selectedRect.min_y / imageBuffer.monitorScaleFactor,
+                    ),
+                    undefined,
+                );
+            }
         },
         [imageBufferRef, token.marginXXS],
     );

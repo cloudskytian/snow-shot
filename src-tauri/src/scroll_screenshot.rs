@@ -1,10 +1,16 @@
+use image::codecs::jpeg::JpegEncoder;
 use image::{codecs::webp::WebPEncoder, imageops::FilterType};
 use serde::Serialize;
+use std::fs;
 use std::sync::Mutex;
 use tauri::ipc::Response;
 use tauri::{command, image::Image};
 use tauri_plugin_clipboard_manager::ClipboardExt;
 use xcap::Monitor;
+use zune_core::bit_depth::BitDepth;
+use zune_core::colorspace::ColorSpace;
+use zune_core::options::EncoderOptions;
+use zune_jpegxl::JxlSimpleEncoder;
 
 use crate::services::{ScrollDirection, ScrollImageList, ScrollScreenshotService};
 
@@ -109,7 +115,8 @@ pub async fn scroll_screenshot_capture(
     );
 
     thumbnail
-        .write_with_encoder(WebPEncoder::new_lossless(&mut buf))
+        .to_rgb8()
+        .write_with_encoder(JpegEncoder::new_with_quality(&mut buf, 90))
         .unwrap();
 
     // 添加边缘位置信息到缓冲区末尾
@@ -150,11 +157,33 @@ pub async fn scroll_screenshot_save_to_file(
     };
 
     let image = scroll_screenshot_service.export();
-    match image {
-        Some(image) => {
-            image.save(file_path).unwrap();
-        }
+    let image = match image {
+        Some(image) => image,
         None => return Err(()),
+    };
+
+    if file_path.ends_with(".jxl") {
+        let image_data = image.to_rgb8();
+        let encoder = JxlSimpleEncoder::new(
+            image_data.as_raw(),
+            EncoderOptions::new(
+                image.width() as usize,
+                image.height() as usize,
+                ColorSpace::RGB,
+                BitDepth::Eight,
+            ),
+        );
+        let encoder_result = match encoder.encode() {
+            Ok(encoder_result) => encoder_result,
+            Err(_) => return Err(()),
+        };
+
+        return match fs::write(file_path, encoder_result) {
+            Ok(_) => Ok(()),
+            Err(_) => Err(()),
+        };
+    } else {
+        image.save(file_path).unwrap();
     }
 
     Ok(())

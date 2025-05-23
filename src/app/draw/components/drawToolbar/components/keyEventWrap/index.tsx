@@ -3,7 +3,6 @@ import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } 
 import { JSX } from 'react';
 import { useIntl } from 'react-intl';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
-import { DrawingPublisher } from '../..';
 import {
     defaultDrawToolbarKeyEventComponentConfig,
     defaultDrawToolbarKeyEventSettings,
@@ -78,7 +77,6 @@ const KeyEventWrapCore: React.FC<{
     children: JSX.Element;
     componentKey: KeyEventKey;
     confirmTip?: React.ReactNode;
-    disableOnDrawing?: boolean;
     enable?: boolean;
     hotkeyScope?: HotkeysScope;
 }> = ({
@@ -89,7 +87,6 @@ const KeyEventWrapCore: React.FC<{
     children,
     componentKey,
     confirmTip,
-    disableOnDrawing = false,
     enable,
     hotkeyScope,
 }) => {
@@ -102,14 +99,13 @@ const KeyEventWrapCore: React.FC<{
 
     const [keyEventValue, setKeyEventValue] = useState<KeyEventValue | undefined>(undefined);
     const [getEnableKeyEvent] = useStateSubscriber(EnableKeyEventPublisher, () => {});
-    const [getDrawing] = useStateSubscriber(DrawingPublisher, () => {});
     const isEnable = useCallback(() => {
         if (enableRef.current !== undefined) {
             return enableRef.current;
         }
 
-        return getEnableKeyEvent() && (disableOnDrawing ? !getDrawing() : true);
-    }, [disableOnDrawing, getEnableKeyEvent, getDrawing]);
+        return getEnableKeyEvent();
+    }, [getEnableKeyEvent]);
     useAppSettingsLoad(
         useCallback(
             (appSettings: AppSettingsData) => {

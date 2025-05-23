@@ -14,10 +14,14 @@ export type StatePublisherContext<Value> = {
 
 export type StatePublisher<Value> = {
     defaultValue: Value;
+    ignoreUndefined: boolean;
     context: Context<StatePublisherContext<Value>>;
 };
 
-export function createPublisher<Value>(defaultValue: Value): StatePublisher<Value> {
+export function createPublisher<Value>(
+    defaultValue: Value,
+    ignoreUndefined = false,
+): StatePublisher<Value> {
     const context = createContext<StatePublisherContext<Value>>({
         stateRef: { current: defaultValue },
         stateListenersRef: { current: new Map() },
@@ -26,7 +30,7 @@ export function createPublisher<Value>(defaultValue: Value): StatePublisher<Valu
         reset: () => {},
     });
 
-    return { defaultValue, context };
+    return { defaultValue, ignoreUndefined, context };
 }
 
 export function PublisherProvider<Value>({
@@ -36,16 +40,24 @@ export function PublisherProvider<Value>({
     children: React.ReactNode;
     statePublisher: StatePublisher<Value>;
 }) {
-    const { defaultValue, context: StatePublisherContext } = statePublisher;
+    const { defaultValue, ignoreUndefined, context: StatePublisherContext } = statePublisher;
     const stateRef = useRef(defaultValue);
     const stateListenersRef = useRef<Map<number, StatePublisherListener<Value>>>(new Map());
     const listenerIdRef = useRef<number>(0);
 
-    const publish = useCallback((value: Value) => {
-        const previousValue = stateRef.current;
-        stateRef.current = value;
-        stateListenersRef.current.forEach((listener) => listener(value, previousValue));
-    }, []);
+    const publish = useCallback(
+        (value: Value) => {
+            const previousValue = stateRef.current;
+            stateRef.current = value;
+
+            if (ignoreUndefined && value === undefined) {
+                return;
+            }
+
+            stateListenersRef.current.forEach((listener) => listener(value, previousValue));
+        },
+        [ignoreUndefined],
+    );
 
     const subscribe = useCallback((listener: StatePublisherListener<Value>) => {
         const listenerId = listenerIdRef.current++;

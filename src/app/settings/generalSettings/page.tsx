@@ -1,7 +1,7 @@
 'use client';
 
 import { GroupTitle } from '@/components/groupTitle';
-import { Col, Divider, Form, Row, Select, Spin, Switch, theme } from 'antd';
+import { Col, ColorPicker, Divider, Form, Row, Select, Spin, Switch, theme } from 'antd';
 import {
     AppSettingsActionContext,
     AppSettingsControlNode,
@@ -17,6 +17,8 @@ import { DarkModeIcon, LanguageIcon } from '@/components/icons';
 import { IconLabel } from '@/components/iconLable';
 import { ResetSettingsButton } from '@/components/resetSettingsButton';
 import { useStateRef } from '@/hooks/useStateRef';
+import ProForm from '@ant-design/pro-form';
+import { AggregationColor } from 'antd/es/color-picker/color';
 
 const { Option } = Select;
 
@@ -129,17 +131,33 @@ export default function GeneralSettings() {
                 <FormattedMessage id="settings.screenshotSettings" />
             </GroupTitle>
 
-            <Form
+            <ProForm<AppSettingsData[AppSettingsGroup.Screenshot]>
                 className="settings-form screenshot-settings-form"
                 form={screenshotForm}
+                submitter={false}
                 onValuesChange={(_, values) => {
-                    updateAppSettings(AppSettingsGroup.Screenshot, values, true, true, true);
+                    if (typeof values.fixedBorderColor === 'object') {
+                        values.fixedBorderColor = (
+                            values.fixedBorderColor as AggregationColor
+                        ).toHexString();
+                    }
+
+                    updateAppSettings(
+                        AppSettingsGroup.Screenshot,
+                        values,
+                        true,
+                        true,
+                        true,
+                        true,
+                        false,
+                    );
                 }}
+                layout="horizontal"
             >
                 <Spin spinning={appSettingsLoading}>
                     <Row gutter={token.margin}>
                         <Col span={12}>
-                            <Form.Item
+                            <ProForm.Item
                                 className="settings-wrap-language"
                                 name="controlNode"
                                 label={
@@ -154,15 +172,26 @@ export default function GeneralSettings() {
                                     <Option value={AppSettingsControlNode.Circle}>
                                         <FormattedMessage id="settings.controlNode.circle" />
                                     </Option>
-                                    {/* <Option value={AppSettingsControlNode.Polyline}>
-                                <FormattedMessage id="settings.controlNode.polyline" />
-                            </Option> */}
                                 </Select>
-                            </Form.Item>
+                            </ProForm.Item>
+                        </Col>
+
+                        <Col span={12}>
+                            <ProForm.Item
+                                name="fixedBorderColor"
+                                label={
+                                    <IconLabel
+                                        label={<FormattedMessage id="settings.fixedBorderColor" />}
+                                    />
+                                }
+                                required={false}
+                            >
+                                <ColorPicker showText placement="bottom" />
+                            </ProForm.Item>
                         </Col>
                     </Row>
                 </Spin>
-            </Form>
+            </ProForm>
 
             <style jsx>{`
                 :global(.settings-form)

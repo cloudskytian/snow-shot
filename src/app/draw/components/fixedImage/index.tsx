@@ -13,13 +13,16 @@ import { useCallbackRender } from '@/hooks/useCallbackRender';
 import { zIndexs } from '@/utils/zIndex';
 import { DrawContext } from '../../types';
 import { closeWindowComplete } from '@/utils/window';
-import { generateImageFileName } from '@/utils/file';
+import { generateImageFileName, ImageFormat } from '@/utils/file';
+import { useStateSubscriber } from '@/hooks/useStateSubscriber';
+import { AppSettingsGroup, AppSettingsPublisher, AppSettingsData } from '@/app/contextWrap';
 
 export type FixedImageActionType = {
     init: (
         selectRect: ElementRect,
         imageBuffer: ImageBuffer,
         canvas: HTMLCanvasElement,
+        hasOcr: boolean,
     ) => Promise<void>;
     popupMenu: (position: LogicalPosition) => void;
 };
@@ -32,6 +35,14 @@ export const FixedImage: React.FC<{
     const { token } = theme.useToken();
 
     const { ocrBlocksActionRef } = useContext(DrawContext);
+
+    const [fixedBorderColor, setFixedBorderColor] = useState<string | undefined>(undefined);
+    useStateSubscriber(
+        AppSettingsPublisher,
+        useCallback((settings: AppSettingsData) => {
+            setFixedBorderColor(settings[AppSettingsGroup.Screenshot].fixedBorderColor);
+        }, []),
+    );
 
     const [style, setStyle, styleRef] = useStateRef<React.CSSProperties>({});
     const canvasPropsRef = useRef<{
@@ -46,6 +57,11 @@ export const FixedImage: React.FC<{
     const blobRef = useRef<Blob | undefined>(undefined);
     const [imageUrl, setImageUrl] = useState<string | undefined>(undefined);
 
+    const initParams = useRef<{
+        selectRect: ElementRect;
+        imageBuffer: ImageBuffer;
+        canvas: HTMLCanvasElement;
+    }>(undefined);
     useImperativeHandle(
         actionRef,
         () => ({
@@ -53,7 +69,16 @@ export const FixedImage: React.FC<{
                 selectRect: ElementRect,
                 imageBuffer: ImageBuffer,
                 canvas: HTMLCanvasElement,
+                hasOcr: boolean,
             ) => {
+                if (!hasOcr) {
+                    initParams.current = {
+                        selectRect,
+                        imageBuffer,
+                        canvas,
+                    };
+                }
+
                 setStyle({
                     width: `${canvas.width / imageBuffer.monitorScaleFactor}px`,
                     height: `${canvas.height / imageBuffer.monitorScaleFactor}px`,
@@ -144,13 +169,26 @@ export const FixedImage: React.FC<{
                             return;
                         }
 
-                        await saveFile(filePath, await blobRef.current.arrayBuffer());
+                        await saveFile(
+                            filePath,
+                            await blobRef.current.arrayBuffer(),
+                            ImageFormat.PNG,
+                        );
                     },
                 },
                 {
                     id: `${window.label}-ocrTool`,
                     text: intl.formatMessage({ id: 'draw.showOrHideOcrResult' }),
                     action: async () => {
+                        if (initParams.current) {
+                            ocrBlocksActionRef.current?.init(
+                                initParams.current.selectRect,
+                                initParams.current.imageBuffer,
+                                initParams.current.canvas,
+                            );
+                            initParams.current = undefined;
+                        }
+
                         ocrBlocksActionRef.current?.setEnable((enable) => !enable);
                     },
                 },
@@ -268,7 +306,7 @@ export const FixedImage: React.FC<{
                     menuRef.current?.popup(new LogicalPosition(e.clientX, e.clientY));
                 }}
                 onWheel={(event) => {
-                    scaleWindowRender((event.deltaY > 0 ? 1 : -1) * 10);
+                    scaleWindowRender((event.deltaY > 0 ? -1 : 1) * 10);
                 }}
                 data-tauri-drag-region
             >
@@ -328,7 +366,7 @@ export const FixedImage: React.FC<{
                     left: 0;
                     cursor: grab;
                     box-sizing: border-box;
-                    box-shadow: 0 0 2px 2px ${token.colorBorder};
+                    box-shadow: 0 0 2px 2px ${fixedBorderColor ?? token.colorBorder};
                     margin: 2px;
                 }
 

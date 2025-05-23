@@ -21,6 +21,13 @@ export const dragRect = (
     const width = maxX - minX;
     const height = maxY - minY;
 
+    // 检测是否超出边界（在调整之前）
+    const isBeyond =
+        minX < boundaryRect.min_x ||
+        minY < boundaryRect.min_y ||
+        maxX > boundaryRect.max_x ||
+        maxY > boundaryRect.max_y;
+
     // 检测是否触碰边界
     const adjustedOriginPosition = new MousePosition(
         originMousePosition.mouseX,
@@ -64,6 +71,7 @@ export const dragRect = (
             max_y: maxY,
         },
         newOriginPosition: boundaryHit ? adjustedOriginPosition : originMousePosition,
+        isBeyond,
     };
 };
 
@@ -74,6 +82,7 @@ export const updateElementPosition = (
     originMousePosition: MousePosition,
     currentMousePosition: MousePosition,
     previousRect: ElementRect | undefined,
+    cancelOnBeyond: boolean = false,
 ) => {
     const { clientWidth: toolbarWidth, clientHeight: toolbarHeight } = element;
 
@@ -98,12 +107,15 @@ export const updateElementPosition = (
         },
     );
 
-    const translateX = baseOffsetX + dragRes.rect.min_x;
-    const translateY = baseOffsetY + dragRes.rect.min_y;
-    element.style.transform = `translate(${translateX}px, ${translateY}px)`;
+    if (!(cancelOnBeyond && dragRes.isBeyond)) {
+        const translateX = baseOffsetX + dragRes.rect.min_x;
+        const translateY = baseOffsetY + dragRes.rect.min_y;
+        element.style.transform = `translate(${translateX}px, ${translateY}px)`;
+    }
 
     return {
         rect: dragRes.rect,
         originPosition: dragRes.newOriginPosition,
+        isBeyond: dragRes.isBeyond,
     };
 };

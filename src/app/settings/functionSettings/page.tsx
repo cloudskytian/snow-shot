@@ -11,6 +11,7 @@ import { IconLabel } from '@/components/iconLable';
 import { ResetSettingsButton } from '@/components/resetSettingsButton';
 import ProForm, {
     ProFormList,
+    ProFormRadio,
     ProFormSlider,
     ProFormSwitch,
     ProFormText,
@@ -21,6 +22,7 @@ import {
     TARGET_LANGUAGE_ENV_VARIABLE,
     TRANSLATION_DOMAIN_ENV_VARIABLE,
 } from '@/app/tools/translation/extra';
+import { ColorPickerShowMode } from '@/app/draw/components/colorPicker';
 
 export default function SystemSettings() {
     const intl = useIntl();
@@ -109,19 +111,32 @@ export default function SystemSettings() {
                             />
                         </Col>
                         <Col span={12}>
-                            <ProFormSwitch
-                                name="alwaysShowColorPicker"
+                            <ProFormRadio.Group
+                                name="colorPickerShowMode"
                                 layout="horizontal"
                                 label={
-                                    <IconLabel
-                                        label={
-                                            <FormattedMessage id="settings.functionSettings.screenshotSettings.alwaysShowColorPicker" />
-                                        }
-                                        tooltipTitle={
-                                            <FormattedMessage id="settings.functionSettings.screenshotSettings.alwaysShowColorPicker.tip" />
-                                        }
-                                    />
+                                    <FormattedMessage id="settings.functionSettings.screenshotSettings.colorPickerShowMode" />
                                 }
+                                options={[
+                                    {
+                                        label: (
+                                            <FormattedMessage id="settings.functionSettings.screenshotSettings.beyondSelectRect" />
+                                        ),
+                                        value: ColorPickerShowMode.BeyondSelectRect,
+                                    },
+                                    {
+                                        label: (
+                                            <FormattedMessage id="settings.functionSettings.screenshotSettings.alwaysShowColorPicker" />
+                                        ),
+                                        value: ColorPickerShowMode.Always,
+                                    },
+                                    {
+                                        label: (
+                                            <FormattedMessage id="settings.functionSettings.screenshotSettings.neverShowColorPicker" />
+                                        ),
+                                        value: ColorPickerShowMode.Never,
+                                    },
+                                ]}
                             />
                         </Col>
 
@@ -145,6 +160,16 @@ export default function SystemSettings() {
                                     0: '0%',
                                     100: '100%',
                                 }}
+                            />
+                        </Col>
+
+                        <Col span={12}>
+                            <ProFormSwitch
+                                label={
+                                    <FormattedMessage id="settings.functionSettings.screenshotSettings.autoOcrAfterFixed" />
+                                }
+                                name="autoOcrAfterFixed"
+                                layout="horizontal"
                             />
                         </Col>
                     </Row>

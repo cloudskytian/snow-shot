@@ -130,7 +130,6 @@ const EventListenerCore: React.FC<{ children: React.ReactNode }> = ({ children }
                 const res: Listener = {
                     event: listener.event,
                     callback: (e) => {
-                        console.log('callback', listener.event);
                         listener.callback(e);
                         try {
                             listenerEventMapRef.current.get(listener.event)?.forEach((id) => {

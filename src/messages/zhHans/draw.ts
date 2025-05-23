@@ -55,6 +55,7 @@ export const draw = {
     'draw.ocrDetectTool': '文字识别',
     'draw.showOrHideOcrResult': '显示/隐藏 OCR 结果',
     'draw.fixedTool': '固定到屏幕',
+    'draw.extraToolsTool': '额外工具',
     'draw.lockWidthHeightPicker': '切换锁定宽高',
     'draw.lockAnglePicker': '切换锁定角度',
     'draw.removeTool': '删除选中元素',
@@ -70,6 +71,7 @@ export const draw = {
     'draw.maintainAspectRatioPicker': '保持宽高比例',
     'draw.rotateWithDiscreteAnglePicker': '固定角度旋转',
     'draw.autoAlignPicker': '自动对齐',
+    'draw.selectPrevRectTool': '选择之前选定的区域',
     'draw.ocrLoading': 'OCR 识别中',
     'draw.copySelectedText': '复制选中文本',
     'draw.scrollScreenshot.limitTip': '所选区域过小，无法进行滚动截图（最小边需 > 300px）',
@@ -82,4 +84,6 @@ export const draw = {
     'draw.ocrDetect.translate.error2': '翻译结果的行数不匹配（回退到按行解析）',
     'draw.ocrDetect.translate.error3': '按行解析异常',
     'draw.switchColorFormat': '切换颜色格式',
+    'draw.extraTool.scanQrcode': '扫描二维码',
+    'draw.extraTool.scanQrcode.error': '未识别到有效二维码',
 };

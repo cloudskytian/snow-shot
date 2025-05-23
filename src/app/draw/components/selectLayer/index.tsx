@@ -34,11 +34,12 @@ import { CaptureStepPublisher } from '../../extra';
 import { ResizeToolbar, ResizeToolbarActionType } from './components/resizeToolbar';
 import { ScreenshotType } from '@/functions/screenshot';
 import { zIndexs } from '@/utils/zIndex';
-import { HotkeysScope } from '@/components/globalLayoutExtra';
-import { useHotkeysApp } from '@/hooks/useHotkeysApp';
+import { isHotkeyPressed } from 'react-hotkeys-hook';
+import { KeyEventKey } from '../drawToolbar/components/keyEventWrap/extra';
 
 export type SelectLayerActionType = {
     getSelectRect: () => ElementRect | undefined;
+    getSelectState: () => SelectState;
     getWindowId: () => number | undefined;
     setEnable: (enable: boolean) => void;
     onExecuteScreenshot: () => Promise<void>;
@@ -666,27 +667,75 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
             setEnable: (enable: boolean) => {
                 setIsEnable(enable);
             },
+            getSelectState: () => selectStateRef.current,
         }),
         [getSelectRect, onCaptureFinish, onCaptureReady, onExecuteScreenshot, refreshMouseMove],
     );
 
-    useHotkeysApp(
-        'Tab',
-        () => {
+    useEffect(() => {
+        if (
+            !isEnable &&
+            getAppSettings()[AppSettingsGroup.FunctionScreenshot].findChildrenElements
+        ) {
+            return;
+        }
+
+        const onKeyDown = (e: KeyboardEvent) => {
             if (!enableSelectRef.current) {
                 return;
             }
 
-            setTabFindChildrenElements((prev) => !prev);
-        },
-        {
-            preventDefault: true,
-            enabled:
-                isEnable &&
-                getAppSettings()[AppSettingsGroup.FunctionScreenshot].findChildrenElements,
-            scopes: HotkeysScope.DrawTool,
-        },
-    );
+            if (isHotkeyPressed('Tab')) {
+                setTabFindChildrenElements((prev) => !prev);
+                e.preventDefault();
+            }
+
+            if (
+                isHotkeyPressed(
+                    getAppSettings()[AppSettingsGroup.DrawToolbarKeyEvent][KeyEventKey.CancelTool]
+                        .hotKey,
+                ) &&
+                selectStateRef.current !== SelectState.Selected
+            ) {
+                finishCapture();
+                e.preventDefault();
+            }
+
+            if (
+                isHotkeyPressed(
+                    getAppSettings()[AppSettingsGroup.DrawToolbarKeyEvent][
+                        KeyEventKey.SelectPrevRectTool
+                    ].hotKey,
+                )
+            ) {
+                const prevSelectRect = getAppSettings()[AppSettingsGroup.Cache].prevSelectRect;
+                if (
+                    prevSelectRect.min_x < prevSelectRect.max_x &&
+                    prevSelectRect.min_y < prevSelectRect.max_y
+                ) {
+                    setSelectRect(
+                        limitRect(prevSelectRect, getMonitorRect(imageBufferRef.current)),
+                        false,
+                    );
+                    setSelectState(SelectState.Selected);
+                }
+            }
+        };
+
+        document.addEventListener('keydown', onKeyDown);
+
+        return () => {
+            document.removeEventListener('keydown', onKeyDown);
+        };
+    }, [
+        finishCapture,
+        getAppSettings,
+        getSelectRect,
+        isEnable,
+        setSelectRect,
+        setSelectState,
+        setTabFindChildrenElements,
+    ]);
 
     useEffect(() => {
         if (layerContainerElementRef.current) {

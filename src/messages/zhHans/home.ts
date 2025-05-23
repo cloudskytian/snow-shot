@@ -17,4 +17,6 @@ export const home = {
     'home.shortcut.error': '注册失败，快捷键已被其他应用占用',
     'home.exit': '退出',
     'home.about': '关于 Snow Shot',
+    'home.disableShortcut': '禁用快捷键',
+    'home.enableShortcut': '启用快捷键',
 };

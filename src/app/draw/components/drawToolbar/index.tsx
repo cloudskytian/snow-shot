@@ -8,7 +8,7 @@ import React from 'react';
 import { DragButton, DragButtonActionType } from './components/dragButton';
 import { DrawToolbarContext } from './extra';
 import { KeyEventKey } from './components/keyEventWrap/extra';
-import { CloseOutlined, CopyOutlined, DragOutlined } from '@ant-design/icons';
+import { AppstoreOutlined, CloseOutlined, CopyOutlined, DragOutlined } from '@ant-design/icons';
 import {
     ArrowIcon,
     ArrowSelectIcon,
@@ -33,7 +33,7 @@ import {
     ScreenshotTypePublisher,
 } from '../../extra';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
-import { createPublisher, withStatePublisher } from '@/hooks/useStatePublisher';
+import { createPublisher } from '@/hooks/useStatePublisher';
 import { EnableKeyEventPublisher } from './components/keyEventWrap/extra';
 import { HistoryControls } from './components/historyControls';
 import { ToolButton } from './components/toolButton';
@@ -57,7 +57,11 @@ export type DrawToolbarActionType = {
     setEnable: (enable: boolean) => void;
 };
 
-export const DrawingPublisher = createPublisher<boolean>(false);
+export const DrawToolbarStatePublisher = createPublisher<{
+    mouseHover: boolean;
+}>({
+    mouseHover: false,
+});
 
 const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
     actionRef,
@@ -70,6 +74,10 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 }) => {
     const { drawCacheLayerActionRef, selectLayerActionRef } = useContext(DrawContext);
 
+    const [getDrawToolbarState, setDrawToolbarState] = useStateSubscriber(
+        DrawToolbarStatePublisher,
+        undefined,
+    );
     const [getDrawState, setDrawState] = useStateSubscriber(DrawStatePublisher, undefined);
     const [, setCaptureStep] = useStateSubscriber(CaptureStepPublisher, undefined);
     const [getScreenshotType] = useStateSubscriber(ScreenshotTypePublisher, undefined);
@@ -224,6 +232,12 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
                     });
                     onOcrDetect();
                     break;
+                case DrawState.ExtraTools:
+                    drawCacheLayerActionRef.current?.setEnable(false);
+                    drawCacheLayerActionRef.current?.setActiveTool({
+                        type: 'hand',
+                    });
+                    break;
                 default:
                     break;
             }
@@ -318,7 +332,16 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
             ref={drawToolarContainerRef}
         >
             <DrawToolbarContext.Provider value={drawToolbarContextValue}>
-                <div className="draw-toolbar" ref={drawToolbarRef}>
+                <div
+                    onMouseEnter={() => {
+                        setDrawToolbarState({ ...getDrawToolbarState(), mouseHover: true });
+                    }}
+                    onMouseLeave={() => {
+                        setDrawToolbarState({ ...getDrawToolbarState(), mouseHover: false });
+                    }}
+                    className="draw-toolbar"
+                    ref={drawToolbarRef}
+                >
                     <Flex align="center" gap={token.paddingXS}>
                         <DragButton actionRef={dragButtonActionRef} />
 
@@ -326,7 +349,6 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
                         <ToolButton
                             componentKey={KeyEventKey.MoveTool}
                             icon={<DragOutlined />}
-                            disableOnDrawing
                             drawState={DrawState.Idle}
                             onClick={() => {
                                 onToolClick(DrawState.Idle);
@@ -337,7 +359,6 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
                         <ToolButton
                             componentKey={KeyEventKey.SelectTool}
                             icon={<ArrowSelectIcon style={{ fontSize: '1.08em' }} />}
-                            disableOnDrawing
                             drawState={DrawState.Select}
                             disable={disableNormalScreenshotTool}
                             onClick={() => {
@@ -351,7 +372,6 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
                         <ToolButton
                             componentKey={KeyEventKey.RectTool}
                             icon={<RectIcon style={{ fontSize: '1em' }} />}
-                            disableOnDrawing
                             disable={disableNormalScreenshotTool}
                             drawState={DrawState.Rect}
                             onClick={() => {
@@ -363,7 +383,6 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
                         <ToolButton
                             componentKey={KeyEventKey.DiamondTool}
                             icon={<DiamondIcon style={{ fontSize: '1em' }} />}
-                            disableOnDrawing
                             drawState={DrawState.Diamond}
                             disable={disableNormalScreenshotTool}
                             onClick={() => {
@@ -375,7 +394,6 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
                         <ToolButton
                             componentKey={KeyEventKey.EllipseTool}
                             icon={<CircleIcon style={{ fontSize: '1em' }} />}
-                            disableOnDrawing
                             drawState={DrawState.Ellipse}
                             disable={disableNormalScreenshotTool}
                             onClick={() => {
@@ -387,7 +405,6 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
                         <ToolButton
                             componentKey={KeyEventKey.ArrowTool}
                             icon={<ArrowIcon style={{ fontSize: '0.83em' }} />}
-                            disableOnDrawing
                             drawState={DrawState.Arrow}
                             disable={disableNormalScreenshotTool}
                             onClick={() => {
@@ -399,7 +416,6 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
                         <ToolButton
                             componentKey={KeyEventKey.LineTool}
                             icon={<LineIcon style={{ fontSize: '1.16em' }} />}
-                            disableOnDrawing
                             drawState={DrawState.Line}
                             disable={disableNormalScreenshotTool}
                             onClick={() => {
@@ -411,7 +427,6 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
                         <ToolButton
                             componentKey={KeyEventKey.PenTool}
                             icon={<PenIcon style={{ fontSize: '1.08em' }} />}
-                            disableOnDrawing
                             drawState={DrawState.Pen}
                             disable={disableNormalScreenshotTool}
                             onClick={() => {
@@ -423,7 +438,6 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
                         <ToolButton
                             componentKey={KeyEventKey.TextTool}
                             icon={<TextIcon style={{ fontSize: '1.08em' }} />}
-                            disableOnDrawing
                             drawState={DrawState.Text}
                             disable={disableNormalScreenshotTool}
                             onClick={() => {
@@ -435,7 +449,6 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
                         <ToolButton
                             componentKey={KeyEventKey.BlurTool}
                             icon={<MosaicIcon />}
-                            disableOnDrawing
                             drawState={DrawState.Blur}
                             disable={disableNormalScreenshotTool}
                             onClick={() => {
@@ -447,7 +460,6 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
                         <ToolButton
                             componentKey={KeyEventKey.EraserTool}
                             icon={<EraserIcon style={{ fontSize: '0.9em' }} />}
-                            disableOnDrawing
                             drawState={DrawState.Eraser}
                             disable={disableNormalScreenshotTool}
                             onClick={() => {
@@ -461,31 +473,39 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
 
                         <div className="draw-toolbar-splitter" />
 
-                        <>
-                            {/* 固定到屏幕 */}
-                            <ToolButton
-                                componentKey={KeyEventKey.FixedTool}
-                                icon={<FixedIcon style={{ fontSize: '1em' }} />}
-                                disableOnDrawing
-                                drawState={DrawState.Fixed}
-                                disable={enableScrollScreenshot}
-                                onClick={() => {
-                                    onFixed();
-                                }}
-                            />
+                        {/* 额外工具 */}
+                        <ToolButton
+                            componentKey={KeyEventKey.ExtraToolsTool}
+                            icon={<AppstoreOutlined />}
+                            drawState={DrawState.ExtraTools}
+                            extraDrawState={[DrawState.ScanQrcode]}
+                            disable={enableScrollScreenshot}
+                            onClick={() => {
+                                onToolClick(DrawState.ExtraTools);
+                            }}
+                        />
 
-                            {/* OCR */}
-                            <ToolButton
-                                componentKey={KeyEventKey.OcrDetectTool}
-                                icon={<OcrDetectIcon style={{ fontSize: '0.88em' }} />}
-                                disableOnDrawing
-                                drawState={DrawState.OcrDetect}
-                                disable={disableNormalScreenshotTool}
-                                onClick={() => {
-                                    onToolClick(DrawState.OcrDetect);
-                                }}
-                            />
-                        </>
+                        {/* 固定到屏幕 */}
+                        <ToolButton
+                            componentKey={KeyEventKey.FixedTool}
+                            icon={<FixedIcon style={{ fontSize: '1.1em' }} />}
+                            drawState={DrawState.Fixed}
+                            disable={enableScrollScreenshot}
+                            onClick={() => {
+                                onFixed();
+                            }}
+                        />
+
+                        {/* OCR */}
+                        <ToolButton
+                            componentKey={KeyEventKey.OcrDetectTool}
+                            icon={<OcrDetectIcon style={{ fontSize: '0.88em' }} />}
+                            drawState={DrawState.OcrDetect}
+                            disable={disableNormalScreenshotTool}
+                            onClick={() => {
+                                onToolClick(DrawState.OcrDetect);
+                            }}
+                        />
 
                         {/* 滚动截图 */}
                         <ToolButton
@@ -495,7 +515,6 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
                                     <ScrollScreenshotIcon style={{ fontSize: '1.2em' }} />
                                 </div>
                             }
-                            disableOnDrawing
                             drawState={DrawState.ScrollScreenshot}
                             onClick={() => {
                                 onToolClick(DrawState.ScrollScreenshot);
@@ -506,7 +525,6 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
                         <ToolButton
                             componentKey={KeyEventKey.SaveTool}
                             icon={<SaveIcon style={{ fontSize: '1em' }} />}
-                            disableOnDrawing
                             drawState={DrawState.Save}
                             onClick={() => {
                                 onSave();
@@ -524,7 +542,6 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
                                 />
                             }
                             confirmTip={<FormattedMessage id="draw.cancel.tip1" />}
-                            disableOnDrawing
                             drawState={DrawState.Cancel}
                             onClick={() => {
                                 onCancel();
@@ -539,7 +556,6 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
                                     style={{ fontSize: '0.92em', color: token.colorPrimary }}
                                 />
                             }
-                            disableOnDrawing
                             drawState={DrawState.Copy}
                             onClick={() => {
                                 onCopyToClipboard();
@@ -621,4 +637,4 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
     );
 };
 
-export const DrawToolbar = React.memo(withStatePublisher(DrawToolbarCore, DrawingPublisher));
+export const DrawToolbar = React.memo(DrawToolbarCore);

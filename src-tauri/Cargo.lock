@@ -202,6 +202,8 @@ dependencies = [
  "uiautomation",
  "windows 0.61.1",
  "xcap",
+ "zune-core",
+ "zune-jpegxl",
 ]
 
 [[package]]
@@ -8380,6 +8382,15 @@ name = "zune-jpeg"
 version = "0.4.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "99a5bab8d7dedf81405c4bb1f2b83ea057643d9cb28778cea9eecddeedd2e028"
+dependencies = [
+ "zune-core",
+]
+
+[[package]]
+name = "zune-jpegxl"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "71ffee484384b15f99ed4768bfdb3fa186d63e1f8c3aafba1d6d141a7b9e3674"
 dependencies = [
  "zune-core",
 ]

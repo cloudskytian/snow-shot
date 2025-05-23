@@ -56,6 +56,10 @@ export enum DrawState {
     OcrDetect = 107,
     // 滚动截图
     ScrollScreenshot = 108,
+    // 额外工具
+    ExtraTools = 109,
+    // 扫描二维码
+    ScanQrcode = 110,
 }
 
 export enum CanvasLayer {

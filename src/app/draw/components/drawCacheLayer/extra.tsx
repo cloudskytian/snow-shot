@@ -60,3 +60,20 @@ export type ExcalidrawOnHandleEraserParams = {
 export const ExcalidrawOnHandleEraserPublisher = createPublisher<
     ExcalidrawOnHandleEraserParams | undefined
 >(undefined);
+
+export enum ExcalidrawEventCallbackType {
+    ChangeFontSize = 'ChangeFontSize',
+}
+
+export type ExcalidrawEventCallbackFontSizeParams = {
+    fontSize: number;
+};
+
+export type ExcalidrawEventCallbackParams = {
+    event: ExcalidrawEventCallbackType.ChangeFontSize;
+    params: ExcalidrawEventCallbackFontSizeParams;
+};
+
+export const ExcalidrawEventCallbackPublisher = createPublisher<
+    ExcalidrawEventCallbackParams | undefined
+>(undefined, true);

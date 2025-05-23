@@ -9,7 +9,7 @@ import zhTW from 'antd/es/locale/zh_TW';
 import enUS from 'antd/es/locale/en_US';
 import { IntlProvider } from 'react-intl';
 import { messages } from '@/messages/map';
-import { ImageBuffer } from '@/commands';
+import { ElementRect, ImageBuffer } from '@/commands';
 import { emit } from '@tauri-apps/api/event';
 import { getCurrentWindow, Window as AppWindow } from '@tauri-apps/api/window';
 import { AppFunction, AppFunctionConfig, defaultAppFunctionConfigs } from './extra';
@@ -27,6 +27,8 @@ import { TranslationDomain, TranslationType } from '@/services/tools/translation
 import { setEnableProxy } from '@/commands/core';
 import { ChatApiConfig } from './settings/functionSettings/extra';
 import { defaultTranslationPrompt } from './tools/translation/extra';
+import { ColorPickerShowMode } from './draw/components/colorPicker';
+import { ImageFormat } from '@/utils/file';
 
 export enum AppSettingsGroup {
     Common = 'common',
@@ -66,6 +68,8 @@ export type AppSettingsData = {
     [AppSettingsGroup.Screenshot]: {
         /** 选区控件样式 */
         controlNode: AppSettingsControlNode;
+        /** 固定屏幕后边框颜色 */
+        fixedBorderColor: string;
     };
     [AppSettingsGroup.Cache]: {
         menuCollapsed: boolean;
@@ -75,6 +79,8 @@ export type AppSettingsData = {
         targetLanguage: string;
         ocrTranslateAutoReplace: boolean;
         colorPickerColorFormatIndex: number;
+        prevImageFormat: ImageFormat;
+        prevSelectRect: ElementRect;
     };
     [AppSettingsGroup.DrawToolbarKeyEvent]: Record<
         DrawToolbarKeyEventKey,
@@ -106,10 +112,12 @@ export type AppSettingsData = {
     [AppSettingsGroup.FunctionScreenshot]: {
         /** 选取窗口子元素 */
         findChildrenElements: boolean;
-        /** 始终显示颜色选择器 */
-        alwaysShowColorPicker: boolean;
+        /** 颜色选择器模式 */
+        colorPickerShowMode: ColorPickerShowMode;
         /** 超出选区范围的元素透明度 */
         beyondSelectRectElementOpacity: number;
+        /** 固定屏幕后自动 OCR */
+        autoOcrAfterFixed: boolean;
     };
     [AppSettingsGroup.SystemScrollScreenshot]: {
         minSide: number;
@@ -128,6 +136,7 @@ export const defaultAppSettingsData: AppSettingsData = {
     },
     [AppSettingsGroup.Screenshot]: {
         controlNode: AppSettingsControlNode.Circle,
+        fixedBorderColor: '#dbdbdb',
     },
     [AppSettingsGroup.Cache]: {
         menuCollapsed: false,
@@ -137,6 +146,13 @@ export const defaultAppSettingsData: AppSettingsData = {
         targetLanguage: '',
         ocrTranslateAutoReplace: true,
         colorPickerColorFormatIndex: 0,
+        prevImageFormat: ImageFormat.PNG,
+        prevSelectRect: {
+            min_x: 0,
+            min_y: 0,
+            max_x: 0,
+            max_y: 0,
+        },
     },
     [AppSettingsGroup.DrawToolbarKeyEvent]: defaultDrawToolbarKeyEventSettings,
     [AppSettingsGroup.KeyEvent]: defaultKeyEventSettings,
@@ -164,8 +180,9 @@ export const defaultAppSettingsData: AppSettingsData = {
     },
     [AppSettingsGroup.FunctionScreenshot]: {
         findChildrenElements: true,
-        alwaysShowColorPicker: false,
+        colorPickerShowMode: ColorPickerShowMode.BeyondSelectRect,
         beyondSelectRectElementOpacity: 100,
+        autoOcrAfterFixed: true,
     },
     [AppSettingsGroup.SystemScrollScreenshot]: {
         imageFeatureThreshold: 32,
@@ -267,10 +284,18 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
         },
         [],
     );
-    const writeAppSettingsDebounce = useCallback(
-        (group: AppSettingsGroup, data: AppSettingsData[typeof group], syncAllWindow: boolean) => {
-            debounce(() => writeAppSettings(group, data, syncAllWindow), 1000)();
-        },
+    const writeAppSettingsDebounce = useMemo(
+        () =>
+            debounce(
+                (
+                    group: AppSettingsGroup,
+                    data: AppSettingsData[typeof group],
+                    syncAllWindow: boolean,
+                ) => {
+                    writeAppSettings(group, data, syncAllWindow);
+                },
+                1000,
+            ),
         [writeAppSettings],
     );
 
@@ -339,6 +364,21 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
                 const prevSettings = appSettingsRef.current[group] as
                     | AppSettingsData[typeof group]
                     | undefined;
+
+                let prevSelectRect = newSettings?.prevSelectRect ??
+                    prevSettings?.prevSelectRect ?? {
+                        min_x: 0,
+                        min_y: 0,
+                        max_x: 0,
+                        max_y: 0,
+                    };
+                prevSelectRect = {
+                    min_x: typeof prevSelectRect.min_x === 'number' ? prevSelectRect.min_x : 0,
+                    min_y: typeof prevSelectRect.min_y === 'number' ? prevSelectRect.min_y : 0,
+                    max_x: typeof prevSelectRect.max_x === 'number' ? prevSelectRect.max_x : 0,
+                    max_y: typeof prevSelectRect.max_y === 'number' ? prevSelectRect.max_y : 0,
+                };
+
                 settings = {
                     menuCollapsed:
                         typeof newSettings?.menuCollapsed === 'boolean'
@@ -369,6 +409,11 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
                         typeof newSettings?.colorPickerColorFormatIndex === 'number'
                             ? newSettings.colorPickerColorFormatIndex
                             : (prevSettings?.colorPickerColorFormatIndex ?? 0),
+                    prevImageFormat:
+                        typeof newSettings?.prevImageFormat === 'string'
+                            ? newSettings.prevImageFormat
+                            : (prevSettings?.prevImageFormat ?? ImageFormat.PNG),
+                    prevSelectRect,
                 };
             } else if (group === AppSettingsGroup.Screenshot) {
                 newSettings = newSettings as AppSettingsData[typeof group];
@@ -387,6 +432,10 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
 
                 settings = {
                     controlNode,
+                    fixedBorderColor:
+                        typeof newSettings?.fixedBorderColor === 'string'
+                            ? newSettings.fixedBorderColor
+                            : (prevSettings?.fixedBorderColor ?? '#dbdbdb'),
                 };
             } else if (group === AppSettingsGroup.DrawToolbarKeyEvent) {
                 newSettings = newSettings as AppSettingsData[typeof group];
@@ -653,16 +702,21 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
 
                 settings = {
                     findChildrenElements,
-                    alwaysShowColorPicker:
-                        typeof newSettings?.alwaysShowColorPicker === 'boolean'
-                            ? newSettings.alwaysShowColorPicker
-                            : (prevSettings?.alwaysShowColorPicker ??
-                              defaultAppSettingsData[group].alwaysShowColorPicker),
+                    colorPickerShowMode:
+                        typeof newSettings?.colorPickerShowMode === 'number'
+                            ? newSettings.colorPickerShowMode
+                            : (prevSettings?.colorPickerShowMode ??
+                              defaultAppSettingsData[group].colorPickerShowMode),
                     beyondSelectRectElementOpacity:
                         typeof newSettings?.beyondSelectRectElementOpacity === 'number'
                             ? Math.min(Math.max(newSettings.beyondSelectRectElementOpacity, 0), 100)
                             : (prevSettings?.beyondSelectRectElementOpacity ??
                               defaultAppSettingsData[group].beyondSelectRectElementOpacity),
+                    autoOcrAfterFixed:
+                        typeof newSettings?.autoOcrAfterFixed === 'boolean'
+                            ? newSettings.autoOcrAfterFixed
+                            : (prevSettings?.autoOcrAfterFixed ??
+                              defaultAppSettingsData[group].autoOcrAfterFixed),
                 };
             } else if (group === AppSettingsGroup.SystemScrollScreenshot) {
                 newSettings = newSettings as AppSettingsData[typeof group];

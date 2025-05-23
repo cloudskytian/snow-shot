@@ -36,17 +36,30 @@ import {
     AppSettingsPublisher,
 } from '@/app/contextWrap';
 import Color from 'color';
+import { DrawToolbarStatePublisher } from '../drawToolbar';
+import { SelectState } from '../selectLayer/extra';
 
 const previewScale = 12;
 const previewPickerSize = 10 + 1;
 const previewCanvasSize = previewPickerSize * previewScale;
 
+export enum ColorPickerShowMode {
+    Always = 0,
+    BeyondSelectRect = 1,
+    Never = 2,
+}
+
 export const isEnableColorPicker = (
     captureStep: CaptureStep,
     drawState: DrawState,
     captureEvent: CaptureEventParams | undefined,
+    toolbarMouseHover: boolean,
 ) => {
     if (captureEvent?.event !== CaptureEvent.onCaptureLoad) {
+        return false;
+    }
+
+    if (toolbarMouseHover) {
         return false;
     }
 
@@ -78,6 +91,7 @@ const ColorPickerCore: React.FC<{
 }> = ({ onCopyColor, actionRef }) => {
     const [getCaptureStep] = useStateSubscriber(CaptureStepPublisher, undefined);
     const [getDrawState] = useStateSubscriber(DrawStatePublisher, undefined);
+    const [getDrawToolbarState] = useStateSubscriber(DrawToolbarStatePublisher, undefined);
     const [, setEnableKeyEvent] = useStateSubscriber(EnableKeyEventPublisher, undefined);
     const [getCaptureEvent] = useStateSubscriber(CaptureEventPublisher, undefined);
     const [getScreenshotType] = useStateSubscriber(ScreenshotTypePublisher, undefined);
@@ -103,12 +117,14 @@ const ColorPickerCore: React.FC<{
         let opacity = '1';
 
         if (enableRef.current) {
-            if (!getAppSettings()[AppSettingsGroup.FunctionScreenshot].alwaysShowColorPicker) {
+            const mouseX = mousePositionRef.current.mouseX * imageBuffer.monitorScaleFactor;
+            const mouseY = mousePositionRef.current.mouseY * imageBuffer.monitorScaleFactor;
+            if (
+                getAppSettings()[AppSettingsGroup.FunctionScreenshot].colorPickerShowMode ===
+                ColorPickerShowMode.BeyondSelectRect
+            ) {
                 const selectRect = selectLayerActionRef.current?.getSelectRect();
                 if (selectRect) {
-                    const mouseX = mousePositionRef.current.mouseX * imageBuffer.monitorScaleFactor;
-                    const mouseY = mousePositionRef.current.mouseY * imageBuffer.monitorScaleFactor;
-
                     const tolerance = token.marginXXS;
 
                     if (
@@ -123,6 +139,33 @@ const ColorPickerCore: React.FC<{
                     }
                 } else {
                     opacity = '0';
+                }
+            } else if (
+                getAppSettings()[AppSettingsGroup.FunctionScreenshot].colorPickerShowMode ===
+                ColorPickerShowMode.Never
+            ) {
+                opacity = '0';
+            } else {
+                opacity = '1';
+            }
+
+            if (opacity === '1') {
+                // 获取选区的状态，如果是未选定的状态，加个透明度
+                const selectState = selectLayerActionRef.current?.getSelectState();
+                if (selectState === SelectState.Manual || selectState === SelectState.Drag) {
+                    opacity = '0.72';
+                } else if (selectState === SelectState.Auto && colorPickerRef.current) {
+                    // 这时是自动选区，那就根据是否在边缘判断
+                    // 一般都是从左上到右下，所以只判断右下边缘即可
+                    const maxX =
+                        imageBuffer.monitorWidth -
+                        colorPickerRef.current!.clientWidth * imageBuffer.monitorScaleFactor;
+                    const maxY =
+                        imageBuffer.monitorHeight -
+                        colorPickerRef.current!.clientHeight * imageBuffer.monitorScaleFactor;
+                    if (mouseX > maxX || mouseY > maxY) {
+                        opacity = '0.72';
+                    }
                 }
             }
         } else {
@@ -162,18 +205,31 @@ const ColorPickerCore: React.FC<{
     const updateEnable = useCallback(() => {
         const enable =
             getScreenshotType() !== ScreenshotType.TopWindow &&
-            isEnableColorPicker(getCaptureStep(), getDrawState(), getCaptureEvent());
+            isEnableColorPicker(
+                getCaptureStep(),
+                getDrawState(),
+                getCaptureEvent(),
+                getDrawToolbarState().mouseHover,
+            );
         if (enableRef.current === enable) {
             return;
         }
 
         onEnableChange(enable);
-    }, [getCaptureEvent, getCaptureStep, getDrawState, getScreenshotType, onEnableChange]);
+    }, [
+        getCaptureEvent,
+        getCaptureStep,
+        getDrawState,
+        getScreenshotType,
+        getDrawToolbarState,
+        onEnableChange,
+    ]);
     const updateEnableDebounce = useMemo(() => debounce(updateEnable, 17), [updateEnable]);
     useStateSubscriber(CaptureStepPublisher, updateEnableDebounce);
     useStateSubscriber(DrawStatePublisher, updateEnableDebounce);
     useStateSubscriber(CaptureEventPublisher, updateEnableDebounce);
     useStateSubscriber(ScreenshotTypePublisher, updateEnableDebounce);
+    useStateSubscriber(DrawToolbarStatePublisher, updateEnableDebounce);
 
     const currentCanvasImageDataRef = useRef<ImageData | undefined>(undefined);
 
@@ -543,9 +599,7 @@ const ColorPickerCore: React.FC<{
                         true,
                         false,
                     );
-                    const colorFormatIndex =
-                        getAppSettings()[AppSettingsGroup.Cache].colorPickerColorFormatIndex;
-                    console.log(colorFormatIndex);
+
                     updateColor(
                         colorRef.current.red,
                         colorRef.current.green,

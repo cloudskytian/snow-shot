@@ -278,7 +278,6 @@ export const ScrollScreenshot = () => {
                 return;
             }
 
-            console.log(event.deltaY);
             captuerDebounce(event.deltaY > 0 ? ScrollImageList.Bottom : ScrollImageList.Top);
         },
         [captuerDebounce, loadingRef, scrollDirectionRef],

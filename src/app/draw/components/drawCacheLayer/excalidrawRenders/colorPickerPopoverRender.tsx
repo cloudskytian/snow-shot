@@ -12,7 +12,6 @@ const ColorPickerCore: React.FC<{
             <ColorPicker
                 value={color}
                 onChangeComplete={(newColor) => {
-                    console.log('newColor', newColor);
                     onChange(newColor.toHexString());
                 }}
                 size="small"

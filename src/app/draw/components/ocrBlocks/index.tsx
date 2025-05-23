@@ -250,7 +250,13 @@ export const OcrBlocks: React.FC<{
 
     useHotkeysApp(
         'Ctrl+A',
-        () => {
+        (event) => {
+            if (!enableRef.current) {
+                return;
+            }
+
+            event.preventDefault();
+
             const selection = window.getSelection();
             if (containerElementRef.current && selection) {
                 const range = document.createRange();
@@ -260,7 +266,6 @@ export const OcrBlocks: React.FC<{
             }
         },
         {
-            preventDefault: true,
             keyup: false,
             keydown: true,
         },
