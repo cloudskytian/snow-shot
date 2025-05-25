@@ -59,12 +59,25 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
     const [isEnable, setIsEnable] = useState(false);
 
     const [findChildrenElements, setFindChildrenElements] = useState(false);
+    const fullScreenAuxiliaryLineColorRef = useRef<string | undefined>(undefined);
     const [getAppSettings] = useStateSubscriber(
         AppSettingsPublisher,
         useCallback((settings: AppSettingsData) => {
             setFindChildrenElements(
                 settings[AppSettingsGroup.FunctionScreenshot].findChildrenElements,
             );
+            const fullScreenAuxiliaryLineColor =
+                settings[AppSettingsGroup.Screenshot].fullScreenAuxiliaryLineColor;
+            if (
+                fullScreenAuxiliaryLineColor === 'transparent' ||
+                fullScreenAuxiliaryLineColor === '' ||
+                (fullScreenAuxiliaryLineColor.length === 9 &&
+                    fullScreenAuxiliaryLineColor.endsWith('00'))
+            ) {
+                fullScreenAuxiliaryLineColorRef.current = undefined;
+            } else {
+                fullScreenAuxiliaryLineColorRef.current = fullScreenAuxiliaryLineColor;
+            }
         }, []),
     );
     const [getScreenshotType] = useStateSubscriber(ScreenshotTypePublisher, undefined);
@@ -238,6 +251,15 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
                 getScreenshotType(),
                 drawElementMask,
                 enableScrollScreenshot,
+                (selectStateRef.current === SelectState.Auto ||
+                    selectStateRef.current === SelectState.Manual) &&
+                    lastMouseMovePositionRef.current &&
+                    fullScreenAuxiliaryLineColorRef.current
+                    ? {
+                          mousePosition: lastMouseMovePositionRef.current,
+                          color: fullScreenAuxiliaryLineColorRef.current,
+                      }
+                    : undefined,
             );
             // 和 canvas 同步下
             requestAnimationFrame(() => {
@@ -469,10 +491,21 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
                     }
                 }
 
-                setSelectRect(
-                    await autoSelect(mousePosition),
-                    getScreenshotType() === ScreenshotType.TopWindow,
-                );
+                const currentSelectRect = await autoSelect(mousePosition);
+                if (
+                    drawSelectRectAnimationRef.current?.isDone() &&
+                    currentSelectRect.min_x === getSelectRect()?.min_x &&
+                    currentSelectRect.min_y === getSelectRect()?.min_y &&
+                    currentSelectRect.max_x === getSelectRect()?.max_x &&
+                    currentSelectRect.max_y === getSelectRect()?.max_y
+                ) {
+                    updateSelectRect(currentSelectRect, imageBufferRef.current!);
+                } else {
+                    setSelectRect(
+                        currentSelectRect,
+                        getScreenshotType() === ScreenshotType.TopWindow,
+                    );
+                }
             } else if (selectStateRef.current === SelectState.Manual) {
                 if (!mouseDownPositionRef.current) {
                     return;
@@ -497,7 +530,15 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
                 );
             }
         },
-        [autoSelect, getScreenshotType, setSelectRect, setSelectState, updateDragMode],
+        [
+            autoSelect,
+            getScreenshotType,
+            getSelectRect,
+            setSelectRect,
+            setSelectState,
+            updateDragMode,
+            updateSelectRect,
+        ],
     );
     const onMouseUp = useCallback(() => {
         if (!mouseDownPositionRef.current) {
@@ -506,8 +547,10 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
 
         if (selectStateRef.current === SelectState.Auto) {
             setSelectState(SelectState.Selected);
+            updateSelectRect(getSelectRect()!, imageBufferRef.current!);
         } else if (selectStateRef.current === SelectState.Manual) {
             setSelectState(SelectState.Selected);
+            updateSelectRect(getSelectRect()!, imageBufferRef.current!);
         } else if (selectStateRef.current === SelectState.Drag) {
             setSelectState(SelectState.Selected);
             setSelectRect(limitRect(getSelectRect()!, getMonitorRect(imageBufferRef.current)));
@@ -515,7 +558,7 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
         }
 
         mouseDownPositionRef.current = undefined;
-    }, [getSelectRect, setSelectRect, setSelectState]);
+    }, [getSelectRect, setSelectRect, setSelectState, updateSelectRect]);
 
     const onMouseMoveRenderCallback = useCallbackRender(onMouseMove);
     // 用上一次的鼠标移动事件触发 onMouseMove 来更新一些状态

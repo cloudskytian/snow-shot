@@ -59,6 +59,7 @@ clipboard-rs = "0.2.4"
 tauri-plugin-opener = "2"
 zune-jpegxl = "0.4.0"
 zune-core = "0.4.12"
+tauri-plugin-clipboard = "2.1.11"
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-autostart = "2"

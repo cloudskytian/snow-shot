@@ -25,6 +25,7 @@ import { openUrl } from '@tauri-apps/plugin-opener';
 import { createPublisher } from '@/hooks/useStatePublisher';
 import { AntdContext } from '@/components/globalLayoutExtra';
 import { Image } from '@tauri-apps/api/image';
+import { createFixedContentWindow } from '@/commands/core';
 
 export const TrayIconStatePublisher = createPublisher<{
     disableShortcut: boolean;
@@ -198,6 +199,29 @@ const TrayIconLoaderComponent = () => {
                                 : shortcutKeys[AppFunction.TranslationSelectText].shortcutKey,
                             action: async () => {
                                 executeTranslateSelectedText();
+                            },
+                        },
+                        {
+                            item: 'Separator',
+                        },
+                        {
+                            id: `${appWindow.label}-screenshot-topWindow`,
+                            text: intl.formatMessage({ id: 'home.topWindow' }),
+                            accelerator: disableShortcut
+                                ? undefined
+                                : shortcutKeys[AppFunction.TopWindow].shortcutKey,
+                            action: async () => {
+                                executeScreenshot(ScreenshotType.TopWindow);
+                            },
+                        },
+                        {
+                            id: `${appWindow.label}-screenshot-fixedContent`,
+                            text: intl.formatMessage({ id: 'home.fixedContent' }),
+                            accelerator: disableShortcut
+                                ? undefined
+                                : shortcutKeys[AppFunction.FixedContent].shortcutKey,
+                            action: async () => {
+                                createFixedContentWindow();
                             },
                         },
                         {

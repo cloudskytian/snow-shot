@@ -6,8 +6,8 @@ import { DrawToolbarActionType } from './components/drawToolbar';
 import { MousePosition } from '@/utils/mousePosition';
 import { DrawCacheLayerActionType } from './components/drawCacheLayer/extra';
 import { OcrBlocksActionType } from './components/ocrBlocks';
-import { FixedImageActionType } from './components/fixedImage';
 import { ColorPickerActionType } from './components/colorPicker';
+import { FixedContentActionType } from '../fixedContent/components/fixedContentCore';
 
 export enum CaptureStep {
     // 选择阶段
@@ -48,18 +48,20 @@ export enum DrawState {
     Cancel = 103,
     // 保存
     Save = 104,
+    // 快速保存
+    FastSave = 105,
     // 固定
-    Fixed = 105,
+    Fixed = 106,
     // 复制
-    Copy = 106,
+    Copy = 107,
     // OCR
-    OcrDetect = 107,
+    OcrDetect = 108,
     // 滚动截图
-    ScrollScreenshot = 108,
+    ScrollScreenshot = 109,
     // 额外工具
-    ExtraTools = 109,
+    ExtraTools = 110,
     // 扫描二维码
-    ScanQrcode = 110,
+    ScanQrcode = 111,
 }
 
 export enum CanvasLayer {
@@ -77,7 +79,7 @@ export type DrawContextType = {
     circleCursorRef: React.RefObject<HTMLDivElement | null>;
     drawCacheLayerActionRef: React.RefObject<DrawCacheLayerActionType | undefined>;
     ocrBlocksActionRef: React.RefObject<OcrBlocksActionType | undefined>;
-    fixedImageActionRef: React.RefObject<FixedImageActionType | undefined>;
+    fixedContentActionRef: React.RefObject<FixedContentActionType | undefined>;
     colorPickerActionRef: React.RefObject<ColorPickerActionType | undefined>;
 };
 
@@ -91,6 +93,6 @@ export const DrawContext = React.createContext<DrawContextType>({
     circleCursorRef: { current: null },
     drawCacheLayerActionRef: { current: undefined },
     ocrBlocksActionRef: { current: undefined },
-    fixedImageActionRef: { current: undefined },
+    fixedContentActionRef: { current: undefined },
     colorPickerActionRef: { current: undefined },
 });

@@ -6,6 +6,7 @@ import { Space, Spin, Tooltip } from 'antd';
 import { ContentWrap } from '@/components/contentWrap';
 import {
     ChatIcon,
+    ClipboardIcon,
     FixedIcon,
     OcrDetectIcon,
     ScreenshotIcon,
@@ -52,6 +53,7 @@ import {
     executeTranslateSelectedText,
 } from '@/functions/tools';
 import { TrayIconStatePublisher } from './trayIcon';
+import { createFixedContentWindow } from '@/commands/core';
 
 export default function Home() {
     const { token } = theme.useToken();
@@ -128,6 +130,11 @@ export default function Home() {
                         buttonTitle = <FormattedMessage id="home.topWindow" />;
                         buttonIcon = <TopWindowIcon />;
                         buttonOnClick = () => executeScreenshot(ScreenshotType.TopWindow);
+                        break;
+                    case AppFunction.FixedContent:
+                        buttonTitle = <FormattedMessage id="home.fixedContent" />;
+                        buttonIcon = <ClipboardIcon style={{ fontSize: '1.1em' }} />;
+                        buttonOnClick = () => createFixedContentWindow();
                         break;
                     case AppFunction.Screenshot:
                     default:

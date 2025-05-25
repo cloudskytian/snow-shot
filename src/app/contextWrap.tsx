@@ -75,6 +75,8 @@ export type AppSettingsData = {
         beyondSelectRectElementOpacity: number;
         /** 固定屏幕后边框颜色 */
         fixedBorderColor: string;
+        /** 全屏辅助线颜色 */
+        fullScreenAuxiliaryLineColor: string;
         /** 禁用动画 */
         disableAnimation: boolean;
     };
@@ -127,6 +129,16 @@ export type AppSettingsData = {
         autoOcrAfterFixed: boolean;
         /** 截图快捷键提示 */
         shortcutCanleTip: boolean;
+        /** 增强保存文件功能 */
+        enhanceSaveFile: boolean;
+        /** 复制后自动保存文件 */
+        autoSaveOnCopy: boolean;
+        /** 快速保存文件 */
+        fastSave: boolean;
+        /** 保存文件路径 */
+        saveFileDirectory: string;
+        /** 保存文件格式 */
+        saveFileFormat: ImageFormat;
     };
     [AppSettingsGroup.SystemScrollScreenshot]: {
         minSide: number;
@@ -149,6 +161,7 @@ export const defaultAppSettingsData: AppSettingsData = {
         disableAnimation: false,
         colorPickerShowMode: ColorPickerShowMode.BeyondSelectRect,
         beyondSelectRectElementOpacity: 100,
+        fullScreenAuxiliaryLineColor: '#00000',
     },
     [AppSettingsGroup.CommonTrayIcon]: {
         iconPath: '',
@@ -197,6 +210,11 @@ export const defaultAppSettingsData: AppSettingsData = {
         findChildrenElements: true,
         autoOcrAfterFixed: true,
         shortcutCanleTip: true,
+        enhanceSaveFile: false,
+        autoSaveOnCopy: true,
+        fastSave: false,
+        saveFileDirectory: '',
+        saveFileFormat: ImageFormat.PNG,
     },
     [AppSettingsGroup.SystemScrollScreenshot]: {
         imageFeatureThreshold: 32,
@@ -464,6 +482,10 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
                             ? Math.min(Math.max(newSettings.beyondSelectRectElementOpacity, 0), 100)
                             : (prevSettings?.beyondSelectRectElementOpacity ??
                               defaultAppSettingsData[group].beyondSelectRectElementOpacity),
+                    fullScreenAuxiliaryLineColor:
+                        typeof newSettings?.fullScreenAuxiliaryLineColor === 'string'
+                            ? newSettings.fullScreenAuxiliaryLineColor
+                            : (prevSettings?.fullScreenAuxiliaryLineColor ?? '#00000'),
                 };
             } else if (group === AppSettingsGroup.DrawToolbarKeyEvent) {
                 newSettings = newSettings as AppSettingsData[typeof group];
@@ -740,6 +762,26 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
                             ? newSettings.shortcutCanleTip
                             : (prevSettings?.shortcutCanleTip ??
                               defaultAppSettingsData[group].shortcutCanleTip),
+                    autoSaveOnCopy:
+                        typeof newSettings?.autoSaveOnCopy === 'boolean'
+                            ? newSettings.autoSaveOnCopy
+                            : (prevSettings?.autoSaveOnCopy ?? false),
+                    fastSave:
+                        typeof newSettings?.fastSave === 'boolean'
+                            ? newSettings.fastSave
+                            : (prevSettings?.fastSave ?? false),
+                    saveFileDirectory:
+                        typeof newSettings?.saveFileDirectory === 'string'
+                            ? newSettings.saveFileDirectory
+                            : (prevSettings?.saveFileDirectory ?? ''),
+                    enhanceSaveFile:
+                        typeof newSettings?.enhanceSaveFile === 'boolean'
+                            ? newSettings.enhanceSaveFile
+                            : (prevSettings?.enhanceSaveFile ?? false),
+                    saveFileFormat:
+                        typeof newSettings?.saveFileFormat === 'string'
+                            ? newSettings.saveFileFormat
+                            : (prevSettings?.saveFileFormat ?? ImageFormat.PNG),
                 };
             } else if (group === AppSettingsGroup.SystemScrollScreenshot) {
                 newSettings = newSettings as AppSettingsData[typeof group];

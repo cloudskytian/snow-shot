@@ -1,7 +1,19 @@
 'use client';
 
 import { GroupTitle } from '@/components/groupTitle';
-import { Alert, Col, Divider, Flex, Form, Row, Spin, Switch, theme, Typography } from 'antd';
+import {
+    Alert,
+    Col,
+    Divider,
+    Flex,
+    Form,
+    Row,
+    Select,
+    Spin,
+    Switch,
+    theme,
+    Typography,
+} from 'antd';
 import { AppSettingsActionContext, AppSettingsData, AppSettingsGroup } from '../../contextWrap';
 import { useCallback, useContext, useState } from 'react';
 import { useAppSettingsLoad } from '@/hooks/useAppSettingsLoad';
@@ -10,6 +22,7 @@ import { ContentWrap } from '@/components/contentWrap';
 import { IconLabel } from '@/components/iconLable';
 import { ResetSettingsButton } from '@/components/resetSettingsButton';
 import ProForm, {
+    ProFormDependency,
     ProFormList,
     ProFormSwitch,
     ProFormText,
@@ -20,6 +33,8 @@ import {
     TARGET_LANGUAGE_ENV_VARIABLE,
     TRANSLATION_DOMAIN_ENV_VARIABLE,
 } from '@/app/tools/translation/extra';
+import { DirectoryInput } from '@/components/directoryInput';
+import { ImageFormat } from '@/utils/file';
 
 export default function SystemSettings() {
     const intl = useIntl();
@@ -127,6 +142,103 @@ export default function SystemSettings() {
                                 layout="horizontal"
                             />
                         </Col>
+                    </Row>
+                    <Row gutter={token.padding}>
+                        <Col span={24}>
+                            <ProFormSwitch
+                                name="enhanceSaveFile"
+                                layout="horizontal"
+                                label={
+                                    <FormattedMessage id="settings.functionSettings.screenshotSettings.autoSaveFileMode" />
+                                }
+                            />
+                        </Col>
+
+                        <ProFormDependency<{ enhanceSaveFile: boolean }> name={['enhanceSaveFile']}>
+                            {({ enhanceSaveFile }) => {
+                                return (
+                                    <>
+                                        <Col span={12}>
+                                            <ProFormSwitch
+                                                name="autoSaveOnCopy"
+                                                layout="horizontal"
+                                                label={
+                                                    <FormattedMessage id="settings.functionSettings.screenshotSettings.autoSaveFileMode.autoSave" />
+                                                }
+                                                disabled={!enhanceSaveFile}
+                                            />
+                                        </Col>
+                                        <Col span={12}>
+                                            <ProFormSwitch
+                                                name="fastSave"
+                                                layout="horizontal"
+                                                label={
+                                                    <IconLabel
+                                                        label={
+                                                            <FormattedMessage id="settings.functionSettings.screenshotSettings.autoSaveFileMode.fastSave" />
+                                                        }
+                                                        tooltipTitle={
+                                                            <FormattedMessage id="settings.functionSettings.screenshotSettings.autoSaveFileMode.fastSave.tip" />
+                                                        }
+                                                    />
+                                                }
+                                                disabled={!enhanceSaveFile}
+                                            />
+                                        </Col>
+
+                                        <Col span={12}>
+                                            <ProForm.Item
+                                                name="saveFileDirectory"
+                                                label={
+                                                    <IconLabel
+                                                        label={
+                                                            <FormattedMessage id="settings.functionSettings.screenshotSettings.autoSaveFileMode.directory" />
+                                                        }
+                                                    />
+                                                }
+                                                required={false}
+                                            >
+                                                <DirectoryInput disabled={!enhanceSaveFile} />
+                                            </ProForm.Item>
+                                        </Col>
+
+                                        <Col span={12}>
+                                            <ProForm.Item
+                                                name="saveFileFormat"
+                                                label={
+                                                    <FormattedMessage id="settings.functionSettings.screenshotSettings.autoSaveFileMode.saveFileFormat" />
+                                                }
+                                            >
+                                                <Select
+                                                    options={[
+                                                        {
+                                                            label: 'PNG(*.png)',
+                                                            value: ImageFormat.PNG,
+                                                        },
+                                                        {
+                                                            label: 'JPEG(*.jpg)',
+                                                            value: ImageFormat.JPEG,
+                                                        },
+                                                        {
+                                                            label: 'WEBP(*.webp)',
+                                                            value: ImageFormat.WEBP,
+                                                        },
+                                                        {
+                                                            label: 'AVIF(*.avif)',
+                                                            value: ImageFormat.AVIF,
+                                                        },
+                                                        {
+                                                            label: 'JPEG XL(*.jxl)',
+                                                            value: ImageFormat.JPEG_XL,
+                                                        },
+                                                    ]}
+                                                />
+                                            </ProForm.Item>
+                                        </Col>
+                                    </>
+                                );
+                            }}
+                        </ProFormDependency>
                     </Row>
                 </ProForm>
             </Spin>

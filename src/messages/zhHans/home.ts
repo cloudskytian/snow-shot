@@ -5,6 +5,7 @@ export const home = {
     'home.chatFunction': 'AI 对话功能',
     'home.otherFunction': '其它功能',
     'home.topWindow': '置顶/取消置顶窗口',
+    'home.fixedContent': '固定剪贴板内容到屏幕',
     'home.translationSelectText': '翻译选中的文本',
     'home.translation': '翻译',
     'home.screenshot': '截图',

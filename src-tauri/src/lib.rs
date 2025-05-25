@@ -38,6 +38,7 @@ pub fn run() {
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             Some(vec!["--auto_start"]),
         ))
+        .plugin(tauri_plugin_clipboard::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_fs::init())
@@ -82,6 +83,7 @@ pub fn run() {
             core::set_enable_proxy,
             core::scroll_through,
             core::click_through,
+            core::create_fixed_content_window,
             scroll_screenshot::scroll_screenshot_init,
             scroll_screenshot::scroll_screenshot_capture,
             scroll_screenshot::scroll_screenshot_save_to_file,

@@ -14,6 +14,7 @@ import {
     ArrowSelectIcon,
     CircleIcon,
     EraserIcon,
+    FastSaveIcon,
     FixedIcon,
     MosaicIcon,
     OcrDetectIcon,
@@ -46,7 +47,7 @@ import { DrawSubTools } from './components/tools/drawSubTools';
 export type DrawToolbarProps = {
     actionRef: React.RefObject<DrawToolbarActionType | undefined>;
     onCancel: () => void;
-    onSave: () => void;
+    onSave: (fastSave?: boolean) => void;
     onFixed: () => void;
     onTopWindow: () => void;
     onCopyToClipboard: () => void;
@@ -86,6 +87,7 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
     const intl = useIntl();
 
     const enableRef = useRef(false);
+    const [enableFastSave, setEnableFastSave] = useState(false);
     const [enableScrollScreenshot, setEnableScrollScreenshot] = useState(false);
     const [shortcutCanleTip, setShortcutCanleTip] = useState(false);
     const drawToolarContainerRef = useRef<HTMLDivElement | null>(null);
@@ -96,6 +98,7 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
         AppSettingsPublisher,
         useCallback((settings: AppSettingsData) => {
             setShortcutCanleTip(settings[AppSettingsGroup.FunctionScreenshot].shortcutCanleTip);
+            setEnableFastSave(settings[AppSettingsGroup.FunctionScreenshot].fastSave);
         }, []),
     );
     const draggingRef = useRef(false);
@@ -521,6 +524,18 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
                                 onToolClick(DrawState.ScrollScreenshot);
                             }}
                         />
+
+                        {/* 快速保存截图 */}
+                        {enableFastSave && (
+                            <ToolButton
+                                componentKey={KeyEventKey.FastSaveTool}
+                                icon={<FastSaveIcon style={{ fontSize: '1.08em' }} />}
+                                drawState={DrawState.FastSave}
+                                onClick={() => {
+                                    onSave(true);
+                                }}
+                            />
+                        )}
 
                         {/* 保存截图 */}
                         <ToolButton

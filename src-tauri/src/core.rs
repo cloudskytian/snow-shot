@@ -1,5 +1,5 @@
 use enigo::{Axis, Enigo, Mouse};
-use std::{env, sync::Mutex, thread::sleep, time::Duration};
+use std::{env, sync::Mutex, thread::sleep, time::{Duration, SystemTime, UNIX_EPOCH}};
 use tauri::command;
 
 #[command]
@@ -91,4 +91,39 @@ pub async fn click_through(window: tauri::Window) -> Result<(), ()> {
     }
 
     Ok(())
+}
+
+/// 创建内容固定到屏幕的窗口
+#[command]
+pub async fn create_fixed_content_window(app: tauri::AppHandle) {
+    let window = tauri::WebviewWindowBuilder::new(
+        &app,
+        format!(
+            "fixed-content-{}",
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs()
+        ),
+        tauri::WebviewUrl::App("/fixedContent".into()),
+    )
+    .always_on_top(true)
+    .resizable(false)
+    .maximizable(false)
+    .minimizable(false)
+    .fullscreen(false)
+    .title("Snow Shot - Fixed Content")
+    .center()
+    .decorations(false)
+    .shadow(false)
+    .transparent(false)
+    .skip_taskbar(true)
+    .maximizable(false)
+    .minimizable(false)
+    .resizable(false)
+    .inner_size(0.0, 0.0)
+    .build()
+    .unwrap();
+
+    window.hide().unwrap();
 }

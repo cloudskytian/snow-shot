@@ -21,6 +21,7 @@
         "core:window:allow-set-focus",
         "core:webview:allow-set-webview-size",
         "core:webview:allow-set-webview-zoom",
+        "core:window:allow-center",
         "dialog:default",
         "dialog:allow-ask",
         "dialog:allow-confirm",
@@ -31,6 +32,14 @@
         "opener:default",
         "log:default",
         "store:default",
+        "clipboard-manager:allow-read-text",
+        "clipboard-manager:allow-read-image",
+        "clipboard:allow-read-text",
+        "clipboard:allow-read-html",
+        "clipboard:allow-read-image-binary",
+        "clipboard:read-all",
+        "clipboard:allow-write-image-binary",
+        "clipboard:write-all",
         {
             "identifier": "http:default",
             "allow": [

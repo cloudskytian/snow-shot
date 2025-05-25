@@ -10,6 +10,7 @@ export enum AppFunction {
     Translation = 'translation',
     TranslationSelectText = 'translationSelectText',
     TopWindow = 'topWindow',
+    FixedContent = 'fixedContent',
 }
 
 export enum AppFunctionGroup {
@@ -63,6 +64,10 @@ export const defaultAppFunctionConfigs: Record<AppFunction, AppFunctionConfig> =
         group: AppFunctionGroup.Translation,
     },
     [AppFunction.TopWindow]: {
+        shortcutKey: '',
+        group: AppFunctionGroup.Other,
+    },
+    [AppFunction.FixedContent]: {
         shortcutKey: '',
         group: AppFunctionGroup.Other,
     },

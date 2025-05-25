@@ -823,8 +823,6 @@ impl ScrollScreenshotService {
             }
         }
 
-        self.clear();
-
         Some(final_image)
     }
 }

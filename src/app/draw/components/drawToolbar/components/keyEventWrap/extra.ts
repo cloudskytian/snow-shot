@@ -28,6 +28,7 @@ export enum KeyEventKey {
     RemoveTool = 'removeTool',
     ColorPickerCopy = 'colorPickerCopy',
     SaveTool = 'saveTool',
+    FastSaveTool = 'fastSaveTool',
     ScrollScreenshotTool = 'scrollScreenshotTool',
     CopyTool = 'copyTool',
     FixedTool = 'fixedTool',
@@ -116,6 +117,10 @@ export const defaultDrawToolbarKeyEventSettings: Record<KeyEventKey, KeyEventVal
     },
     [KeyEventKey.SaveTool]: {
         hotKey: 'Ctrl+S',
+        unique: true,
+    },
+    [KeyEventKey.FastSaveTool]: {
+        hotKey: 'Ctrl+Shift+S',
         unique: true,
     },
     [KeyEventKey.ColorPickerCopy]: {

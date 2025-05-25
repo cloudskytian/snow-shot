@@ -42,7 +42,10 @@ import {
     ExcalidrawOnHandleEraserPublisher,
 } from './components/drawCacheLayer/extra';
 import { copyToClipboard, fixedToScreen, handleOcrDetect, saveToFile } from './actions';
-import { FixedImage, FixedImageActionType } from './components/fixedImage';
+import {
+    FixedContentCore,
+    FixedContentActionType,
+} from '../fixedContent/components/fixedContentCore';
 import { OcrBlocks, OcrBlocksActionType } from './components/ocrBlocks';
 import { ocrInit } from '@/commands/ocr';
 import { ScreenshotType } from '@/functions/screenshot';
@@ -54,7 +57,7 @@ import {
     scrollScreenshotClear,
     scrollScreenshotSaveToClipboard,
 } from '@/commands/scrollScreenshot';
-import { getImageFormat, showImageDialog } from '@/utils/file';
+import { getImageFormat, getImagePathFromSettings, showImageDialog } from '@/utils/file';
 import { scrollScreenshotSaveToFile } from '@/commands/scrollScreenshot';
 import { AppSettingsActionContext, AppSettingsGroup } from '../contextWrap';
 import { AppSettingsPublisher } from '../contextWrap';
@@ -87,7 +90,7 @@ const DrawPageCore: React.FC = () => {
     const drawToolbarActionRef = useRef<DrawToolbarActionType | undefined>(undefined);
     const colorPickerActionRef = useRef<ColorPickerActionType | undefined>(undefined);
     const [isFixed, setIsFixed] = useState(false);
-    const fixedImageActionRef = useRef<FixedImageActionType | undefined>(undefined);
+    const fixedContentActionRef = useRef<FixedContentActionType | undefined>(undefined);
     const ocrBlocksActionRef = useRef<OcrBlocksActionType | undefined>(undefined);
 
     // 状态
@@ -294,9 +297,12 @@ const DrawPageCore: React.FC = () => {
         ],
     );
 
+    const excuteScreenshotSign = useRef(0);
     /** 执行截图 */
     const excuteScreenshot = useCallback(
         async (excuteScreenshotType: ScreenshotType) => {
+            excuteScreenshotSign.current++;
+
             setScreenshotType(excuteScreenshotType);
             const layerOnExecuteScreenshotPromise = Promise.all([
                 drawLayerActionRef.current?.onExecuteScreenshot(),
@@ -334,64 +340,106 @@ const DrawPageCore: React.FC = () => {
         );
     }, [updateAppSettings]);
 
-    const onSave = useCallback(async () => {
-        saveCurrentSelectRect();
+    const releasePage = useCallback((sign: number) => {
+        if (sign !== excuteScreenshotSign.current) {
+            return;
+        }
 
-        if (getDrawState() === DrawState.ScrollScreenshot) {
-            const imagePath = await showImageDialog(
-                getAppSettings()[AppSettingsGroup.Cache].prevImageFormat,
-            );
-            if (!imagePath) {
+        if (process.env.NODE_ENV !== 'development') {
+            location.reload();
+        }
+    }, []);
+
+    const onSave = useCallback(
+        async (fastSave: boolean = false) => {
+            saveCurrentSelectRect();
+
+            if (getDrawState() === DrawState.ScrollScreenshot) {
+                const imagePath =
+                    getImagePathFromSettings(
+                        fastSave
+                            ? getAppSettings()[AppSettingsGroup.FunctionScreenshot]
+                            : undefined,
+                    ) ??
+                    (await showImageDialog(
+                        getAppSettings()[AppSettingsGroup.Cache].prevImageFormat,
+                    ));
+
+                if (!imagePath) {
+                    return;
+                }
+
+                if (!fastSave) {
+                    updateAppSettings(
+                        AppSettingsGroup.Cache,
+                        {
+                            prevImageFormat: imagePath.imageFormat,
+                        },
+                        false,
+                        true,
+                        false,
+                        true,
+                        false,
+                    );
+                }
+
+                scrollScreenshotSaveToFile(imagePath.filePath).then(() => {
+                    scrollScreenshotClear();
+                });
+                finishCapture();
                 return;
             }
 
-            updateAppSettings(
-                AppSettingsGroup.Cache,
-                {
-                    prevImageFormat: imagePath.imageFormat,
+            if (
+                !selectLayerActionRef.current ||
+                !drawLayerActionRef.current ||
+                !drawCacheLayerActionRef.current
+            ) {
+                return;
+            }
+
+            const sign = excuteScreenshotSign.current;
+
+            saveToFile(
+                selectLayerActionRef.current,
+                drawLayerActionRef.current,
+                drawCacheLayerActionRef.current,
+                async (filePath: string) => {
+                    if (!fastSave) {
+                        updateAppSettings(
+                            AppSettingsGroup.Cache,
+                            {
+                                prevImageFormat: getImageFormat(filePath),
+                            },
+                            false,
+                            true,
+                            false,
+                            true,
+                            false,
+                        );
+                    }
+
+                    finishCapture(true);
                 },
-                false,
-                true,
-                false,
-                true,
-                false,
-            );
-
-            scrollScreenshotSaveToFile(imagePath.filePath);
-            finishCapture();
-            return;
-        }
-
-        if (
-            !selectLayerActionRef.current ||
-            !drawLayerActionRef.current ||
-            !drawCacheLayerActionRef.current
-        ) {
-            return;
-        }
-
-        saveToFile(
-            selectLayerActionRef.current,
-            drawLayerActionRef.current,
-            drawCacheLayerActionRef.current,
-            async (filePath: string) => {
-                updateAppSettings(
-                    AppSettingsGroup.Cache,
-                    {
-                        prevImageFormat: getImageFormat(filePath),
-                    },
-                    false,
-                    true,
-                    false,
-                    true,
-                    false,
-                );
-
-                finishCapture(true);
-            },
-            getAppSettings()[AppSettingsGroup.Cache].prevImageFormat,
-        );
-    }, [finishCapture, getAppSettings, getDrawState, saveCurrentSelectRect, updateAppSettings]);
+                getAppSettings()[AppSettingsGroup.Cache].prevImageFormat,
+                fastSave
+                    ? getImagePathFromSettings(
+                          getAppSettings()[AppSettingsGroup.FunctionScreenshot],
+                      )
+                    : undefined,
+            ).then(() => {
+                releasePage(sign);
+            });
+        },
+        [
+            finishCapture,
+            getAppSettings,
+            getDrawState,
+            releasePage,
+            saveCurrentSelectRect,
+            updateAppSettings,
+        ],
+    );
 
     const onFixed = useCallback(async () => {
         if (
@@ -400,7 +448,7 @@ const DrawPageCore: React.FC = () => {
             !imageBufferRef.current ||
             !drawLayerActionRef.current ||
             !drawCacheLayerActionRef.current ||
-            !fixedImageActionRef.current ||
+            !fixedContentActionRef.current ||
             !ocrBlocksActionRef.current
         ) {
             return;
@@ -415,14 +463,12 @@ const DrawPageCore: React.FC = () => {
             selectLayerActionRef.current,
             drawLayerActionRef.current,
             drawCacheLayerActionRef.current,
-            fixedImageActionRef.current,
-            ocrBlocksActionRef.current,
+            fixedContentActionRef.current,
             setCaptureStep,
-            getAppSettings()[AppSettingsGroup.FunctionScreenshot].autoOcrAfterFixed,
         );
 
         switchLayer(undefined, drawLayerActionRef.current, selectLayerActionRef.current);
-    }, [saveCurrentSelectRect, setCaptureStep, getAppSettings]);
+    }, [saveCurrentSelectRect, setCaptureStep]);
 
     const onTopWindow = useCallback(async () => {
         const windowId = selectLayerActionRef.current?.getWindowId();
@@ -457,8 +503,22 @@ const DrawPageCore: React.FC = () => {
     const onCopyToClipboard = useCallback(async () => {
         saveCurrentSelectRect();
 
+        const enableAutoSave =
+            getAppSettings()[AppSettingsGroup.FunctionScreenshot].enhanceSaveFile &&
+            getAppSettings()[AppSettingsGroup.FunctionScreenshot].autoSaveOnCopy;
+
         if (getDrawState() === DrawState.ScrollScreenshot) {
-            scrollScreenshotSaveToClipboard();
+            const filePath = getImagePathFromSettings(
+                getAppSettings()[AppSettingsGroup.FunctionScreenshot],
+            )?.filePath;
+            Promise.all([
+                scrollScreenshotSaveToClipboard(),
+                enableAutoSave && filePath
+                    ? scrollScreenshotSaveToFile(filePath)
+                    : Promise.resolve(),
+            ]).then(() => {
+                scrollScreenshotClear();
+            });
             finishCapture();
             return;
         }
@@ -483,15 +543,34 @@ const DrawPageCore: React.FC = () => {
             return;
         }
 
-        copyToClipboard(
+        const sign = excuteScreenshotSign.current;
+
+        await copyToClipboard(
             selectLayerActionRef.current,
             drawLayerActionRef.current,
             drawCacheLayerActionRef.current,
-            async () => {
-                finishCapture(true);
-            },
+            enableAutoSave
+                ? undefined
+                : async () => {
+                      finishCapture(true);
+                  },
         );
-    }, [finishCapture, getDrawState, saveCurrentSelectRect]);
+
+        if (enableAutoSave) {
+            await saveToFile(
+                selectLayerActionRef.current,
+                drawLayerActionRef.current,
+                drawCacheLayerActionRef.current,
+                async () => {
+                    finishCapture(true);
+                },
+                undefined,
+                getImagePathFromSettings(getAppSettings()[AppSettingsGroup.FunctionScreenshot]),
+            );
+        }
+
+        releasePage(sign);
+    }, [finishCapture, getAppSettings, getDrawState, releasePage, saveCurrentSelectRect]);
 
     useEffect(() => {
         if (isFixed) {
@@ -533,7 +612,7 @@ const DrawPageCore: React.FC = () => {
             circleCursorRef,
             drawCacheLayerActionRef,
             ocrBlocksActionRef,
-            fixedImageActionRef,
+            fixedContentActionRef,
             colorPickerActionRef,
         };
     }, [finishCapture]);
@@ -590,18 +669,19 @@ const DrawPageCore: React.FC = () => {
                 ref={layerContainerRef}
                 onDoubleClick={onDoubleClick}
             >
-                <FixedImage
-                    actionRef={fixedImageActionRef}
-                    onLoad={() => {
+                <FixedContentCore
+                    actionRef={fixedContentActionRef}
+                    onDrawLoad={() => {
                         setIsFixed(true);
                     }}
                 />
 
-                <ExtraTool finishCapture={finishCapture} />
-
-                <OcrBlocks actionRef={ocrBlocksActionRef} />
                 {!isFixed && (
                     <>
+                        <ExtraTool finishCapture={finishCapture} />
+
+                        <OcrBlocks actionRef={ocrBlocksActionRef} />
+
                         <div className={styles.drawLayerWrap} ref={drawLayerWrapRef}>
                             <DrawLayer actionRef={drawLayerActionRef} />
                             <DrawCacheLayer actionRef={drawCacheLayerActionRef} />

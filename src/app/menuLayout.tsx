@@ -615,7 +615,7 @@ const ML = React.memo(withStatePublisher(MenuLayoutCore, TrayIconStatePublisher)
 
 export const MenuLayout = ({ children }: { children: React.ReactNode }) => {
     const pathname = usePathname();
-    const noLayout = pathname === '/draw';
+    const noLayout = pathname === '/draw' || pathname === '/fixedContent';
     const mainWindow = !noLayout;
     return (
         <MenuLayoutContext.Provider value={{ noLayout, pathname, mainWindow }}>

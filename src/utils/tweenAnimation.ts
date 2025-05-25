@@ -112,4 +112,8 @@ export class TweenAnimation<T extends object> {
     public getTargetObject = () => {
         return this.targetObject;
     };
+
+    public isDone = () => {
+        return this.tween === undefined;
+    };
 }

@@ -54,6 +54,10 @@ export const MASK_CONTROL_BORDER_STROKE_WIDTH = 2;
 // 全屏遮罩的 mask 的描边颜色
 export const MASK_CONTROL_BORDER_STROKE_COLOR = '#4096ff';
 
+// 全屏辅助线相关常量
+export const AUXILIARY_LINE_WIDTH = 1;
+export const AUXILIARY_LINE_DASH = [10, 3];
+
 const LIGHT_MASK_BACKGROUND_COLOR = Color('#000000').alpha(MASK_OPACITY).toString();
 const DARK_MASK_BACKGROUND_COLOR = Color('#434343').alpha(MASK_OPACITY).toString();
 
@@ -73,6 +77,10 @@ export const drawSelectRect = (
         imageData: ImageData;
     },
     enableScrollScreenshot?: boolean,
+    fullScreenAuxiliaryLine?: {
+        mousePosition: MousePosition;
+        color: string;
+    },
 ) => {
     const { min_x: rectMinX, min_y: rectMinY, max_x: rectMaxX, max_y: rectMaxY } = selectRect;
     const rectWidth = rectMaxX - rectMinX;
@@ -100,6 +108,26 @@ export const drawSelectRect = (
 
     if (enableScrollScreenshot) {
         return;
+    }
+
+    if (fullScreenAuxiliaryLine) {
+        const { mouseX, mouseY } = fullScreenAuxiliaryLine.mousePosition;
+
+        canvasContext.save();
+        canvasContext.strokeStyle = fullScreenAuxiliaryLine.color;
+        canvasContext.lineWidth = AUXILIARY_LINE_WIDTH * scaleFactor;
+        canvasContext.setLineDash(AUXILIARY_LINE_DASH.map((dash) => dash * scaleFactor));
+
+        canvasContext.beginPath();
+        // 绘制垂直线
+        canvasContext.moveTo(mouseX, 0);
+        canvasContext.lineTo(mouseX, monitorHeight);
+        // 绘制水平线
+        canvasContext.moveTo(0, mouseY);
+        canvasContext.lineTo(monitorWidth, mouseY);
+        canvasContext.stroke();
+
+        canvasContext.restore();
     }
 
     canvasContext.strokeStyle = MASK_CONTROL_BORDER_STROKE_COLOR;

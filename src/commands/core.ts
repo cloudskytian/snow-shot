@@ -24,3 +24,8 @@ export const clickThrough = async () => {
     const result = await invoke<void>('click_through');
     return result;
 };
+
+export const createFixedContentWindow = async () => {
+    const result = await invoke<void>('create_fixed_content_window');
+    return result;
+};

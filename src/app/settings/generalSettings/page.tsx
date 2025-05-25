@@ -153,6 +153,12 @@ export default function GeneralSettings() {
                         ).toHexString();
                     }
 
+                    if (typeof values.fullScreenAuxiliaryLineColor === 'object') {
+                        values.fullScreenAuxiliaryLineColor = (
+                            values.fullScreenAuxiliaryLineColor as AggregationColor
+                        ).toHexString();
+                    }
+
                     updateAppSettings(
                         AppSettingsGroup.Screenshot,
                         values,
@@ -185,6 +191,13 @@ export default function GeneralSettings() {
                                     </Option>
                                 </Select>
                             </ProForm.Item>
+                        </Col>
+
+                        <Col span={12}>
+                            <ProFormSwitch
+                                name="disableAnimation"
+                                label={<FormattedMessage id="settings.disableAnimation" />}
+                            />
                         </Col>
 
                         <Col span={12}>
@@ -255,10 +268,19 @@ export default function GeneralSettings() {
                         </Col>
 
                         <Col span={12}>
-                            <ProFormSwitch
-                                name="disableAnimation"
-                                label={<FormattedMessage id="settings.disableAnimation" />}
-                            />
+                            <ProForm.Item
+                                name="fullScreenAuxiliaryLineColor"
+                                label={
+                                    <IconLabel
+                                        label={
+                                            <FormattedMessage id="settings.fullScreenAuxiliaryLineColor" />
+                                        }
+                                    />
+                                }
+                                required={false}
+                            >
+                                <ColorPicker showText placement="bottom" />
+                            </ProForm.Item>
                         </Col>
                     </Row>
                 </Spin>

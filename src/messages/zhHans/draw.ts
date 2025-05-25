@@ -51,6 +51,7 @@ export const draw = {
     'draw.copyTool': '复制到剪贴板',
     'draw.scrollScreenshotTool': '滚动截图',
     'draw.saveTool': '保存为文件',
+    'draw.fastSaveTool': '快速保存',
     'draw.close': '关闭',
     'draw.ocrDetectTool': '文字识别',
     'draw.showOrHideOcrResult': '显示/隐藏 OCR 结果',
@@ -89,4 +90,5 @@ export const draw = {
     'draw.extraTool.scanQrcode.error': '未识别到有效二维码',
     'draw.scrollScreenshot.tip':
         '如果无法滚动窗口，请双击截图区域以聚焦窗口',
+    'draw.selectText': '选取文本/拖拽窗口',
 };

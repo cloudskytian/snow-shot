@@ -8,6 +8,7 @@ export const settings = {
     'settings.screenshotSettings': '截图设置',
     'settings.disableAnimation': '禁用动画',
     'settings.fixedBorderColor': '固定屏幕边框颜色',
+    'settings.fullScreenAuxiliaryLineColor': '全屏辅助线颜色',
     'settings.enableQrcodeScan': '启用二维码识别',
     'settings.findChildrenElements': '查找窗口子元素',
     'settings.performanceMode': '性能优先',
@@ -93,6 +94,14 @@ export const settings = {
         '选定截图区域后，绘制的元素在超出选区范围时显示的透明度',
     'settings.functionSettings.screenshotSettings.autoOcrAfterFixed': '固定屏幕后自动 OCR',
     'settings.functionSettings.screenshotSettings.shortcutCanleTip': '快捷键取消截图提示',
+    'settings.functionSettings.screenshotSettings.autoSaveFileMode': '保存文件增强',
+    'settings.functionSettings.screenshotSettings.autoSaveFileMode.saveMode': '保存方式',
+    'settings.functionSettings.screenshotSettings.autoSaveFileMode.autoSave': '复制后自动保存',
+    'settings.functionSettings.screenshotSettings.autoSaveFileMode.fastSave': '一键快速保存',
+    'settings.functionSettings.screenshotSettings.autoSaveFileMode.fastSave.tip':
+        '工具栏新增一个快速保存按钮，点击后自动保存到指定路径',
+    'settings.functionSettings.screenshotSettings.autoSaveFileMode.directory': '文件保存目录',
+    'settings.functionSettings.screenshotSettings.autoSaveFileMode.saveFileFormat': '保存文件格式',
     'settings.systemSettings.scrollScreenshotSettings': '滚动截图设置',
     'settings.systemSettings.scrollScreenshotSettings.imageFeatureThreshold': '图片特征阈值',
     'settings.systemSettings.scrollScreenshotSettings.imageFeatureThreshold.tip':
