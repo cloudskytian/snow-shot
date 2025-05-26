@@ -36,10 +36,12 @@ export enum DrawState {
     Pen = 7,
     // 文本
     Text = 8,
+    // 序列号
+    SerialNumber = 9,
     // 模糊
-    Blur = 9,
+    Blur = 10,
     // 橡皮擦
-    Eraser = 10,
+    Eraser = 11,
     // 撤销
     Undo = 101,
     // 重做
@@ -70,7 +72,7 @@ export enum CanvasLayer {
 }
 
 export type DrawContextType = {
-    finishCapture: (ignoreReload?: boolean) => Promise<void>;
+    finishCapture: (ignoreReload?: boolean, clearScrollScreenshot?: boolean) => Promise<void>;
     drawLayerActionRef: React.RefObject<DrawLayerActionType | undefined>;
     selectLayerActionRef: React.RefObject<SelectLayerActionType | undefined>;
     imageBufferRef: React.RefObject<ImageBuffer | undefined>;

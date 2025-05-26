@@ -1,10 +1,10 @@
 import { AppSettingsData, AppSettingsGroup, AppSettingsPublisher } from '@/app/contextWrap';
-import { ElementRect, saveFile } from '@/commands';
+import { ElementRect, saveFile, getMousePosition } from '@/commands';
 
 import { ImageBuffer } from '@/commands';
 import { useStateRef } from '@/hooks/useStateRef';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
-import { LogicalPosition, PhysicalSize } from '@tauri-apps/api/dpi';
+import { LogicalPosition, PhysicalSize, PhysicalPosition } from '@tauri-apps/api/dpi';
 import { Menu } from '@tauri-apps/api/menu';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { Button, theme } from 'antd';
@@ -18,8 +18,10 @@ import { zIndexs } from '@/utils/zIndex';
 import Image from 'next/image';
 import { CloseOutlined } from '@ant-design/icons';
 import { OcrResult, OcrResultActionType } from '../ocrResult';
-import sanitizeHtml from 'sanitize-html';
 import clipboard from 'tauri-plugin-clipboard-api';
+import { Base64 } from 'js-base64';
+import { KeyEventKey, KeyEventValue } from '@/core/hotKeys';
+import { useHotkeys } from 'react-hotkeys-hook';
 
 export type FixedContentInitDrawParams = {
     imageBuffer: ImageBuffer;
@@ -58,18 +60,22 @@ export enum FixedContentType {
 export const FixedContentCore: React.FC<{
     actionRef: React.RefObject<FixedContentActionType | undefined>;
     onDrawLoad?: () => void;
-    onHtmlLoad?: (container: HTMLDivElement | null) => void;
+    onHtmlLoad?: ({ width, height }: { width: number; height: number }) => void;
     onTextLoad?: (container: HTMLDivElement | null) => void;
     onImageLoad?: (image: HTMLImageElement | null) => void;
 }> = ({ actionRef, onDrawLoad, onHtmlLoad, onTextLoad, onImageLoad }) => {
     const intl = useIntl();
     const { token } = theme.useToken();
 
+    const [hotkeys, setHotkeys] = useState<Record<KeyEventKey, KeyEventValue> | undefined>(
+        undefined,
+    );
     const [fixedBorderColor, setFixedBorderColor] = useState<string | undefined>(undefined);
     useStateSubscriber(
         AppSettingsPublisher,
         useCallback((settings: AppSettingsData) => {
             setFixedBorderColor(settings[AppSettingsGroup.Screenshot].fixedBorderColor);
+            setHotkeys(settings[AppSettingsGroup.KeyEvent]);
         }, []),
     );
 
@@ -97,41 +103,69 @@ export const FixedContentCore: React.FC<{
 
     const [htmlContent, setHtmlContent] = useState<string | undefined>(undefined);
     const originHtmlContentRef = useRef<string | undefined>(undefined);
-    const htmlContentContainerRef = useRef<HTMLDivElement>(null);
+    const htmlContentContainerRef = useRef<HTMLIFrameElement>(null);
     const initHtml = useCallback(
         (htmlContent: string) => {
-            setFixedContentType(FixedContentType.Html);
-
-            const sanitizedHtml = sanitizeHtml(htmlContent, {
-                allowedTags: ['b', 'i', 'em', 'strong', 'a', 'span', 'div'],
-                allowedAttributes: {
-                    a: ['href'],
-                    span: ['style'],
-                    div: ['style'],
-                },
-                allowedIframeHostnames: [],
-            });
             originHtmlContentRef.current = htmlContent;
-            setHtmlContent(sanitizedHtml);
-            setTimeout(() => {
-                onHtmlLoad?.(htmlContentContainerRef.current);
+            if (htmlContent.startsWith('<html>') && htmlContent.endsWith('</html>')) {
+                htmlContent = `
+                <html>
+                  <style>
+                        body {
+                            width: fit-content;
+                            height: fit-content;
+                            margin: 0;
+                            padding: ${token.padding}px;
+                            overflow: hidden;
+                            box-sizing: border-box;
+                            background-color: ${token.colorBgContainer};
+                        }
+                    </style>
+                    <script>
+                       window.addEventListener('load', () => {
+                            window.parent.postMessage({
+                                type: 'bodySize',
+                                width: document.body.offsetWidth,
+                                height: document.body.offsetHeight,
+                                clientWidth: document.body.clientWidth,
+                                clientHeight: document.body.clientHeight,
+                            }, '*');
+                        });
 
-                if (htmlContentContainerRef.current) {
-                    setStyle({
-                        width: `${htmlContentContainerRef.current.clientWidth}px`,
-                        height: `${htmlContentContainerRef.current.clientHeight}px`,
-                    });
-                    canvasPropsRef.current = {
-                        width:
-                            htmlContentContainerRef.current.clientWidth * window.devicePixelRatio,
-                        height:
-                            htmlContentContainerRef.current.clientHeight * window.devicePixelRatio,
-                        scaleFactor: 1,
-                    };
-                }
-            }, 17);
+                        window.addEventListener('resize', () => {
+                            window.parent.postMessage({
+                                type: 'resize',
+                                width: document.body.offsetWidth,
+                                height: document.body.offsetHeight,
+                                clientWidth: document.body.clientWidth,
+                                clientHeight: document.body.clientHeight,
+                            }, '*');
+                        });
+
+                        document.addEventListener('contextmenu', (e) => {
+                            e.preventDefault();
+                            window.parent.postMessage({
+                                type: 'contextMenu',
+                                x: e.clientX,
+                                y: e.clientY
+                            }, '*');
+                        });
+
+                        document.addEventListener('wheel', (e) => {
+                            e.preventDefault();
+                            window.parent.postMessage({
+                                type: 'wheel',
+                                deltaY: e.deltaY,
+                            }, '*');
+                        });
+                    </script>
+                    ${htmlContent.slice(6, -7)}
+                </html>`;
+            }
+            setFixedContentType(FixedContentType.Html);
+            setHtmlContent(Base64.encode(htmlContent));
         },
-        [onHtmlLoad, setHtmlContent, setStyle],
+        [token.colorBgContainer, token.padding],
     );
 
     const [textContent, setTextContent, textContentRef] = useStateRef<string | undefined>(
@@ -147,7 +181,7 @@ export const FixedContentCore: React.FC<{
                 let timeout = 0;
                 if (
                     textContentContainerRef.current &&
-                    textContentContainerRef.current.clientWidth > 1024
+                    textContentContainerRef.current.clientWidth > 800 * window.devicePixelRatio
                 ) {
                     textContentContainerRef.current.style.width = '800px';
                     textContentContainerRef.current.style.whiteSpace = 'normal';
@@ -289,6 +323,22 @@ export const FixedContentCore: React.FC<{
         };
     }, [canvasImageUrl]);
 
+    const [isThumbnail, setIsThumbnail] = useState(false);
+    const originWindowSizeRef = useRef<PhysicalSize | undefined>(undefined);
+    const switchThumbnail = useCallback(async () => {
+        if (originWindowSizeRef.current) {
+            await getCurrentWindow().setSize(originWindowSizeRef.current);
+            originWindowSizeRef.current = undefined;
+            setIsThumbnail(false);
+        } else {
+            originWindowSizeRef.current = await getCurrentWindow().innerSize();
+            getCurrentWindow().setSize(
+                new PhysicalSize(42 * window.devicePixelRatio, 42 * window.devicePixelRatio),
+            );
+            setIsThumbnail(true);
+        }
+    }, []);
+
     const menuRef = useRef<Menu>(undefined);
 
     const initMenu = useCallback(async () => {
@@ -314,14 +364,18 @@ export const FixedContentCore: React.FC<{
                             originHtmlContentRef.current
                         ) {
                             await navigator.clipboard.write([
-                                new ClipboardItem({ 'text/html': originHtmlContentRef.current }),
+                                new ClipboardItem({
+                                    'text/html': originHtmlContentRef.current,
+                                }),
                             ]);
                         } else if (
                             fixedContentType === FixedContentType.Text &&
                             textContentRef.current
                         ) {
                             await navigator.clipboard.write([
-                                new ClipboardItem({ 'text/plain': textContentRef.current }),
+                                new ClipboardItem({
+                                    'text/plain': textContentRef.current,
+                                }),
                             ]);
                         } else if (
                             fixedContentType === FixedContentType.Image &&
@@ -409,8 +463,17 @@ export const FixedContentCore: React.FC<{
                       }
                     : undefined,
                 {
+                    id: `${window.label}-switchThumbnailTool`,
+                    text: intl.formatMessage({ id: 'draw.switchThumbnail' }),
+                    accelerator: hotkeys?.[KeyEventKey.FixedContentSwitchThumbnail]?.hotKey,
+                    action: async () => {
+                        switchThumbnail();
+                    },
+                },
+                {
                     id: `${window.label}-closeTool`,
                     text: intl.formatMessage({ id: 'draw.close' }),
+                    accelerator: hotkeys?.[KeyEventKey.FixedContentCloseWindow]?.hotKey,
                     action: async () => {
                         await closeWindowComplete();
                     },
@@ -418,7 +481,7 @@ export const FixedContentCore: React.FC<{
             ].filter((item) => item !== undefined),
         });
         menuRef.current = menu;
-    }, [intl, fixedContentType, textContentRef]);
+    }, [intl, fixedContentType, hotkeys, textContentRef, switchThumbnail]);
 
     useEffect(() => {
         initMenu();
@@ -452,6 +515,14 @@ export const FixedContentCore: React.FC<{
                 return;
             }
 
+            if (originWindowSizeRef.current) {
+                switchThumbnail();
+                return;
+            }
+
+            const zoomWithMouse =
+                getAppSettings()[AppSettingsGroup.FunctionFixedContent].zoomWithMouse;
+
             const window = getCurrentWindow();
 
             let targetScale = scaleRef.current + scaleDelta;
@@ -466,18 +537,47 @@ export const FixedContentCore: React.FC<{
                 return;
             }
 
+            // 计算新的窗口尺寸
+            const newWidth = Math.round((canvasPropsRef.current.width * targetScale) / 100);
+            const newHeight = Math.round((canvasPropsRef.current.height * targetScale) / 100);
+
+            if (zoomWithMouse) {
+                try {
+                    // 获取当前鼠标位置和窗口位置
+                    const [mouseX, mouseY] = await getMousePosition();
+                    const currentPosition = await window.outerPosition();
+                    const currentSize = await window.outerSize();
+
+                    // 计算鼠标相对于窗口的位置（比例）
+                    const mouseRelativeX = (mouseX - currentPosition.x) / currentSize.width;
+                    const mouseRelativeY = (mouseY - currentPosition.y) / currentSize.height;
+
+                    // 计算缩放后窗口的新位置，使鼠标在窗口中的相对位置保持不变
+                    const newX = mouseX - newWidth * mouseRelativeX;
+                    const newY = mouseY - newHeight * mouseRelativeY;
+
+                    // 同时设置窗口大小和位置
+                    await Promise.all([
+                        window.setSize(new PhysicalSize(newWidth, newHeight)),
+                        window.setPosition(
+                            new PhysicalPosition(Math.round(newX), Math.round(newY)),
+                        ),
+                    ]);
+                } catch (error) {
+                    console.error('Error during mouse-centered scaling:', error);
+                    // 如果出错，回退到普通缩放
+                    window.setSize(new PhysicalSize(newWidth, newHeight));
+                }
+            } else {
+                // 普通缩放，只改变窗口大小
+                window.setSize(new PhysicalSize(newWidth, newHeight));
+            }
+
             setScale(targetScale);
             ocrResultActionRef.current?.setScale(targetScale);
             showScaleInfoTemporary();
-
-            window.setSize(
-                new PhysicalSize(
-                    Math.round((canvasPropsRef.current.width * scaleRef.current) / 100),
-                    Math.round((canvasPropsRef.current.height * scaleRef.current) / 100),
-                ),
-            );
         },
-        [scaleRef, setScale, showScaleInfoTemporary, styleRef],
+        [getAppSettings, scaleRef, setScale, showScaleInfoTemporary, styleRef],
     );
     const scaleWindowRender = useCallbackRender(scaleWindow);
 
@@ -494,17 +594,70 @@ export const FixedContentCore: React.FC<{
     }, [getAppSettings]);
 
     const onWheel = useCallback(
-        (event: React.WheelEvent<HTMLDivElement>) => {
-            scaleWindowRender((event.deltaY > 0 ? -1 : 1) * 10);
+        ({ deltaY }: { deltaY: number }) => {
+            scaleWindowRender((deltaY > 0 ? -1 : 1) * 10);
         },
         [scaleWindowRender],
     );
 
-    const onContextMenu = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const handleContextMenu = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
         e.preventDefault();
 
         menuRef.current?.popup(new LogicalPosition(e.clientX, e.clientY));
     }, []);
+
+    useEffect(() => {
+        const handleMessage = (event: MessageEvent) => {
+            const { type, x, y, deltaY, width, height, clientWidth } = event.data;
+
+            if ((type === 'bodySize' || type === 'resize') && htmlContentContainerRef.current) {
+                if (clientWidth === 200 && type !== 'resize') {
+                    htmlContentContainerRef.current!.style.width = `${800 * window.devicePixelRatio}px`;
+                    return;
+                }
+
+                htmlContentContainerRef.current!.style.width = `${width}px`;
+                htmlContentContainerRef.current!.style.height = `${height}px`;
+                onHtmlLoad?.({ width, height });
+
+                setStyle({
+                    width: `${width}px`,
+                    height: `${height}px`,
+                });
+                canvasPropsRef.current = {
+                    width: width * window.devicePixelRatio,
+                    height: height * window.devicePixelRatio,
+                    scaleFactor: 1,
+                };
+            } else if (type === 'contextMenu') {
+                // 处理来自iframe的右键菜单事件
+                const syntheticEvent = {
+                    preventDefault: () => {},
+                    clientX: x,
+                    clientY: y,
+                } as React.MouseEvent<HTMLDivElement>;
+                handleContextMenu(syntheticEvent);
+            } else if (type === 'wheel') {
+                onWheel({ deltaY: deltaY });
+            }
+        };
+
+        window.addEventListener('message', handleMessage);
+
+        return () => {
+            window.removeEventListener('message', handleMessage);
+        };
+    }, [onHtmlLoad, setStyle, handleContextMenu, onWheel]);
+
+    useHotkeys(hotkeys?.[KeyEventKey.FixedContentSwitchThumbnail]?.hotKey ?? '', switchThumbnail, {
+        keyup: false,
+        keydown: true,
+    });
+
+    useHotkeys(hotkeys?.[KeyEventKey.FixedContentCloseWindow]?.hotKey ?? '', closeWindowComplete, {
+        keyup: false,
+        keydown: true,
+    });
 
     return (
         <div
@@ -516,13 +669,14 @@ export const FixedContentCore: React.FC<{
                 pointerEvents:
                     canvasImageUrl || htmlContent || textContent || imageUrl ? 'auto' : 'none',
             }}
-            onContextMenu={onContextMenu}
+            onContextMenu={handleContextMenu}
+            onDoubleClick={switchThumbnail}
         >
             <OcrResult
                 actionRef={ocrResultActionRef}
                 zIndex={1}
                 onWheel={onWheel}
-                onContextMenu={onContextMenu}
+                onContextMenu={handleContextMenu}
             />
 
             {canvasImageUrl && (
@@ -571,18 +725,15 @@ export const FixedContentCore: React.FC<{
             )}
 
             {htmlContent && (
-                <div
+                <iframe
                     ref={htmlContentContainerRef}
-                    dangerouslySetInnerHTML={{ __html: htmlContent }}
+                    src={`data:text/html;charset=utf-8;base64,${htmlContent}`}
                     className="fixed-html-content"
                 />
             )}
 
             {textContent && (
-                <div
-                    ref={textContentContainerRef}
-                    className="fixed-html-content fixed-text-content"
-                >
+                <div ref={textContentContainerRef} className="fixed-text-content">
                     <div>{textContent}</div>
                 </div>
             )}
@@ -602,6 +753,7 @@ export const FixedContentCore: React.FC<{
                         transition: `all ${token.motionDurationFast} ${token.motionEaseInOut}`,
                         backgroundColor: token.colorBgMask,
                         zIndex: 2,
+                        display: isThumbnail ? 'none' : 'block',
                     }}
                     onClick={() => {
                         closeWindowComplete();
@@ -664,18 +816,30 @@ export const FixedContentCore: React.FC<{
                     cursor: grabbing;
                 }
 
-                .fixed-html-content {
+                .fixed-html-content,
+                .fixed-text-content {
                     transform-origin: top left;
                     transform: scale(${scale / 100});
                     z-index: ${enableSelectText ? 1 : 'unset'};
                     position: absolute;
                     top: 0;
                     left: 0;
+                    border: unset !important;
+                }
+
+                .fixed-html-content {
+                    width: 200px;
+                    height: 0px;
+                    user-select: none;
                 }
 
                 .fixed-text-content {
                     width: auto;
-                    white-space: nowrap;
+                    white-space: pre;
+                    background-color: ${token.colorBgContainer};
+                    color: ${token.colorText};
+                    padding: ${token.padding}px;
+                    box-sizing: border-box;
                 }
 
                 .fixed-html-content > :global(div):first-child {

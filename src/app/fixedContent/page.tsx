@@ -5,6 +5,9 @@ import { FixedContentCore, FixedContentActionType } from './components/fixedCont
 import clipboard from 'tauri-plugin-clipboard-api';
 import { showWindow } from '@/utils/window';
 import { getCurrentWindow, PhysicalSize } from '@tauri-apps/api/window';
+import { setDrawWindowStyle } from '@/commands/screenshot';
+import { readImageFromClipboard } from '@/commands/core';
+import { scrollScreenshotClear, scrollScreenshotGetImageData } from '@/commands/scrollScreenshot';
 
 export default function FixedContentPage() {
     const fixedContentActionRef = useRef<FixedContentActionType>(undefined);
@@ -12,29 +15,39 @@ export default function FixedContentPage() {
     const initedRef = useRef(false);
 
     const init = useCallback(async () => {
-        try {
-            const htmlContent = await clipboard.readHtml();
-            if (htmlContent) {
-                fixedContentActionRef.current?.init({ htmlContent });
-                return;
-            }
-        } catch {}
-
-        try {
-            const textContent = await clipboard.readText();
-            if (textContent) {
-                fixedContentActionRef.current?.init({ textContent });
-                return;
-            }
-        } catch {}
-
-        try {
-            const imageBlob = (await clipboard.readImageBinary('Blob')) as Blob;
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('scroll_screenshot') === 'true') {
+            const imageBlob = await scrollScreenshotGetImageData();
+            scrollScreenshotClear();
             if (imageBlob) {
                 fixedContentActionRef.current?.init({ imageBlob });
                 return;
             }
-        } catch {}
+        } else {
+            try {
+                const imageBlob = await readImageFromClipboard();
+                if (imageBlob) {
+                    fixedContentActionRef.current?.init({ imageBlob });
+                    return;
+                }
+            } catch {}
+
+            try {
+                const htmlContent = await clipboard.readHtml();
+                if (htmlContent) {
+                    fixedContentActionRef.current?.init({ htmlContent });
+                    return;
+                }
+            } catch {}
+
+            try {
+                const textContent = await clipboard.readText();
+                if (textContent) {
+                    fixedContentActionRef.current?.init({ textContent });
+                    return;
+                }
+            } catch {}
+        }
 
         getCurrentWindow().close();
     }, []);
@@ -49,16 +62,25 @@ export default function FixedContentPage() {
         init();
     }, [init]);
 
-    const onHtmlOrTextLoad = useCallback(
-        async (container: HTMLDivElement | null | HTMLImageElement) => {
+    const onHtmlTextImageLoad = useCallback(
+        async (
+            container: { width: number; height: number } | null | HTMLImageElement | HTMLDivElement,
+        ) => {
             const appWindow = getCurrentWindow();
 
             if (!container) {
                 return;
             }
 
-            const width = container.scrollWidth;
-            const height = container.scrollHeight;
+            let width = 0;
+            let height = 0;
+            if ('width' in container && 'height' in container) {
+                width = container.width;
+                height = container.height;
+            } else {
+                width = container.clientWidth;
+                height = container.clientHeight;
+            }
 
             let scaleFactor = 1 / window.devicePixelRatio;
             if (container instanceof HTMLImageElement) {
@@ -72,7 +94,8 @@ export default function FixedContentPage() {
                     appWindow.setSize(new PhysicalSize(windowWidth, windowHeight)),
                     appWindow.center(),
                 ]);
-                await showWindow();
+                showWindow();
+                setDrawWindowStyle();
             } else {
                 await appWindow.close();
             }
@@ -84,9 +107,9 @@ export default function FixedContentPage() {
         <div>
             <FixedContentCore
                 actionRef={fixedContentActionRef}
-                onHtmlLoad={onHtmlOrTextLoad}
-                onTextLoad={onHtmlOrTextLoad}
-                onImageLoad={onHtmlOrTextLoad}
+                onHtmlLoad={onHtmlTextImageLoad}
+                onTextLoad={onHtmlTextImageLoad}
+                onImageLoad={onHtmlTextImageLoad}
             />
         </div>
     );

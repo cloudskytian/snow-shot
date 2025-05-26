@@ -38,7 +38,7 @@ import styles from './page.module.css';
 import dynamic from 'next/dynamic';
 import {
     DrawCacheLayerActionType,
-    ExcalidrawOnChangePublisher,
+    ExcalidrawEventPublisher,
     ExcalidrawOnHandleEraserPublisher,
 } from './components/drawCacheLayer/extra';
 import { copyToClipboard, fixedToScreen, handleOcrDetect, saveToFile } from './actions';
@@ -62,6 +62,8 @@ import { scrollScreenshotSaveToFile } from '@/commands/scrollScreenshot';
 import { AppSettingsActionContext, AppSettingsGroup } from '../contextWrap';
 import { AppSettingsPublisher } from '../contextWrap';
 import { ExtraTool } from './components/drawToolbar/components/tools/extraTool';
+import { SerialNumberTool } from './components/drawToolbar/components/tools/serialNumberTool';
+import { createFixedContentWindow } from '@/commands/core';
 
 const DrawCacheLayer = dynamic(
     async () => (await import('./components/drawCacheLayer')).DrawCacheLayer,
@@ -244,7 +246,7 @@ const DrawPageCore: React.FC = () => {
                 process.env.NODE_ENV === 'development' &&
                 getScreenshotType() !== ScreenshotType.TopWindow
             ) {
-                // await appWindow.setAlwaysOnTop(false);
+                await appWindow.setAlwaysOnTop(false);
             }
 
             setDrawWindowStyle();
@@ -257,10 +259,12 @@ const DrawPageCore: React.FC = () => {
     }, []);
 
     const finishCapture = useCallback<DrawContextType['finishCapture']>(
-        async (ignoreReload: boolean = false) => {
+        async (ignoreReload: boolean = false, clearScrollScreenshot: boolean = true) => {
             hideWindow();
             appWindowRef.current.setSize(new PhysicalSize(0, 0));
-            scrollScreenshotClear();
+            if (clearScrollScreenshot) {
+                scrollScreenshotClear();
+            }
 
             if (process.env.NODE_ENV !== 'development') {
                 if (!ignoreReload) {
@@ -442,6 +446,12 @@ const DrawPageCore: React.FC = () => {
     );
 
     const onFixed = useCallback(async () => {
+        if (getDrawState() === DrawState.ScrollScreenshot) {
+            createFixedContentWindow(true);
+            finishCapture(undefined, false);
+            return;
+        }
+
         if (
             !layerContainerRef.current ||
             !selectLayerActionRef.current ||
@@ -468,7 +478,7 @@ const DrawPageCore: React.FC = () => {
         );
 
         switchLayer(undefined, drawLayerActionRef.current, selectLayerActionRef.current);
-    }, [saveCurrentSelectRect, setCaptureStep]);
+    }, [finishCapture, getDrawState, saveCurrentSelectRect, setCaptureStep]);
 
     const onTopWindow = useCallback(async () => {
         const windowId = selectLayerActionRef.current?.getWindowId();
@@ -655,7 +665,10 @@ const DrawPageCore: React.FC = () => {
 
     const onDoubleClick = useCallback<React.MouseEventHandler<HTMLDivElement>>(
         (e) => {
-            if (e.button === 0) {
+            if (
+                e.button === 0 &&
+                !drawCacheLayerActionRef.current?.getExcalidrawAPI()?.getAppState()
+            ) {
                 onCopyToClipboard();
             }
         },
@@ -685,6 +698,8 @@ const DrawPageCore: React.FC = () => {
                         <div className={styles.drawLayerWrap} ref={drawLayerWrapRef}>
                             <DrawLayer actionRef={drawLayerActionRef} />
                             <DrawCacheLayer actionRef={drawCacheLayerActionRef} />
+
+                            <SerialNumberTool />
                         </div>
                         <SelectLayer actionRef={selectLayerActionRef} />
                         <DrawToolbar
@@ -724,7 +739,7 @@ export default React.memo(
             DrawStatePublisher,
             CaptureLoadingPublisher,
             EnableKeyEventPublisher,
-            ExcalidrawOnChangePublisher,
+            ExcalidrawEventPublisher,
             CaptureEventPublisher,
             ExcalidrawOnHandleEraserPublisher,
             ScreenshotTypePublisher,

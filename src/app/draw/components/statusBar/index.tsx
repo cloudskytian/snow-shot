@@ -88,6 +88,7 @@ const StatusBar: React.FC = () => {
             resizeFromCenterPicker: { hotKey: resizeFromCenterPickerHotKey },
             autoAlignPicker: { hotKey: autoAlignPickerHotKey },
             switchColorFormat: { hotKey: switchColorFormatHotKey },
+            serialNumberDisableArrow: { hotKey: serialNumberDisableArrowHotKey },
         } = getAppSettings()[AppSettingsGroup.DrawToolbarKeyEvent];
 
         const items: DescriptionsItemType[] = [
@@ -171,6 +172,14 @@ const StatusBar: React.FC = () => {
                 key: 'rotateWithDiscreteAnglePicker',
                 label: <FormattedMessage id="draw.rotateWithDiscreteAnglePicker" />,
                 children: <KeyLabel hotKey={rotateWithDiscreteAnglePickerHotKey} />,
+            });
+        }
+
+        if (drawState === DrawState.SerialNumber) {
+            items.push({
+                key: 'serialNumberDisableArrow',
+                label: <FormattedMessage id="draw.serialNumberDisableArrow2" />,
+                children: <KeyLabel hotKey={serialNumberDisableArrowHotKey} />,
             });
         }
 

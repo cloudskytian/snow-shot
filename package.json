@@ -51,7 +51,6 @@
         "react-syntax-highlighter": "^15.6.1",
         "react-truncate-markup": "^5.1.2",
         "remark-gfm": "^4.0.1",
-        "sanitize-html": "^2.17.0",
         "tauri-plugin-clipboard-api": "^2.1.11"
     },
     "devDependencies": {

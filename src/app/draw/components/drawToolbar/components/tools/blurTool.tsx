@@ -2,8 +2,9 @@ import { useCallback, useContext, useRef } from 'react';
 import { DrawContext } from '@/app/draw/types';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
 import {
-    ExcalidrawOnChangeParams,
-    ExcalidrawOnChangePublisher,
+    ExcalidrawEventOnChangeParams,
+    ExcalidrawEventParams,
+    ExcalidrawEventPublisher,
     ExcalidrawOnHandleEraserParams,
     ExcalidrawOnHandleEraserPublisher,
 } from '../../../drawCacheLayer/extra';
@@ -97,7 +98,7 @@ const BlurToolCore: React.FC = () => {
     );
 
     const updateBlur = useCallback(
-        (params: ExcalidrawOnChangeParams | undefined) => {
+        (params: ExcalidrawEventOnChangeParams['params'] | undefined) => {
             if (!params) {
                 return;
             }
@@ -252,9 +253,18 @@ const BlurToolCore: React.FC = () => {
     );
     const handleEraserRender = useCallbackRender(handleEraser);
 
-    useStateSubscriber(ExcalidrawOnChangePublisher, updateBlurRender);
+    useStateSubscriber(
+        ExcalidrawEventPublisher,
+        useCallback(
+            (params: ExcalidrawEventParams | undefined) => {
+                if (params?.event === 'onChange') {
+                    updateBlurRender(params.params);
+                }
+            },
+            [updateBlurRender],
+        ),
+    );
     useStateSubscriber(ExcalidrawOnHandleEraserPublisher, handleEraserRender);
-
     return <></>;
 };
 

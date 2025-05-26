@@ -1,6 +1,10 @@
 use enigo::{Axis, Enigo, Mouse};
-use std::{env, sync::Mutex, thread::sleep, time::{Duration, SystemTime, UNIX_EPOCH}};
-use tauri::command;
+use std::{
+    env, path::PathBuf, sync::Mutex, thread::sleep, time::{Duration, SystemTime, UNIX_EPOCH}
+};
+use tauri::ipc::Response;
+use tauri::{Manager, command};
+use tauri_plugin_clipboard;
 
 #[command]
 pub async fn exit_app(window: tauri::Window, handle: tauri::AppHandle) {
@@ -95,7 +99,7 @@ pub async fn click_through(window: tauri::Window) -> Result<(), ()> {
 
 /// 创建内容固定到屏幕的窗口
 #[command]
-pub async fn create_fixed_content_window(app: tauri::AppHandle) {
+pub async fn create_fixed_content_window(app: tauri::AppHandle, scroll_screenshot: bool) {
     let window = tauri::WebviewWindowBuilder::new(
         &app,
         format!(
@@ -105,7 +109,10 @@ pub async fn create_fixed_content_window(app: tauri::AppHandle) {
                 .unwrap()
                 .as_secs()
         ),
-        tauri::WebviewUrl::App("/fixedContent".into()),
+        tauri::WebviewUrl::App(PathBuf::from(format!(
+            "/fixedContent?scroll_screenshot={}",
+            scroll_screenshot
+        ))),
     )
     .always_on_top(true)
     .resizable(false)
@@ -118,12 +125,21 @@ pub async fn create_fixed_content_window(app: tauri::AppHandle) {
     .shadow(false)
     .transparent(false)
     .skip_taskbar(true)
-    .maximizable(false)
-    .minimizable(false)
     .resizable(false)
     .inner_size(0.0, 0.0)
     .build()
     .unwrap();
 
     window.hide().unwrap();
+}
+
+#[command]
+pub async fn read_image_from_clipboard(handle: tauri::AppHandle) -> Response {
+    let clipboard = handle.state::<tauri_plugin_clipboard::Clipboard>();
+    let image_data = match tauri_plugin_clipboard::Clipboard::read_image_binary(&clipboard) {
+        Ok(image_data) => image_data,
+        Err(_) => return Response::new(vec![]),
+    };
+
+    return Response::new(image_data);
 }

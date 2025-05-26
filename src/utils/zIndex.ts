@@ -16,14 +16,16 @@ export const zIndexs = {
     Draw_DrawLayer: 104,
     /** 截图绘制图层 */
     Draw_DrawCacheLayer: 105,
+    /** 截图序列号工具 Mask */
+    Draw_SerialNumberToolMask: 106,
     /** 截图 OCR 结果 */
-    Draw_OcrResult: 106,
+    Draw_OcrResult: 107,
     /** 截图二维码扫描结果 */
-    Draw_ScanQrcodeResult: 107,
+    Draw_ScanQrcodeResult: 108,
     /** 截图选择图层 */
-    Draw_SelectLayer: 108,
+    Draw_SelectLayer: 109,
     /** 截图滚动截图缩略图 */
-    Draw_ScrollScreenshotThumbnail: 109,
+    Draw_ScrollScreenshotThumbnail: 110,
 
     /** 截图绘制工具层 */
     Draw_BaseTool: 200,

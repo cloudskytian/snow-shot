@@ -1,5 +1,6 @@
-use image::codecs::jpeg::JpegEncoder;
 use image::imageops::FilterType;
+use image::codecs::jpeg::JpegEncoder;
+use image::codecs::png::{self, CompressionType, PngEncoder};
 use serde::Serialize;
 use std::fs;
 use std::sync::Mutex;
@@ -229,4 +230,34 @@ pub async fn scroll_screenshot_clear(
     scroll_screenshot_service.clear();
 
     Ok(())
+}
+
+#[command]
+pub async fn scroll_screenshot_get_image_data(
+    scroll_screenshot_service: tauri::State<'_, Mutex<ScrollScreenshotService>>,
+) -> Result<Response, ()> {
+    println!("scroll_screenshot_get_image_data1");
+
+    let mut scroll_screenshot_service = match scroll_screenshot_service.lock() {
+        Ok(service) => service,
+        Err(_) => return Err(()),
+    };
+
+    let image = scroll_screenshot_service.export();
+    let image_data = match image {
+        Some(image) => image,
+        None => return Err(()),
+    };
+
+    let mut buf = Vec::with_capacity((image_data.height() * image_data.width() * 3 / 8) as usize);
+
+    image_data
+        .write_with_encoder(PngEncoder::new_with_quality(
+            &mut buf,
+            CompressionType::Fast,
+            png::FilterType::Adaptive,
+        ))
+        .unwrap();
+
+    Ok(Response::new(buf))
 }

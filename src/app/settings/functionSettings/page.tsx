@@ -44,6 +44,8 @@ export default function SystemSettings() {
     const [functionForm] = Form.useForm<AppSettingsData[AppSettingsGroup.FunctionChat]>();
     const [translationForm] = Form.useForm<AppSettingsData[AppSettingsGroup.FunctionTranslation]>();
     const [screenshotForm] = Form.useForm<AppSettingsData[AppSettingsGroup.FunctionScreenshot]>();
+    const [fixedContentForm] =
+        Form.useForm<AppSettingsData[AppSettingsGroup.FunctionFixedContent]>();
 
     const [appSettingsLoading, setAppSettingsLoading] = useState(true);
     useAppSettingsLoad(
@@ -74,8 +76,18 @@ export default function SystemSettings() {
                 ) {
                     screenshotForm.setFieldsValue(settings[AppSettingsGroup.FunctionScreenshot]);
                 }
+
+                if (
+                    preSettings === undefined ||
+                    preSettings[AppSettingsGroup.FunctionFixedContent] !==
+                        settings[AppSettingsGroup.FunctionFixedContent]
+                ) {
+                    fixedContentForm.setFieldsValue(
+                        settings[AppSettingsGroup.FunctionFixedContent],
+                    );
+                }
             },
-            [functionForm, translationForm, screenshotForm],
+            [translationForm, functionForm, screenshotForm, fixedContentForm],
         ),
         true,
     );
@@ -239,6 +251,53 @@ export default function SystemSettings() {
                                 );
                             }}
                         </ProFormDependency>
+                    </Row>
+                </ProForm>
+            </Spin>
+
+            <Divider />
+
+            <GroupTitle
+                id="fixedContentSettings"
+                extra={
+                    <ResetSettingsButton
+                        title={
+                            <FormattedMessage id="settings.functionSettings.fixedContentSettings" />
+                        }
+                        appSettingsGroup={AppSettingsGroup.FunctionFixedContent}
+                    />
+                }
+            >
+                <FormattedMessage id="settings.functionSettings.fixedContentSettings" />
+            </GroupTitle>
+
+            <Spin spinning={appSettingsLoading}>
+                <ProForm
+                    form={fixedContentForm}
+                    onValuesChange={(_, values) => {
+                        updateAppSettings(
+                            AppSettingsGroup.FunctionFixedContent,
+                            values,
+                            true,
+                            true,
+                            true,
+                            true,
+                            false,
+                        );
+                    }}
+                    submitter={false}
+                    layout="horizontal"
+                >
+                    <Row gutter={token.padding}>
+                        <Col span={12}>
+                            <ProFormSwitch
+                                name="zoomWithMouse"
+                                layout="horizontal"
+                                label={
+                                    <FormattedMessage id="settings.functionSettings.fixedContentSettings.zoomWithMouse" />
+                                }
+                            />
+                        </Col>
                     </Row>
                 </ProForm>
             </Spin>

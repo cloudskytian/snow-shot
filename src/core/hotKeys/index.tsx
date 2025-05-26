@@ -1,6 +1,7 @@
 export enum KeyEventGroup {
     Translation = 'translation',
     Chat = 'chat',
+    FixedContent = 'fixedContent',
 }
 
 export type KeyEventValue = {
@@ -19,6 +20,8 @@ export enum KeyEventKey {
     ChatCopyAndHide = 'chatCopyAndHide',
     ChatCopy = 'chatCopy',
     ChatNewSession = 'chatNewSession',
+    FixedContentSwitchThumbnail = 'fixedContentSwitchThumbnail',
+    FixedContentCloseWindow = 'fixedContentCloseWindow',
 }
 
 export const defaultKeyEventSettings: Record<KeyEventKey, KeyEventValue> = {
@@ -42,6 +45,14 @@ export const defaultKeyEventSettings: Record<KeyEventKey, KeyEventValue> = {
         hotKey: 'Ctrl+N',
         group: KeyEventGroup.Chat,
     },
+    [KeyEventKey.FixedContentSwitchThumbnail]: {
+        hotKey: 'R',
+        group: KeyEventGroup.FixedContent,
+    },
+    [KeyEventKey.FixedContentCloseWindow]: {
+        hotKey: 'Escape',
+        group: KeyEventGroup.FixedContent,
+    },
 };
 
 const keyEventSettingsKeys = Object.keys(defaultKeyEventSettings);
@@ -53,6 +64,8 @@ export const defaultKeyEventComponentConfig: Record<KeyEventKey, KeyEventCompone
                 baseMessageId = 'tools.translation';
             } else if (defaultKeyEventSettings[key as KeyEventKey].group === KeyEventGroup.Chat) {
                 baseMessageId = 'tools.chat';
+            } else if (defaultKeyEventSettings[key as KeyEventKey].group === KeyEventGroup.FixedContent) {
+                baseMessageId = 'settings.hotKeySettings.fixedContent';
             }
 
             acc[key as KeyEventKey] = {

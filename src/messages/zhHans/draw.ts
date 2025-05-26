@@ -42,6 +42,7 @@ export const draw = {
     'draw.penTool': '画笔',
     'draw.highlightTool': '高亮',
     'draw.mosaicTool': '马赛克',
+    'draw.serialNumberTool': '序列号',
     'draw.blurTool': '模糊',
     'draw.textTool': '文字',
     'draw.eraserTool': '橡皮擦',
@@ -69,6 +70,8 @@ export const draw = {
     'draw.shiftKey': 'Shift',
     'draw.enableStraightLinePicker': '切换直线绘制',
     'draw.resizeFromCenterPicker': '从中心缩放',
+    'draw.serialNumberDisableArrow': '序列号禁用/启用箭头',
+    'draw.serialNumberDisableArrow2': '禁用/启用箭头',
     'draw.maintainAspectRatioPicker': '保持宽高比例',
     'draw.rotateWithDiscreteAnglePicker': '固定角度旋转',
     'draw.autoAlignPicker': '自动对齐',
@@ -91,4 +94,5 @@ export const draw = {
     'draw.scrollScreenshot.tip':
         '如果无法滚动窗口，请双击截图区域以聚焦窗口',
     'draw.selectText': '选取文本/拖拽窗口',
+    'draw.switchThumbnail': '切换缩略图',
 };

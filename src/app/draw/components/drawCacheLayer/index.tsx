@@ -11,6 +11,7 @@ import {
     ExcalidrawActionType,
     ExcalidrawPropsCustomOptions,
     AppState,
+    ExcalidrawProps,
 } from '@mg-chao/excalidraw/types';
 import '@mg-chao/excalidraw/index.css';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
@@ -20,8 +21,8 @@ import {
     convertLocalToLocalCode,
     ExcalidrawEventCallbackPublisher,
     ExcalidrawEventCallbackType,
+    ExcalidrawEventPublisher,
     ExcalidrawKeyEventPublisher,
-    ExcalidrawOnChangePublisher,
     ExcalidrawOnHandleEraserPublisher,
 } from './extra';
 import { DrawCacheLayerActionType } from './extra';
@@ -74,10 +75,7 @@ const DrawCacheLayerCore: React.FC<{
     }, []);
 
     const [getDrawState] = useStateSubscriber(DrawStatePublisher, undefined);
-    const [, setExcalidrawOnChangeEvent] = useStateSubscriber(
-        ExcalidrawOnChangePublisher,
-        undefined,
-    );
+    const [, setExcalidrawEvent] = useStateSubscriber(ExcalidrawEventPublisher, undefined);
     const [, setExcalidrawOnHandleEraserEvent] = useStateSubscriber(
         ExcalidrawOnHandleEraserPublisher,
         undefined,
@@ -185,6 +183,87 @@ const DrawCacheLayerCore: React.FC<{
         });
     }, []);
 
+    const handleWheel = useCallback(
+        (
+            event: WheelEvent | React.WheelEvent<HTMLDivElement | HTMLCanvasElement>,
+            zoomAction?: () => void,
+        ) => {
+            if (!enableRef.current) {
+                return;
+            }
+
+            if (!excalidrawAPIRef.current) {
+                return;
+            }
+
+            if ((event.metaKey || event.ctrlKey) && zoomAction) {
+                zoomAction();
+                return;
+            }
+
+            const appState = excalidrawAPIRef.current.getAppState();
+            if (!appState) {
+                return;
+            }
+
+            const isIncrease = event.deltaY < 0;
+
+            if (getDrawState() === DrawState.Blur) {
+                const currentBlur = appState.currentItemBlur;
+                const targetBlur = Math.max(
+                    Math.min(currentBlur + (isIncrease ? 1 : -1) * 10, 100),
+                    0,
+                );
+
+                excalidrawAPIRef.current?.updateScene({
+                    appState: {
+                        ...appState,
+                        currentItemBlur: targetBlur,
+                    },
+                });
+                return;
+            } else if (
+                getDrawState() === DrawState.Text ||
+                getDrawState() === DrawState.SerialNumber
+            ) {
+                const currentFontSize = appState.currentItemFontSize;
+
+                const targetFontSize = getNextValueInList(
+                    currentFontSize,
+                    fontSizeList,
+                    isIncrease,
+                );
+
+                setExcalidrawEventCallback({
+                    event: ExcalidrawEventCallbackType.ChangeFontSize,
+                    params: {
+                        fontSize: targetFontSize,
+                    },
+                });
+                setExcalidrawEventCallback(undefined);
+
+                return;
+            } else {
+                const currentStrokeWidth = appState.currentItemStrokeWidth;
+                const targetStrokeWidth = getNextValueInList(
+                    currentStrokeWidth,
+                    strokeWidthList,
+                    isIncrease,
+                );
+
+                excalidrawAPIRef.current?.updateScene({
+                    appState: {
+                        ...appState,
+                        currentItemStrokeWidth: targetStrokeWidth,
+                    },
+                });
+
+                return;
+            }
+        },
+        [getDrawState, setExcalidrawEventCallback],
+    );
+
     useImperativeHandle(
         actionRef,
         () => ({
@@ -220,8 +299,13 @@ const DrawCacheLayerCore: React.FC<{
             getImageData,
             getCanvasContext,
             getCanvas,
+            getDrawCacheLayerElement: () => drawCacheLayerElementRef.current,
+            getExcalidrawAPI: () => excalidrawAPIRef.current,
+            handleWheel: (ev: WheelEvent | React.WheelEvent<HTMLDivElement>) => {
+                handleWheel(ev);
+            },
         }),
-        [getCanvas, getCanvasContext, getImageData, history, setEnable, updateScene],
+        [getCanvas, getCanvasContext, getImageData, handleWheel, history, setEnable, updateScene],
     );
 
     const shouldResizeFromCenter = useCallback<
@@ -283,82 +367,27 @@ const DrawCacheLayerCore: React.FC<{
     }, []);
     const saveAppStateDebounce = useMemo(() => debounce(saveAppState, 1000), [saveAppState]);
 
-    const handleWheel = useCallback(
-        (
-            event: WheelEvent | React.WheelEvent<HTMLDivElement | HTMLCanvasElement>,
-            zoomAction: () => void,
-        ) => {
-            if (!enableRef.current) {
-                return;
-            }
+    const getExtraTools = useCallback<
+        NonNullable<ExcalidrawPropsCustomOptions['getExtraTools']>
+    >(() => {
+        if (getDrawState() === DrawState.SerialNumber) {
+            return ['serialNumber'];
+        }
 
-            if (!excalidrawAPIRef.current) {
-                return;
-            }
+        return [];
+    }, [getDrawState]);
 
-            if (event.metaKey || event.ctrlKey) {
-                zoomAction();
-                return;
-            }
-
-            const appState = excalidrawAPIRef.current.getAppState();
-            if (!appState) {
-                return;
-            }
-
-            const isIncrease = event.deltaY < 0;
-
-            if (getDrawState() === DrawState.Blur) {
-                const currentBlur = appState.currentItemBlur;
-                const targetBlur = Math.max(
-                    Math.min(currentBlur + (isIncrease ? 1 : -1) * 10, 100),
-                    0,
-                );
-
-                excalidrawAPIRef.current?.updateScene({
-                    appState: {
-                        ...appState,
-                        currentItemBlur: targetBlur,
-                    },
-                });
-                return;
-            } else if (getDrawState() === DrawState.Text) {
-                const currentFontSize = appState.currentItemFontSize;
-
-                const targetFontSize = getNextValueInList(
-                    currentFontSize,
-                    fontSizeList,
-                    isIncrease,
-                );
-
-                setExcalidrawEventCallback({
-                    event: ExcalidrawEventCallbackType.ChangeFontSize,
-                    params: {
-                        fontSize: targetFontSize,
-                    },
-                });
-                setExcalidrawOnChangeEvent(undefined);
-
-                return;
-            } else {
-                const currentStrokeWidth = appState.currentItemStrokeWidth;
-                const targetStrokeWidth = getNextValueInList(
-                    currentStrokeWidth,
-                    strokeWidthList,
-                    isIncrease,
-                );
-
-                excalidrawAPIRef.current?.updateScene({
-                    appState: {
-                        ...appState,
-                        currentItemStrokeWidth: targetStrokeWidth,
-                    },
-                });
-
-                return;
-            }
+    const onPointerDown = useCallback<NonNullable<ExcalidrawProps['onPointerDown']>>(
+        (activeTool, pointerDownState) => {
+            setExcalidrawEvent({
+                event: 'onPointerDown',
+                params: {
+                    activeTool,
+                    pointerDownState,
+                },
+            });
         },
-        [getDrawState, setExcalidrawEventCallback, setExcalidrawOnChangeEvent],
+        [setExcalidrawEvent],
     );
 
     return (
@@ -367,6 +396,7 @@ const DrawCacheLayerCore: React.FC<{
                 actionRef={excalidrawActionRef}
                 initialData={initialData}
                 handleKeyboardGlobally
+                onPointerDown={onPointerDown}
                 excalidrawAPI={(api) => {
                     excalidrawAPI(api);
                     if (excalidrawAppStateStoreValue.current) {
@@ -393,6 +423,7 @@ const DrawCacheLayerCore: React.FC<{
                     shouldResizeFromCenter,
                     shouldMaintainAspectRatio,
                     shouldSnapping,
+                    getExtraTools,
                     shouldRotateWithDiscreteAngle,
                     pickerRenders: pickerRenders,
                     layoutRenders: layoutRenders,
@@ -405,10 +436,13 @@ const DrawCacheLayerCore: React.FC<{
                 }}
                 onChange={(elements, appState, files) => {
                     saveAppStateDebounce();
-                    setExcalidrawOnChangeEvent({
-                        elements,
-                        appState,
-                        files,
+                    setExcalidrawEvent({
+                        event: 'onChange',
+                        params: {
+                            elements,
+                            appState,
+                            files,
+                        },
                     });
                 }}
                 langCode={convertLocalToLocalCode(intl.locale)}

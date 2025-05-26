@@ -1,8 +1,14 @@
-import { AppState, BinaryFiles, ExcalidrawActionType } from '@mg-chao/excalidraw/types';
+import {
+    AppState,
+    BinaryFiles,
+    ExcalidrawActionType,
+    PointerDownState,
+} from '@mg-chao/excalidraw/types';
 import { ExcalidrawImperativeAPI } from '@mg-chao/excalidraw/types';
 import { createPublisher } from '@/hooks/useStatePublisher';
 import { ExcalidrawElement, OrderedExcalidrawElement } from '@mg-chao/excalidraw/element/types';
 import { ElementRect } from '@/commands';
+
 export type DrawCacheLayerActionType = {
     setActiveTool: ExcalidrawImperativeAPI['setActiveTool'];
     syncActionResult: ExcalidrawActionType['syncActionResult'];
@@ -14,6 +20,9 @@ export type DrawCacheLayerActionType = {
     getCanvasContext: () => CanvasRenderingContext2D | null | undefined;
     getCanvas: () => HTMLCanvasElement | null;
     getAppState: () => AppState | undefined;
+    getDrawCacheLayerElement: () => HTMLDivElement | null;
+    getExcalidrawAPI: () => ExcalidrawImperativeAPI | undefined;
+    handleWheel: (ev: WheelEvent | React.WheelEvent<HTMLDivElement>) => void;
 };
 
 export type ExcalidrawKeyEvent = {
@@ -43,13 +52,28 @@ export const convertLocalToLocalCode = (local: string) => {
     }
 };
 
-export type ExcalidrawOnChangeParams = {
-    elements: readonly OrderedExcalidrawElement[];
-    appState: AppState;
-    files: BinaryFiles;
+export type ExcalidrawEventOnChangeParams = {
+    event: 'onChange';
+    params: {
+        elements: readonly OrderedExcalidrawElement[];
+        appState: AppState;
+        files: BinaryFiles;
+    };
 };
 
-export const ExcalidrawOnChangePublisher = createPublisher<ExcalidrawOnChangeParams | undefined>(
+export type ExcalidrawEventOnPointerDownParams = {
+    event: 'onPointerDown';
+    params: {
+        activeTool: AppState['activeTool'];
+        pointerDownState: PointerDownState;
+    };
+};
+
+export type ExcalidrawEventParams =
+    | ExcalidrawEventOnChangeParams
+    | ExcalidrawEventOnPointerDownParams;
+
+export const ExcalidrawEventPublisher = createPublisher<ExcalidrawEventParams | undefined>(
     undefined,
 );
 

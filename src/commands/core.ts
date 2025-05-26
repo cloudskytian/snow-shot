@@ -25,7 +25,19 @@ export const clickThrough = async () => {
     return result;
 };
 
-export const createFixedContentWindow = async () => {
-    const result = await invoke<void>('create_fixed_content_window');
+export const createFixedContentWindow = async (scrollScreenshot?: boolean) => {
+    const result = await invoke<void>('create_fixed_content_window', {
+        scrollScreenshot: scrollScreenshot ?? false,
+    });
     return result;
+};
+
+export const readImageFromClipboard = async (): Promise<Blob | undefined> => {
+    const result = await invoke<ArrayBuffer>('read_image_from_clipboard');
+
+    if (result.byteLength === 0) {
+        return undefined;
+    }
+
+    return new Blob([result]);
 };

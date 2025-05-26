@@ -484,6 +484,10 @@ const MenuLayoutCore: React.FC<{ children: React.ReactNode }> = ({ children }) =
                                 label: intl.formatMessage({ id: 'settings.hotKeySettings.chat' }),
                             },
                             {
+                                key: 'fixedContent',
+                                label: intl.formatMessage({ id: 'settings.hotKeySettings.fixedContent' }),
+                            },
+                            {
                                 key: 'drawingHotKey',
                                 label: intl.formatMessage({ id: 'settings.drawingHotKey' }),
                             },

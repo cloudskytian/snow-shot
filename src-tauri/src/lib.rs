@@ -84,6 +84,8 @@ pub fn run() {
             core::scroll_through,
             core::click_through,
             core::create_fixed_content_window,
+            core::read_image_from_clipboard,
+            scroll_screenshot::scroll_screenshot_get_image_data,
             scroll_screenshot::scroll_screenshot_init,
             scroll_screenshot::scroll_screenshot_capture,
             scroll_screenshot::scroll_screenshot_save_to_file,

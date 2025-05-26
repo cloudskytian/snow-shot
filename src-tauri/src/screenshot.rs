@@ -36,7 +36,7 @@ pub async fn capture_current_monitor(encoder: String) -> Response {
     // 前端也无需再转为 base64 显示
 
     // 编码为指定格式
-    let mut buf = Vec::new();
+    let mut buf = Vec::with_capacity(image_buffer.len() / 8);
 
     if encoder == "webp" {
         image_buffer

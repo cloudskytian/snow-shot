@@ -22,6 +22,7 @@ import {
     RectIcon,
     SaveIcon,
     ScrollScreenshotIcon,
+    SerialNumberIcon,
     TextIcon,
 } from '@/components/icons';
 import {
@@ -226,6 +227,13 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
                     drawCacheLayerActionRef.current?.setEnable(true);
                     drawCacheLayerActionRef.current?.setActiveTool({
                         type: 'text',
+                        locked: true,
+                    });
+                    break;
+                case DrawState.SerialNumber:
+                    drawCacheLayerActionRef.current?.setEnable(true);
+                    drawCacheLayerActionRef.current?.setActiveTool({
+                        type: 'arrow',
                         locked: true,
                     });
                     break;
@@ -449,6 +457,17 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
                             }}
                         />
 
+                        {/* 序列号 */}
+                        <ToolButton
+                            componentKey={KeyEventKey.SerialNumberTool}
+                            icon={<SerialNumberIcon style={{ fontSize: '1.16em' }} />}
+                            drawState={DrawState.SerialNumber}
+                            disable={disableNormalScreenshotTool}
+                            onClick={() => {
+                                onToolClick(DrawState.SerialNumber);
+                            }}
+                        />
+
                         {/* 模糊 */}
                         <ToolButton
                             componentKey={KeyEventKey.BlurTool}
@@ -494,7 +513,6 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
                             componentKey={KeyEventKey.FixedTool}
                             icon={<FixedIcon style={{ fontSize: '1.1em' }} />}
                             drawState={DrawState.Fixed}
-                            disable={enableScrollScreenshot}
                             onClick={() => {
                                 onFixed();
                             }}

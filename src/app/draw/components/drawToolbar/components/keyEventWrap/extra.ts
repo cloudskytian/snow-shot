@@ -21,6 +21,7 @@ export enum KeyEventKey {
     // HighlightTool = 'highlightTool',
     BlurTool = 'blurTool',
     TextTool = 'textTool',
+    SerialNumberTool = 'serialNumberTool',
     EraserTool = 'eraserTool',
     UndoTool = 'undoTool',
     RedoTool = 'redoTool',
@@ -38,6 +39,7 @@ export enum KeyEventKey {
     ColorPickerMoveLeft = 'colorPickerMoveLeft',
     ColorPickerMoveRight = 'colorPickerMoveRight',
     ResizeFromCenterPicker = 'resizeFromCenterPicker',
+    SerialNumberDisableArrow = 'serialNumberDisableArrow',
     MaintainAspectRatioPicker = 'maintainAspectRatioPicker',
     RotateWithDiscreteAnglePicker = 'rotateWithDiscreteAnglePicker',
     AutoAlignPicker = 'autoAlignPicker',
@@ -75,12 +77,16 @@ export const defaultDrawToolbarKeyEventSettings: Record<KeyEventKey, KeyEventVal
         hotKey: '5, T',
         unique: true,
     },
-    [KeyEventKey.BlurTool]: {
+    [KeyEventKey.SerialNumberTool]: {
         hotKey: '6',
         unique: true,
     },
+    [KeyEventKey.BlurTool]: {
+        hotKey: '7',
+        unique: true,
+    },
     [KeyEventKey.EraserTool]: {
-        hotKey: '7, E',
+        hotKey: '8, E',
         unique: true,
     },
     [KeyEventKey.UndoTool]: {
@@ -126,6 +132,9 @@ export const defaultDrawToolbarKeyEventSettings: Record<KeyEventKey, KeyEventVal
     [KeyEventKey.ColorPickerCopy]: {
         hotKey: 'C',
         unique: true,
+    },
+    [KeyEventKey.SerialNumberDisableArrow]: {
+        hotKey: 'Shift',
     },
     [KeyEventKey.ResizeFromCenterPicker]: {
         hotKey: 'Alt',

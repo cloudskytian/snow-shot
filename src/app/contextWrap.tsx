@@ -35,7 +35,7 @@ export enum AppSettingsGroup {
     CommonTrayIcon = 'commonTrayIcon',
     Cache = 'cache',
     Screenshot = 'screenshot',
-    DrawToolbarKeyEvent = 'drawToolbarKeyEvent_20250524',
+    DrawToolbarKeyEvent = 'drawToolbarKeyEvent_20250526',
     KeyEvent = 'KeyEvent',
     AppFunction = 'appFunction',
     Render = 'render',
@@ -46,6 +46,7 @@ export enum AppSettingsGroup {
     FunctionChat = 'functionChat',
     FunctionTranslation = 'functionTranslation',
     FunctionScreenshot = 'functionScreenshot',
+    FunctionFixedContent = 'functionFixedContent',
 }
 
 export enum AppSettingsLanguage {
@@ -94,6 +95,7 @@ export type AppSettingsData = {
         colorPickerColorFormatIndex: number;
         prevImageFormat: ImageFormat;
         prevSelectRect: ElementRect;
+        disableArrowPicker: boolean;
     };
     [AppSettingsGroup.DrawToolbarKeyEvent]: Record<
         DrawToolbarKeyEventKey,
@@ -140,6 +142,10 @@ export type AppSettingsData = {
         /** 保存文件格式 */
         saveFileFormat: ImageFormat;
     };
+    [AppSettingsGroup.FunctionFixedContent]: {
+        /** 以鼠标为中心缩放 */
+        zoomWithMouse: boolean;
+    };
     [AppSettingsGroup.SystemScrollScreenshot]: {
         minSide: number;
         maxSide: number;
@@ -181,6 +187,7 @@ export const defaultAppSettingsData: AppSettingsData = {
             max_x: 0,
             max_y: 0,
         },
+        disableArrowPicker: false,
     },
     [AppSettingsGroup.DrawToolbarKeyEvent]: defaultDrawToolbarKeyEventSettings,
     [AppSettingsGroup.KeyEvent]: defaultKeyEventSettings,
@@ -222,6 +229,9 @@ export const defaultAppSettingsData: AppSettingsData = {
         maxSide: 128,
         sampleRate: 1,
         imageFeatureDescriptionLength: 32,
+    },
+    [AppSettingsGroup.FunctionFixedContent]: {
+        zoomWithMouse: false,
     },
 };
 
@@ -446,6 +456,10 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
                             ? newSettings.prevImageFormat
                             : (prevSettings?.prevImageFormat ?? ImageFormat.PNG),
                     prevSelectRect,
+                    disableArrowPicker:
+                        typeof newSettings?.disableArrowPicker === 'boolean'
+                            ? newSettings.disableArrowPicker
+                            : (prevSettings?.disableArrowPicker ?? false),
                 };
             } else if (group === AppSettingsGroup.Screenshot) {
                 newSettings = newSettings as AppSettingsData[typeof group];
@@ -825,6 +839,18 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
                         typeof newSettings?.iconPath === 'string'
                             ? newSettings.iconPath
                             : (prevSettings?.iconPath ?? ''),
+                };
+            } else if (group === AppSettingsGroup.FunctionFixedContent) {
+                newSettings = newSettings as AppSettingsData[typeof group];
+                const prevSettings = appSettingsRef.current[group] as
+                    | AppSettingsData[typeof group]
+                    | undefined;
+
+                settings = {
+                    zoomWithMouse:
+                        typeof newSettings?.zoomWithMouse === 'boolean'
+                            ? newSettings.zoomWithMouse
+                            : (prevSettings?.zoomWithMouse ?? false),
                 };
             } else {
                 return defaultAppSettingsData[group];

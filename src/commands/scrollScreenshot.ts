@@ -117,6 +117,24 @@ export const scrollScreenshotSaveToClipboard = async () => {
 };
 
 export const scrollScreenshotClear = async () => {
+    console.log('scrollScreenshotClear');
+
     const result = await invoke('scroll_screenshot_clear');
     return result;
+};
+
+export const scrollScreenshotGetImageData = async (): Promise<Blob | undefined> => {
+    let result: ArrayBuffer | undefined;
+    try {
+        result = await invoke<ArrayBuffer>('scroll_screenshot_get_image_data');
+    } catch (error) {
+        console.error(error);
+        return undefined;
+    }
+
+    if (result.byteLength === 0) {
+        return undefined;
+    }
+
+    return new Blob([result]);
 };
