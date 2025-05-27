@@ -1,6 +1,6 @@
-use image::imageops::FilterType;
 use image::codecs::jpeg::JpegEncoder;
 use image::codecs::png::{self, CompressionType, PngEncoder};
+use image::imageops::FilterType;
 use serde::Serialize;
 use std::fs;
 use std::sync::Mutex;

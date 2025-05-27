@@ -1,6 +1,10 @@
 use enigo::{Axis, Enigo, Mouse};
 use std::{
-    env, path::PathBuf, sync::Mutex, thread::sleep, time::{Duration, SystemTime, UNIX_EPOCH}
+    env,
+    path::PathBuf,
+    sync::Mutex,
+    thread::sleep,
+    time::{Duration, SystemTime, UNIX_EPOCH},
 };
 use tauri::ipc::Response;
 use tauri::{Manager, command};
