@@ -29,7 +29,7 @@ const DragButtonCore: React.FC<{
 
     const enableSubToolbarRef = useRef(false);
 
-    const { selectLayerActionRef, imageBufferRef } = useContext(DrawContext);
+    const { selectLayerActionRef, monitorInfoRef } = useContext(DrawContext);
     const { drawToolbarRef, setDragging, draggingRef } = useContext(DrawToolbarContext);
     const { token } = theme.useToken();
 
@@ -49,8 +49,8 @@ const DragButtonCore: React.FC<{
             return;
         }
 
-        const imageBuffer = imageBufferRef.current;
-        if (!imageBuffer) {
+        const monitorInfo = monitorInfoRef.current;
+        if (!monitorInfo) {
             return;
         }
 
@@ -60,8 +60,8 @@ const DragButtonCore: React.FC<{
         }
 
         const baseOffsetX =
-            selectedRect.max_x / imageBuffer.monitorScaleFactor - drawToolbar.clientWidth;
-        const baseOffsetY = selectedRect.max_y / imageBuffer.monitorScaleFactor + token.marginXXS;
+            selectedRect.max_x / monitorInfo.monitor_scale_factor - drawToolbar.clientWidth;
+        const baseOffsetY = selectedRect.max_y / monitorInfo.monitor_scale_factor + token.marginXXS;
 
         const dragRes = updateElementPosition(
             drawToolbar,
@@ -74,7 +74,7 @@ const DragButtonCore: React.FC<{
 
         toolbarCurrentRectRef.current = dragRes.rect;
         mouseOriginPositionRef.current = dragRes.originPosition;
-    }, [drawToolbarRef, imageBufferRef, selectLayerActionRef, token.marginXXS]);
+    }, [drawToolbarRef, monitorInfoRef, selectLayerActionRef, token.marginXXS]);
     const updateDrawToolbarStyleRender = useCallbackRender(updateDrawToolbarStyle);
 
     const handleMouseDown = useCallback(

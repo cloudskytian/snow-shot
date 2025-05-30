@@ -46,3 +46,18 @@ export const createFullScreenDrawWindow = async () => {
     const result = await invoke<void>('create_full_screen_draw_window');
     return result;
 };
+
+export type MonitorInfo = {
+    monitor_x: number;
+    monitor_y: number;
+    monitor_width: number;
+    monitor_height: number;
+    monitor_scale_factor: number;
+    mouse_x: number;
+    mouse_y: number;
+};
+
+export const getCurrentMonitorInfo = async () => {
+    const result = await invoke<MonitorInfo>('get_current_monitor_info');
+    return result;
+};

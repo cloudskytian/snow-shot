@@ -15,6 +15,7 @@ import styles from './index.module.css';
 import { AppSettingsData, AppSettingsGroup } from '@/app/contextWrap';
 import { useAppSettingsLoad } from '@/hooks/useAppSettingsLoad';
 import { last } from 'es-toolkit';
+import { MonitorInfo } from '@/commands/core';
 
 export type BaseLayerContextType = {
     /** 调整画布大小 */
@@ -65,11 +66,19 @@ export type BaseLayerEventActionType = {
     /**
      * 截图准备
      */
-    onCaptureReady: (texture: PIXI.Texture, imageBuffer: ImageBuffer) => Promise<void>;
+    onCaptureReady: (
+        texture: PIXI.Texture,
+        imageBuffer: ImageBuffer,
+        monitorInfo: MonitorInfo,
+    ) => Promise<void>;
     /**
      * 截图加载完成
      */
-    onCaptureLoad: (texture: PIXI.Texture, imageBuffer: ImageBuffer) => Promise<void>;
+    onCaptureLoad: (
+        texture: PIXI.Texture,
+        imageBuffer: ImageBuffer,
+        monitorInfo: MonitorInfo,
+    ) => Promise<void>;
     /**
      * 截图完成
      */
@@ -416,12 +425,12 @@ export function withBaseLayer<
 
         const onCaptureReady = useCallback(
             async (...args: Parameters<BaseLayerActionType['onCaptureReady']>) => {
-                const [, imageBuffer] = args;
+                const [, , monitorInfo] = args;
 
                 // 将画布调整为截图大小
-                const { monitorWidth, monitorHeight } = imageBuffer;
+                const { monitor_width, monitor_height } = monitorInfo;
 
-                baseLayerCoreActionRef.current?.resizeCanvas(monitorWidth, monitorHeight);
+                baseLayerCoreActionRef.current?.resizeCanvas(monitor_width, monitor_height);
                 await layerActionRef.current?.onCaptureReady(...args);
             },
             [],

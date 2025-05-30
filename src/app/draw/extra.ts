@@ -1,11 +1,11 @@
 import { CanvasLayer, CaptureStep } from './types';
 import { DrawLayerActionType } from './components/drawLayer';
 import { SelectLayerActionType } from './components/selectLayer';
-import { ImageBuffer } from '@/commands';
 import { createPublisher } from '@/hooks/useStatePublisher';
 import { BaseLayerEventActionType } from './components/baseLayer';
 import { ScreenshotType } from '@/functions/screenshot';
 import { OcrDetectResult } from '@/commands/ocr';
+import { MonitorInfo } from '@/commands/core';
 
 export const switchLayer = (
     layer: CanvasLayer | undefined,
@@ -30,12 +30,12 @@ export const switchLayer = (
     selectLayerAction?.setEnable(switchSelect);
 };
 
-export const getMonitorRect = (imageBuffer: ImageBuffer | undefined) => {
+export const getMonitorRect = (monitorInfo: MonitorInfo | undefined) => {
     return {
         min_x: 0,
         min_y: 0,
-        max_x: imageBuffer?.monitorWidth ?? 0,
-        max_y: imageBuffer?.monitorHeight ?? 0,
+        max_x: monitorInfo?.monitor_width ?? 0,
+        max_y: monitorInfo?.monitor_height ?? 0,
     };
 };
 

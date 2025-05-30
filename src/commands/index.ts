@@ -9,13 +9,6 @@ export enum ImageEncoder {
 
 export type ImageBuffer = {
     encoder: ImageEncoder;
-    monitorX: number;
-    monitorY: number;
-    monitorWidth: number;
-    monitorHeight: number;
-    monitorScaleFactor: number;
-    mouseX: number;
-    mouseY: number;
     data: Blob;
 };
 
@@ -27,29 +20,8 @@ export const captureCurrentMonitor = async (encoder: ImageEncoder): Promise<Imag
         encoder,
     });
 
-    // 将屏幕信息和图像数据分离
-    const monitorInfoLength = 28;
-    const imageDataLength = result.byteLength - monitorInfoLength;
-
-    // 提取屏幕信息
-    const screenInfoView = new DataView(result, imageDataLength, monitorInfoLength);
-    const monitorX = screenInfoView.getInt32(0, true); // i32
-    const monitorY = screenInfoView.getInt32(4, true); // i32
-    const monitorWidth = screenInfoView.getUint32(8, true); // u32
-    const monitorHeight = screenInfoView.getUint32(12, true); // u32
-    const monitorScaleFactor = screenInfoView.getFloat32(16, true); // f32
-    const mouseX = screenInfoView.getInt32(20, true); // i32
-    const mouseY = screenInfoView.getInt32(24, true); // i32
-
     return {
         encoder,
-        monitorX,
-        monitorY,
-        monitorWidth,
-        monitorHeight,
-        monitorScaleFactor,
-        mouseX,
-        mouseY,
         data: new Blob([result]),
     };
 };

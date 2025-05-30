@@ -98,6 +98,7 @@ pub fn run() {
             core::create_fixed_content_window,
             core::read_image_from_clipboard,
             core::create_full_screen_draw_window,
+            core::get_current_monitor_info,
             scroll_screenshot::scroll_screenshot_get_image_data,
             scroll_screenshot::scroll_screenshot_init,
             scroll_screenshot::scroll_screenshot_capture,

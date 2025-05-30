@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useImperativeHandle, useRef } from 'react';
-import { ElementRect, ImageBuffer } from '@/commands';
+import { ElementRect } from '@/commands';
 import { OcrDetectResult } from '@/commands/ocr';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
 import { DrawEvent, DrawEventPublisher } from '../../extra';
@@ -10,11 +10,12 @@ import { Menu } from '@tauri-apps/api/menu';
 import OcrTool from '../drawToolbar/components/tools/ocrTool';
 import { OcrResult, OcrResultActionType } from '@/app/fixedContent/components/ocrResult';
 import { zIndexs } from '@/utils/zIndex';
+import { MonitorInfo } from '@/commands/core';
 
 export type OcrBlocksActionType = {
     init: (
         selectRect: ElementRect,
-        imageBuffer: ImageBuffer,
+        monitorInfo: MonitorInfo,
         canvas: HTMLCanvasElement,
     ) => Promise<void>;
     setEnable: (enable: boolean | ((enable: boolean) => boolean)) => void;
@@ -41,12 +42,12 @@ export const OcrBlocks: React.FC<{
         () => ({
             init: async (
                 selectRect: ElementRect,
-                imageBuffer: ImageBuffer,
+                monitorInfo: MonitorInfo,
                 canvas: HTMLCanvasElement,
             ) => {
                 ocrResultActionRef.current?.init({
                     selectRect,
-                    imageBuffer,
+                    monitorInfo,
                     canvas,
                 });
             },

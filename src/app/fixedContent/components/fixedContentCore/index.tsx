@@ -1,7 +1,5 @@
 import { AppSettingsData, AppSettingsGroup, AppSettingsPublisher } from '@/app/contextWrap';
 import { ElementRect, saveFile, getMousePosition } from '@/commands';
-
-import { ImageBuffer } from '@/commands';
 import { useStateRef } from '@/hooks/useStateRef';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
 import { LogicalPosition, PhysicalSize, PhysicalPosition } from '@tauri-apps/api/dpi';
@@ -22,9 +20,10 @@ import clipboard from 'tauri-plugin-clipboard-api';
 import { Base64 } from 'js-base64';
 import { KeyEventKey, KeyEventValue } from '@/core/hotKeys';
 import { useHotkeys } from 'react-hotkeys-hook';
+import { MonitorInfo } from '@/commands/core';
 
 export type FixedContentInitDrawParams = {
-    imageBuffer: ImageBuffer;
+    monitorInfo: MonitorInfo;
     canvas: HTMLCanvasElement;
 };
 
@@ -215,8 +214,8 @@ export const FixedContentCore: React.FC<{
 
     const initOcrParams = useRef<{
         selectRect: ElementRect;
-        imageBuffer: ImageBuffer;
         canvas: HTMLCanvasElement;
+        monitorInfo: MonitorInfo;
     }>(undefined);
 
     const imageRef = useRef<HTMLImageElement>(null);
@@ -233,7 +232,7 @@ export const FixedContentCore: React.FC<{
         async (params: FixedContentInitDrawParams) => {
             setFixedContentType(FixedContentType.DrawCanvas);
 
-            const { imageBuffer, canvas } = params;
+            const { canvas, monitorInfo } = params;
 
             const ocrRect = {
                 min_x: 0,
@@ -244,19 +243,19 @@ export const FixedContentCore: React.FC<{
             if (!getAppSettings()[AppSettingsGroup.FunctionScreenshot].autoOcrAfterFixed) {
                 initOcrParams.current = {
                     selectRect: ocrRect,
-                    imageBuffer,
+                    monitorInfo,
                     canvas,
                 };
             }
 
             setStyle({
-                width: `${canvas.width / imageBuffer.monitorScaleFactor}px`,
-                height: `${canvas.height / imageBuffer.monitorScaleFactor}px`,
+                width: `${canvas.width / monitorInfo.monitor_scale_factor}px`,
+                height: `${canvas.height / monitorInfo.monitor_scale_factor}px`,
             });
             canvasPropsRef.current = {
                 width: canvas.width,
                 height: canvas.height,
-                scaleFactor: imageBuffer.monitorScaleFactor,
+                scaleFactor: monitorInfo.monitor_scale_factor,
             };
             setCanvasImageUrl(
                 await new Promise<string | undefined>((resolve) => {
@@ -286,7 +285,7 @@ export const FixedContentCore: React.FC<{
                         max_x: canvas.width,
                         max_y: canvas.height,
                     },
-                    imageBuffer,
+                    monitorInfo,
                     canvas,
                 });
             }
@@ -302,7 +301,7 @@ export const FixedContentCore: React.FC<{
                     initHtml(params.htmlContent);
                 } else if ('textContent' in params) {
                     initText(params.textContent);
-                } else if ('imageBuffer' in params) {
+                } else if ('canvas' in params) {
                     initDraw(params);
                 } else if ('imageBlob' in params) {
                     initImage(params.imageBlob);

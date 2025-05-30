@@ -12,11 +12,7 @@ import React, {
 } from 'react';
 import { updateElementPosition } from '../../../drawToolbar/components/dragButton/extra';
 import { ElementRect } from '@/commands';
-import {
-    CaptureEvent,
-    CaptureEventPublisher,
-    ScreenshotTypePublisher,
-} from '@/app/draw/extra';
+import { CaptureEvent, CaptureEventPublisher, ScreenshotTypePublisher } from '@/app/draw/extra';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
 import { ScreenshotType } from '@/functions/screenshot';
 import { debounce } from 'es-toolkit';
@@ -33,7 +29,7 @@ export const ResizeToolbar: React.FC<{
     const { token } = theme.useToken();
 
     const resizeToolbarRef = useRef<HTMLDivElement>(null);
-    const { imageBufferRef } = useContext(DrawContext);
+    const { monitorInfoRef } = useContext(DrawContext);
 
     const [width, setWidth] = useState(0);
     const [height, setHeight] = useState(0);
@@ -45,8 +41,8 @@ export const ResizeToolbar: React.FC<{
                 return;
             }
 
-            const imageBuffer = imageBufferRef.current;
-            if (!imageBuffer) {
+            const monitorInfo = monitorInfoRef.current;
+            if (!monitorInfo) {
                 return;
             }
 
@@ -56,8 +52,8 @@ export const ResizeToolbar: React.FC<{
                 0,
                 new MousePosition(0, resizeToolbar.clientHeight + token.marginXXS),
                 new MousePosition(
-                    selectedRect.min_x / imageBuffer.monitorScaleFactor,
-                    selectedRect.min_y / imageBuffer.monitorScaleFactor,
+                    selectedRect.min_x / monitorInfo.monitor_scale_factor,
+                    selectedRect.min_y / monitorInfo.monitor_scale_factor,
                 ),
                 undefined,
                 true,
@@ -69,19 +65,19 @@ export const ResizeToolbar: React.FC<{
                     0,
                     new MousePosition(
                         -(selectedRect.max_x - selectedRect.min_x) /
-                            imageBuffer.monitorScaleFactor -
+                            monitorInfo.monitor_scale_factor -
                             token.marginXXS,
                         0,
                     ),
                     new MousePosition(
-                        selectedRect.min_x / imageBuffer.monitorScaleFactor,
-                        selectedRect.min_y / imageBuffer.monitorScaleFactor,
+                        selectedRect.min_x / monitorInfo.monitor_scale_factor,
+                        selectedRect.min_y / monitorInfo.monitor_scale_factor,
                     ),
                     undefined,
                 );
             }
         },
-        [imageBufferRef, token.marginXXS],
+        [monitorInfoRef, token.marginXXS],
     );
 
     const setEnable = useCallback((enable: boolean) => {

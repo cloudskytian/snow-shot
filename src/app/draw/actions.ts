@@ -1,12 +1,13 @@
 import { DrawLayerActionType } from './components/drawLayer';
 import { SelectLayerActionType } from './components/selectLayer';
 import { DrawCacheLayerActionType } from './components/drawCacheLayer/extra';
-import { createDrawWindow, ElementRect, ImageBuffer, saveFile } from '@/commands';
+import { createDrawWindow, ElementRect, saveFile } from '@/commands';
 import { Window as AppWindow, PhysicalPosition, PhysicalSize } from '@tauri-apps/api/window';
 import { CaptureStep } from './types';
 import { FixedContentActionType } from '../fixedContent/components/fixedContentCore';
 import { OcrBlocksActionType } from './components/ocrBlocks';
 import { showImageDialog, ImageFormat, ImagePath } from '@/utils/file';
+import { MonitorInfo } from '@/commands/core';
 
 export const getCanvas = async (
     selectRect: ElementRect,
@@ -103,7 +104,7 @@ export const saveToFile = async (
 };
 
 export const fixedToScreen = async (
-    imageBuffer: ImageBuffer,
+    monitorInfo: MonitorInfo,
     appWindow: AppWindow,
     layerContainerElement: HTMLDivElement,
     selectLayerAction: SelectLayerActionType,
@@ -133,7 +134,7 @@ export const fixedToScreen = async (
     }
 
     await Promise.all([
-        fixedContentAction.init({ imageBuffer, canvas: imageCanvas }).then(async () => {
+        fixedContentAction.init({ canvas: imageCanvas, monitorInfo }).then(async () => {
             await hidePromise;
             await Promise.all([
                 appWindow.setPosition(new PhysicalPosition(selectRect.min_x, selectRect.min_y)),
@@ -191,7 +192,7 @@ export const copyToClipboard = async (
 };
 
 export const handleOcrDetect = async (
-    imageBuffer: ImageBuffer,
+    monitorInfo: MonitorInfo,
     selectLayerAction: SelectLayerActionType,
     drawLayerAction: DrawLayerActionType,
     drawCacheLayerAction: DrawCacheLayerActionType,
@@ -207,5 +208,5 @@ export const handleOcrDetect = async (
         return;
     }
 
-    await ocrBlocksAction.init(selectRect, imageBuffer, imageCanvas);
+    await ocrBlocksAction.init(selectRect, monitorInfo, imageCanvas);
 };

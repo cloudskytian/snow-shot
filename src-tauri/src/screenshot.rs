@@ -29,7 +29,7 @@ pub fn get_target_monitor() -> (i32, i32, Monitor) {
 #[command]
 pub async fn capture_current_monitor(encoder: String) -> Response {
     // 获取当前鼠标的位置
-    let (mouse_x, mouse_y, monitor) = get_target_monitor();
+    let (_, _, monitor) = get_target_monitor();
 
     let image_buffer = monitor.capture_image().unwrap();
 
@@ -55,50 +55,6 @@ pub async fn capture_current_monitor(encoder: String) -> Response {
             ))
             .unwrap();
     }
-
-    // 将屏幕信息也推送到前端
-    let monitor_x_bytes = monitor.x().unwrap_or(0).to_le_bytes();
-    let monitor_y_bytes = monitor.y().unwrap_or(0).to_le_bytes();
-    let monitor_width_bytes = monitor.width().unwrap_or(0).to_le_bytes();
-    let monitor_height_bytes = monitor.height().unwrap_or(0).to_le_bytes();
-    let monitor_scale_factor_bytes = monitor.scale_factor().unwrap_or(0.0).to_le_bytes();
-    let mouse_x_bytes = mouse_x.to_le_bytes();
-    let mouse_y_bytes = mouse_y.to_le_bytes();
-
-    buf.push(monitor_x_bytes[0]);
-    buf.push(monitor_x_bytes[1]);
-    buf.push(monitor_x_bytes[2]);
-    buf.push(monitor_x_bytes[3]);
-
-    buf.push(monitor_y_bytes[0]);
-    buf.push(monitor_y_bytes[1]);
-    buf.push(monitor_y_bytes[2]);
-    buf.push(monitor_y_bytes[3]);
-
-    buf.push(monitor_width_bytes[0]);
-    buf.push(monitor_width_bytes[1]);
-    buf.push(monitor_width_bytes[2]);
-    buf.push(monitor_width_bytes[3]);
-
-    buf.push(monitor_height_bytes[0]);
-    buf.push(monitor_height_bytes[1]);
-    buf.push(monitor_height_bytes[2]);
-    buf.push(monitor_height_bytes[3]);
-
-    buf.push(monitor_scale_factor_bytes[0]);
-    buf.push(monitor_scale_factor_bytes[1]);
-    buf.push(monitor_scale_factor_bytes[2]);
-    buf.push(monitor_scale_factor_bytes[3]);
-
-    buf.push(mouse_x_bytes[0]);
-    buf.push(mouse_x_bytes[1]);
-    buf.push(mouse_x_bytes[2]);
-    buf.push(mouse_x_bytes[3]);
-
-    buf.push(mouse_y_bytes[0]);
-    buf.push(mouse_y_bytes[1]);
-    buf.push(mouse_y_bytes[2]);
-    buf.push(mouse_y_bytes[3]);
 
     return Response::new(buf);
 }

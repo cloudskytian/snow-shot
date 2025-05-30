@@ -59,7 +59,7 @@ const StatusBar: React.FC = () => {
     );
 
     const statusBarRef = useRef<HTMLDivElement>(null);
-    const { selectLayerActionRef, imageBufferRef } = useContext(DrawContext);
+    const { selectLayerActionRef, monitorInfoRef } = useContext(DrawContext);
     const [getCaptureStep] = useStateSubscriber(CaptureStepPublisher, undefined);
     const [getDrawState] = useStateSubscriber(DrawStatePublisher, undefined);
     const [isHover, setIsHover] = useState(false);
@@ -200,7 +200,7 @@ const StatusBar: React.FC = () => {
                 return;
             }
 
-            if (!imageBufferRef.current) {
+            if (!monitorInfoRef.current) {
                 return;
             }
 
@@ -217,8 +217,8 @@ const StatusBar: React.FC = () => {
                 setIsHover(false);
                 return;
             }
-            const minX = selectRect.min_x / imageBufferRef.current.monitorScaleFactor;
-            const maxY = selectRect.max_y / imageBufferRef.current.monitorScaleFactor;
+            const minX = selectRect.min_x / monitorInfoRef.current.monitor_scale_factor;
+            const maxY = selectRect.max_y / monitorInfoRef.current.monitor_scale_factor;
             // 矩形现在是正的了，只判断左下角即可
             if (minX < statusBarMaxX && maxY > statusBarMinY) {
                 setIsHover(true);
@@ -227,7 +227,7 @@ const StatusBar: React.FC = () => {
 
             setIsHover(false);
         },
-        [imageBufferRef, selectLayerActionRef],
+        [monitorInfoRef, selectLayerActionRef],
     );
     const onMouseMoveRender = useCallbackRender(onMouseMove);
 

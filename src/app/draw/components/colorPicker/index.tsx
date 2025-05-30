@@ -101,7 +101,7 @@ const ColorPickerCore: React.FC<{
 
     const { token } = theme.useToken();
 
-    const { imageBufferRef, drawLayerActionRef, mousePositionRef, selectLayerActionRef } =
+    const { monitorInfoRef, drawLayerActionRef, mousePositionRef, selectLayerActionRef } =
         useContext(DrawContext);
 
     const updateOpacity = useCallback(() => {
@@ -109,16 +109,16 @@ const ColorPickerCore: React.FC<{
             return;
         }
 
-        const imageBuffer = imageBufferRef.current;
-        if (!imageBuffer) {
+        const monitorInfo = monitorInfoRef.current;
+        if (!monitorInfo) {
             return;
         }
 
         let opacity = '1';
 
         if (enableRef.current) {
-            const mouseX = mousePositionRef.current.mouseX * imageBuffer.monitorScaleFactor;
-            const mouseY = mousePositionRef.current.mouseY * imageBuffer.monitorScaleFactor;
+            const mouseX = mousePositionRef.current.mouseX * monitorInfo.monitor_scale_factor;
+            const mouseY = mousePositionRef.current.mouseY * monitorInfo.monitor_scale_factor;
             if (
                 getAppSettings()[AppSettingsGroup.Screenshot].colorPickerShowMode ===
                 ColorPickerShowMode.BeyondSelectRect
@@ -158,11 +158,11 @@ const ColorPickerCore: React.FC<{
                     // 这时是自动选区，那就根据是否在边缘判断
                     // 一般都是从左上到右下，所以只判断右下边缘即可
                     const maxX =
-                        imageBuffer.monitorWidth -
-                        colorPickerRef.current!.clientWidth * imageBuffer.monitorScaleFactor;
+                        monitorInfo.monitor_width -
+                        colorPickerRef.current!.clientWidth * monitorInfo.monitor_scale_factor;
                     const maxY =
-                        imageBuffer.monitorHeight -
-                        colorPickerRef.current!.clientHeight * imageBuffer.monitorScaleFactor;
+                        monitorInfo.monitor_height -
+                        colorPickerRef.current!.clientHeight * monitorInfo.monitor_scale_factor;
                     if (mouseX > maxX || mouseY > maxY) {
                         opacity = '0.5';
                     }
@@ -173,7 +173,7 @@ const ColorPickerCore: React.FC<{
         }
 
         colorPickerRef.current.style.opacity = opacity;
-    }, [getAppSettings, imageBufferRef, mousePositionRef, selectLayerActionRef, token.marginXXS]);
+    }, [getAppSettings, monitorInfoRef, mousePositionRef, selectLayerActionRef, token.marginXXS]);
 
     const appWindowRef = useRef<AppWindow | undefined>(undefined);
     useEffect(() => {
@@ -323,8 +323,8 @@ const ColorPickerCore: React.FC<{
                 return;
             }
 
-            const imageBuffer = imageBufferRef.current;
-            if (!imageBuffer) {
+            const monitorInfo = monitorInfoRef.current;
+            if (!monitorInfo) {
                 return;
             }
 
@@ -348,8 +348,8 @@ const ColorPickerCore: React.FC<{
             //     imageBufferRef.current!.monitorHeight,
             // );
 
-            mouseX = physicalX ?? Math.floor(mouseX * imageBuffer.monitorScaleFactor);
-            mouseY = physicalY ?? Math.floor(mouseY * imageBuffer.monitorScaleFactor);
+            mouseX = physicalX ?? Math.floor(mouseX * monitorInfo.monitor_scale_factor);
+            mouseY = physicalY ?? Math.floor(mouseY * monitorInfo.monitor_scale_factor);
 
             const ctx = previewCanvasCtxRef.current!;
             const halfPickerSize = Math.floor(previewPickerSize / 2);
@@ -359,7 +359,7 @@ const ColorPickerCore: React.FC<{
             const pickerX = x + halfPickerSize;
             const pickerY = y + halfPickerSize;
             updatePickerPosition(pickerX, pickerY);
-            const baseIndex = (pickerY * imageBuffer.monitorWidth + pickerX) * 4;
+            const baseIndex = (pickerY * monitorInfo.monitor_width + pickerX) * 4;
 
             // 更新颜色
             updateColor(
@@ -371,7 +371,7 @@ const ColorPickerCore: React.FC<{
             // 计算和绘制错开 1 帧率
             updateImageDataPutImageRender(ctx, x, y, imageData);
         },
-        [imageBufferRef, updateColor, updateImageDataPutImageRender, updatePickerPosition],
+        [monitorInfoRef, updateColor, updateImageDataPutImageRender, updatePickerPosition],
     );
     const updateImageRender = useCallbackRenderSlow(updateImageData);
 
@@ -431,8 +431,8 @@ const ColorPickerCore: React.FC<{
 
         // 用截图地址作为 picker 的初始位置
         pickerPositionRef.current = new MousePosition(
-            imageBufferRef.current!.mouseX,
-            imageBufferRef.current!.mouseY,
+            monitorInfoRef.current!.mouse_x,
+            monitorInfoRef.current!.mouse_y,
         );
 
         requestAnimationFrame(() => {
@@ -442,16 +442,21 @@ const ColorPickerCore: React.FC<{
                 ?.getImageData(
                     0,
                     0,
-                    imageBufferRef.current!.monitorWidth,
-                    imageBufferRef.current!.monitorHeight,
+                    monitorInfoRef.current!.monitor_width,
+                    monitorInfoRef.current!.monitor_height,
                     {
                         colorSpace: 'srgb',
                     },
                 );
 
+            console.log(
+                'initImageData',
+                mousePositionRef.current.mouseX,
+                mousePositionRef.current.mouseY,
+            );
             update(mousePositionRef.current.mouseX, mousePositionRef.current.mouseY);
         });
-    }, [drawLayerActionRef, imageBufferRef, mousePositionRef, update]);
+    }, [drawLayerActionRef, monitorInfoRef, mousePositionRef, update]);
     const onCaptureLoad = useCallback(
         (captureLoading: boolean) => {
             setEnableKeyEvent(!captureLoading);
@@ -504,24 +509,24 @@ const ColorPickerCore: React.FC<{
                 // 未启用时，用全局位置简单计算下
                 mouseX = Math.round(
                     (mousePositionRef.current.mouseX + offsetX) *
-                        imageBufferRef.current!.monitorScaleFactor,
+                        monitorInfoRef.current!.monitor_scale_factor,
                 );
                 mouseY = Math.round(
                     (mousePositionRef.current.mouseY + offsetY) *
-                        imageBufferRef.current!.monitorScaleFactor,
+                        monitorInfoRef.current!.monitor_scale_factor,
                 );
             }
 
             if (mouseX < 0) {
                 mouseX = 0;
-            } else if (mouseX > imageBufferRef.current!.monitorWidth) {
-                mouseX = imageBufferRef.current!.monitorWidth;
+            } else if (mouseX > monitorInfoRef.current!.monitor_width) {
+                mouseX = monitorInfoRef.current!.monitor_width;
             }
 
             if (mouseY < 0) {
                 mouseY = 0;
-            } else if (mouseY > imageBufferRef.current!.monitorHeight) {
-                mouseY = imageBufferRef.current!.monitorHeight;
+            } else if (mouseY > monitorInfoRef.current!.monitor_height) {
+                mouseY = monitorInfoRef.current!.monitor_height;
             }
 
             moveCursorFinishedRef.current = false;
@@ -529,14 +534,14 @@ const ColorPickerCore: React.FC<{
 
             if (enableRef.current) {
                 update(
-                    mouseX / imageBufferRef.current!.monitorScaleFactor,
-                    mouseY / imageBufferRef.current!.monitorScaleFactor,
+                    mouseX / monitorInfoRef.current!.monitor_scale_factor,
+                    mouseY / monitorInfoRef.current!.monitor_scale_factor,
                     mouseX,
                     mouseY,
                 );
             }
         },
-        [imageBufferRef, mousePositionRef, update],
+        [monitorInfoRef, mousePositionRef, update],
     );
 
     useImperativeHandle(

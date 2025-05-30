@@ -90,14 +90,14 @@ const DrawCacheLayerCore: React.FC<{
         [history, setExcalidrawEvent],
     );
 
-    const { selectLayerActionRef, imageBufferRef } = useContext(DrawContext);
+    const { selectLayerActionRef, monitorInfoRef } = useContext(DrawContext);
     const drawCoreContextValue = useMemo<DrawCoreContextValue>(() => {
         return {
             getLimitRect: () => {
                 return selectLayerActionRef.current?.getSelectRect();
             },
             getDevicePixelRatio: () => {
-                return imageBufferRef.current?.monitorScaleFactor ?? window.devicePixelRatio;
+                return monitorInfoRef.current?.monitor_scale_factor ?? window.devicePixelRatio;
             },
             getBaseOffset: (limitRect: ElementRect, devicePixelRatio: number) => {
                 return {
@@ -112,7 +112,7 @@ const DrawCacheLayerCore: React.FC<{
                 return mousePositionRef.current;
             },
         };
-    }, [imageBufferRef, selectLayerActionRef, token.marginXXS, mousePositionRef]);
+    }, [selectLayerActionRef, token.marginXXS, mousePositionRef]);
 
     return (
         <DrawCoreContext.Provider value={drawCoreContextValue}>

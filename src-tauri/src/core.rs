@@ -1,4 +1,5 @@
 use enigo::{Axis, Enigo, Mouse};
+use serde::Serialize;
 use std::{
     env,
     path::PathBuf,
@@ -200,4 +201,37 @@ pub async fn create_full_screen_draw_window(app: tauri::AppHandle) {
     .resizable(false)
     .build()
     .unwrap();
+}
+
+#[derive(Serialize, Clone, Copy)]
+pub struct MonitorInfo {
+    mouse_x: i32,
+    mouse_y: i32,
+    monitor_x: i32,
+    monitor_y: i32,
+    monitor_width: u32,
+    monitor_height: u32,
+    monitor_scale_factor: f32,
+}
+
+#[command]
+pub async fn get_current_monitor_info() -> Result<MonitorInfo, ()> {
+    let (mouse_x, mouse_y, monitor) = get_target_monitor();
+
+    let monitor_x = monitor.x().unwrap();
+    let monitor_y = monitor.y().unwrap();
+    let monitor_width = monitor.width().unwrap();
+    let monitor_height = monitor.height().unwrap();
+    let monitor_scale_factor = monitor.scale_factor().unwrap();
+
+    let monitor_info = MonitorInfo {
+        mouse_x: mouse_x,
+        mouse_y: mouse_y,
+        monitor_x: monitor_x,
+        monitor_y: monitor_y,
+        monitor_width: monitor_width,
+        monitor_height: monitor_height,
+        monitor_scale_factor: monitor_scale_factor,
+    };
+    Ok(monitor_info)
 }

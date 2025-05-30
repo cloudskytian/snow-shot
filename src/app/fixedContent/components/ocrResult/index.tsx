@@ -1,5 +1,5 @@
 import { useCallback, useContext, useEffect, useImperativeHandle, useRef } from 'react';
-import { ElementRect, ImageBuffer } from '@/commands';
+import { ElementRect } from '@/commands';
 import { ocrDetect, OcrDetectResult } from '@/commands/ocr';
 import { FormattedMessage, useIntl } from 'react-intl';
 import { theme } from 'antd';
@@ -8,14 +8,15 @@ import { getCurrentWindow, LogicalPosition } from '@tauri-apps/api/window';
 import { Menu } from '@tauri-apps/api/menu';
 import { useHotkeysApp } from '@/hooks/useHotkeysApp';
 import { AntdContext } from '@/components/globalLayoutExtra';
+import { MonitorInfo } from '@/commands/core';
 
 // 定义角度阈值常量（以度为单位）
 const ROTATION_THRESHOLD = 3; // 小于3度的旋转被视为误差，不进行旋转
 
 export type OcrResultInitDrawCanvasParams = {
     selectRect: ElementRect;
-    imageBuffer: ImageBuffer;
     canvas: HTMLCanvasElement;
+    monitorInfo: MonitorInfo;
 };
 
 export type OcrResultInitImageParams = {
@@ -189,7 +190,7 @@ export const OcrResult: React.FC<{
 
     const initDrawCanvas = useCallback(
         async (params: OcrResultInitDrawCanvasParams) => {
-            const { selectRect, imageBuffer, canvas } = params;
+            const { selectRect, canvas, monitorInfo } = params;
 
             const imageBlob = await new Promise<Blob | null>((resolve) => {
                 canvas.toBlob(resolve, 'image/jpeg', 0.8);
@@ -198,7 +199,7 @@ export const OcrResult: React.FC<{
             if (imageBlob) {
                 const ocrResult = await ocrDetect(await imageBlob.arrayBuffer());
                 selectRectRef.current = selectRect;
-                monitorScaleFactorRef.current = imageBuffer.monitorScaleFactor;
+                monitorScaleFactorRef.current = monitorInfo.monitor_scale_factor;
                 updateOcrTextElements(ocrResult);
                 onOcrDetect?.(ocrResult);
             }

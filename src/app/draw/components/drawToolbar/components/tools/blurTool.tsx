@@ -4,8 +4,14 @@ import { useStateSubscriber } from '@/hooks/useStateSubscriber';
 import * as PIXI from 'pixi.js';
 import { CaptureEvent, CaptureEventParams, CaptureEventPublisher } from '@/app/draw/extra';
 import { useCallbackRender } from '@/hooks/useCallbackRender';
-import { ImageBuffer } from '@/commands';
-import { ExcalidrawEventOnChangeParams, ExcalidrawEventParams, ExcalidrawEventPublisher, ExcalidrawOnHandleEraserParams, ExcalidrawOnHandleEraserPublisher } from '@/app/fullScreenDraw/components/drawCore/extra';
+import {
+    ExcalidrawEventOnChangeParams,
+    ExcalidrawEventParams,
+    ExcalidrawEventPublisher,
+    ExcalidrawOnHandleEraserParams,
+    ExcalidrawOnHandleEraserPublisher,
+} from '@/app/fullScreenDraw/components/drawCore/extra';
+import { MonitorInfo } from '@/commands/core';
 
 type BlurSpriteProps = {
     blur: number;
@@ -38,7 +44,7 @@ const isEqualBlurSpriteProps = (
 const BlurToolCore: React.FC = () => {
     const { drawLayerActionRef, drawCacheLayerActionRef } = useContext(DrawContext);
     const imageTextureRef = useRef<PIXI.Texture | undefined>(undefined);
-    const imageBufferRef = useRef<ImageBuffer | undefined>(undefined);
+    const monitorInfoRef = useRef<MonitorInfo | undefined>(undefined);
     const blurSpriteMapRef = useRef<
         Map<
             string,
@@ -52,11 +58,11 @@ const BlurToolCore: React.FC = () => {
     >(new Map());
     const clear = useCallback(() => {
         imageTextureRef.current = undefined;
-        imageBufferRef.current = undefined;
+        monitorInfoRef.current = undefined;
         blurSpriteMapRef.current.clear();
     }, []);
     const init = useCallback(
-        (imageTexture: PIXI.Texture, imageBuffer: ImageBuffer) => {
+        (imageTexture: PIXI.Texture, monitorInfo: MonitorInfo) => {
             if (!drawLayerActionRef.current) {
                 return;
             }
@@ -68,7 +74,7 @@ const BlurToolCore: React.FC = () => {
 
             drawLayerActionRef.current.addChildToTopContainer(blurContainer);
             imageTextureRef.current = imageTexture;
-            imageBufferRef.current = imageBuffer;
+            monitorInfoRef.current = monitorInfo;
         },
         [drawLayerActionRef],
     );
@@ -82,7 +88,7 @@ const BlurToolCore: React.FC = () => {
                 }
 
                 if (params.event === CaptureEvent.onCaptureLoad) {
-                    init(...params.params);
+                    init(params.params[0], params.params[2]);
                 } else if (params.event === CaptureEvent.onCaptureFinish) {
                     clear();
                 }
@@ -102,7 +108,7 @@ const BlurToolCore: React.FC = () => {
             if (
                 !drawLayerActionRef.current ||
                 !blurContainer ||
-                !imageBufferRef.current ||
+                !monitorInfoRef.current ||
                 !imageTextureRef.current
             ) {
                 return;
@@ -129,13 +135,15 @@ const BlurToolCore: React.FC = () => {
                 const blurProps = {
                     blur: element.blur,
                     x:
-                        Math.round(element.x * imageBufferRef.current.monitorScaleFactor) +
-                        scrollX * imageBufferRef.current.monitorScaleFactor,
+                        Math.round(element.x * monitorInfoRef.current.monitor_scale_factor) +
+                        scrollX * monitorInfoRef.current.monitor_scale_factor,
                     y:
-                        Math.round(element.y * imageBufferRef.current.monitorScaleFactor) +
-                        scrollY * imageBufferRef.current.monitorScaleFactor,
-                    width: Math.round(element.width * imageBufferRef.current.monitorScaleFactor),
-                    height: Math.round(element.height * imageBufferRef.current.monitorScaleFactor),
+                        Math.round(element.y * monitorInfoRef.current.monitor_scale_factor) +
+                        scrollY * monitorInfoRef.current.monitor_scale_factor,
+                    width: Math.round(element.width * monitorInfoRef.current.monitor_scale_factor),
+                    height: Math.round(
+                        element.height * monitorInfoRef.current.monitor_scale_factor,
+                    ),
                     angle: element.angle,
                     opacity: element.opacity,
                     zoom: zoom.value,

@@ -14,7 +14,7 @@ export const ScanQrcodeTool: React.FC<{
     const intl = useIntl();
     const { token } = theme.useToken();
     const { message } = useContext(AntdContext);
-    const { selectLayerActionRef, imageBufferRef, drawLayerActionRef } = useContext(DrawContext);
+    const { selectLayerActionRef, monitorInfoRef, drawLayerActionRef } = useContext(DrawContext);
 
     const containerElementRef = useRef<HTMLDivElement>(null);
     const [containerStyle, setContainerStyle] = useState<React.CSSProperties>({});
@@ -22,7 +22,7 @@ export const ScanQrcodeTool: React.FC<{
 
     const inited = useRef(false);
     useEffect(() => {
-        if (imageBufferRef.current === undefined) {
+        if (monitorInfoRef.current === undefined) {
             return;
         }
 
@@ -39,11 +39,11 @@ export const ScanQrcodeTool: React.FC<{
 
         setContainerStyle({
             width:
-                (selectRect.max_x - selectRect.min_x) / imageBufferRef.current.monitorScaleFactor,
+                (selectRect.max_x - selectRect.min_x) / monitorInfoRef.current.monitor_scale_factor,
             height:
-                (selectRect.max_y - selectRect.min_y) / imageBufferRef.current.monitorScaleFactor,
-            left: selectRect.min_x / imageBufferRef.current.monitorScaleFactor,
-            top: selectRect.min_y / imageBufferRef.current.monitorScaleFactor,
+                (selectRect.max_y - selectRect.min_y) / monitorInfoRef.current.monitor_scale_factor,
+            left: selectRect.min_x / monitorInfoRef.current.monitor_scale_factor,
+            top: selectRect.min_y / monitorInfoRef.current.monitor_scale_factor,
             opacity: 1,
         });
 
@@ -90,7 +90,7 @@ export const ScanQrcodeTool: React.FC<{
                     }),
                 );
             });
-    }, [drawLayerActionRef, imageBufferRef, intl, message, selectLayerActionRef]);
+    }, [drawLayerActionRef, monitorInfoRef, intl, message, selectLayerActionRef]);
 
     useHotkeysApp(
         'Ctrl+A',

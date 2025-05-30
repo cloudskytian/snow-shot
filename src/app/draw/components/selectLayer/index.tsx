@@ -7,12 +7,10 @@ import {
     ElementRect,
     getElementFromPosition,
     getWindowElements,
-    ImageBuffer,
     initUiElements,
     initUiElementsCache,
 } from '@/commands';
 import { AppSettingsData, AppSettingsGroup, AppSettingsPublisher } from '@/app/contextWrap';
-import * as PIXI from 'pixi.js';
 import Flatbush from 'flatbush';
 import { useCallbackRender } from '@/hooks/useCallbackRender';
 import { TweenAnimation } from '@/utils/tweenAnimation';
@@ -27,7 +25,12 @@ import {
     SelectState,
 } from './extra';
 import { MousePosition } from '@/utils/mousePosition';
-import { getMonitorRect, ScreenshotTypePublisher } from '../../extra';
+import {
+    CaptureEvent,
+    CaptureEventPublisher,
+    getMonitorRect,
+    ScreenshotTypePublisher,
+} from '../../extra';
 import { CaptureStep, DrawContext } from '../../types';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
 import { CaptureStepPublisher } from '../../extra';
@@ -37,6 +40,7 @@ import { zIndexs } from '@/utils/zIndex';
 import { isHotkeyPressed } from 'react-hotkeys-hook';
 import { KeyEventKey } from '../drawToolbar/components/keyEventWrap/extra';
 import { DrawState, DrawStatePublisher } from '@/app/fullScreenDraw/components/drawCore/extra';
+import { MonitorInfo } from '@/commands/core';
 
 export type SelectLayerActionType = {
     getSelectRect: () => ElementRect | undefined;
@@ -44,7 +48,7 @@ export type SelectLayerActionType = {
     getWindowId: () => number | undefined;
     setEnable: (enable: boolean) => void;
     onExecuteScreenshot: () => Promise<void>;
-    onCaptureReady: (texture: PIXI.Texture, imageBuffer: ImageBuffer) => Promise<void>;
+    onMonitorInfoReady: (monitorInfo: MonitorInfo) => Promise<void>;
     onCaptureFinish: () => Promise<void>;
 };
 
@@ -53,7 +57,7 @@ export type SelectLayerProps = {
 };
 
 const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
-    const imageBufferRef = useRef<ImageBuffer | undefined>(undefined);
+    const monitorInfoRef = useRef<MonitorInfo | undefined>(undefined);
     const resizeToolbarActionRef = useRef<ResizeToolbarActionType | undefined>(undefined);
 
     const { finishCapture, drawToolbarActionRef, colorPickerActionRef } = useContext(DrawContext);
@@ -116,19 +120,34 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
     const lastMouseMovePositionRef = useRef<MousePosition | undefined>(undefined); // 上一次鼠标移动事件触发的参数
     const drawSelectRectAnimationRef = useRef<TweenAnimation<ElementRect> | undefined>(undefined); // 绘制选取框的动画
     const selectStateRef = useRef(SelectState.Auto); // 当前的选择状态
+    const [getCaptureEvent] = useStateSubscriber(CaptureEventPublisher, undefined);
+
+    const tryEnableToolbar = useCallback(() => {
+        if (
+            selectStateRef.current !== SelectState.Selected ||
+            getCaptureEvent()?.event !== CaptureEvent.onCaptureLoad
+        ) {
+            return;
+        }
+
+        drawToolbarActionRef.current?.setEnable(true);
+    }, [drawToolbarActionRef, getCaptureEvent]);
+
     const setSelectState = useCallback(
         (state: SelectState) => {
+            selectStateRef.current = state;
+
             if (state === SelectState.Selected) {
-                drawToolbarActionRef.current?.setEnable(true);
+                tryEnableToolbar();
             } else {
                 drawToolbarActionRef.current?.setEnable(false);
                 changeCursor('crosshair');
             }
-
-            selectStateRef.current = state;
         },
-        [changeCursor, drawToolbarActionRef],
+        [changeCursor, drawToolbarActionRef, tryEnableToolbar],
     );
+    useStateSubscriber(CaptureEventPublisher, tryEnableToolbar);
+
     const mouseDownPositionRef = useRef<MousePosition | undefined>(undefined); // 鼠标按下时的位置
     const dragModeRef = useRef<DragMode | undefined>(undefined); // 拖动模式
     const dragRectRef = useRef<ElementRect | undefined>(undefined); // 拖动矩形
@@ -236,19 +255,19 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
     const updateSelectRect = useCallback(
         (
             rect: ElementRect,
-            imageBuffer: ImageBuffer,
+            monitorInfo: MonitorInfo,
             drawElementMask?: {
                 imageData: ImageData;
             },
             enableScrollScreenshot?: boolean,
         ) => {
             drawSelectRect(
-                imageBuffer.monitorWidth,
-                imageBuffer.monitorHeight,
+                monitorInfo.monitor_width,
+                monitorInfo.monitor_height,
                 rect,
                 selectLayerCanvasContextRef.current!,
                 getAppSettings()[AppSettingsGroup.Common].darkMode,
-                imageBuffer.monitorScaleFactor,
+                monitorInfo.monitor_scale_factor,
                 getScreenshotType(),
                 drawElementMask,
                 enableScrollScreenshot,
@@ -271,7 +290,7 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
     );
 
     const initAnimation = useCallback(
-        (imageBuffer: ImageBuffer) => {
+        (monitorInfo: MonitorInfo) => {
             if (drawSelectRectAnimationRef.current) {
                 drawSelectRectAnimationRef.current.dispose();
             }
@@ -280,25 +299,25 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
                 {
                     min_x: 0,
                     min_y: 0,
-                    max_x: imageBuffer.monitorWidth,
-                    max_y: imageBuffer.monitorHeight,
+                    max_x: monitorInfo.monitor_width,
+                    max_y: monitorInfo.monitor_height,
                 },
                 TWEEN.Easing.Quadratic.Out,
                 100,
                 (rect) => {
-                    updateSelectRect(rect, imageBuffer);
+                    updateSelectRect(rect, monitorInfo);
                 },
             );
         },
         [updateSelectRect],
     );
 
-    const onCaptureReady = useCallback<BaseLayerEventActionType['onCaptureReady']>(
-        async (_texture, imageBuffer): Promise<void> => {
-            imageBufferRef.current = imageBuffer;
-            const { mouseX, mouseY } = imageBuffer;
+    const onMonitorInfoReady = useCallback<SelectLayerActionType['onMonitorInfoReady']>(
+        async (monitorInfo): Promise<void> => {
+            monitorInfoRef.current = monitorInfo;
+            const { mouse_x, mouse_y } = monitorInfo;
             // 初始化下坐标，用来在触发鼠标移动事件前选取坐标
-            lastMouseMovePositionRef.current = new MousePosition(mouseX, mouseY);
+            lastMouseMovePositionRef.current = new MousePosition(mouse_x, mouse_y);
             // 初始化下选择状态
             setSelectState(SelectState.Auto);
 
@@ -307,10 +326,10 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
                     selectLayerCanvasRef.current!.getContext('2d');
             }
 
-            selectLayerCanvasRef.current!.height = imageBuffer.monitorHeight;
-            selectLayerCanvasRef.current!.width = imageBuffer.monitorWidth;
+            selectLayerCanvasRef.current!.height = monitorInfo.monitor_height;
+            selectLayerCanvasRef.current!.width = monitorInfo.monitor_width;
 
-            initAnimation(imageBuffer);
+            initAnimation(monitorInfo);
         },
         [initAnimation, setSelectState],
     );
@@ -327,7 +346,7 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
             if (isEnable) {
                 // 如果有缓存，则把遮罩去除
                 if (opacityImageDataRef.current) {
-                    updateSelectRect(getSelectRect()!, imageBufferRef.current!);
+                    updateSelectRect(getSelectRect()!, monitorInfoRef.current!);
                 }
 
                 return;
@@ -385,7 +404,7 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
 
             updateSelectRect(
                 getSelectRect()!,
-                imageBufferRef.current!,
+                monitorInfoRef.current!,
                 imageData
                     ? {
                           imageData,
@@ -400,10 +419,10 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
         selectLayerCanvasContextRef.current?.clearRect(
             0,
             0,
-            imageBufferRef.current!.monitorWidth,
-            imageBufferRef.current!.monitorHeight,
+            monitorInfoRef.current!.monitor_width,
+            monitorInfoRef.current!.monitor_height,
         );
-        imageBufferRef.current = undefined;
+        monitorInfoRef.current = undefined;
         selectWindowElementLoadingRef.current = true;
         elementsListRTreeRef.current = undefined;
         elementsListRef.current = [];
@@ -419,7 +438,7 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
                 elementRectList =
                     getScreenshotType() === ScreenshotType.TopWindow
                         ? [{ min_x: 0, min_y: 0, max_x: 0, max_y: 0 }]
-                        : [getMonitorRect(imageBufferRef.current)];
+                        : [getMonitorRect(monitorInfoRef.current!)];
             }
 
             const minLevel = 0;
@@ -500,7 +519,7 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
                     currentSelectRect.max_x === getSelectRect()?.max_x &&
                     currentSelectRect.max_y === getSelectRect()?.max_y
                 ) {
-                    updateSelectRect(currentSelectRect, imageBufferRef.current!);
+                    updateSelectRect(currentSelectRect, monitorInfoRef.current!);
                 } else {
                     setSelectRect(
                         currentSelectRect,
@@ -548,13 +567,13 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
 
         if (selectStateRef.current === SelectState.Auto) {
             setSelectState(SelectState.Selected);
-            updateSelectRect(getSelectRect()!, imageBufferRef.current!);
+            updateSelectRect(getSelectRect()!, monitorInfoRef.current!);
         } else if (selectStateRef.current === SelectState.Manual) {
             setSelectState(SelectState.Selected);
-            updateSelectRect(getSelectRect()!, imageBufferRef.current!);
+            updateSelectRect(getSelectRect()!, monitorInfoRef.current!);
         } else if (selectStateRef.current === SelectState.Drag) {
             setSelectState(SelectState.Selected);
-            setSelectRect(limitRect(getSelectRect()!, getMonitorRect(imageBufferRef.current)));
+            setSelectRect(limitRect(getSelectRect()!, getMonitorRect(monitorInfoRef.current)));
             dragRectRef.current = undefined;
         }
 
@@ -600,14 +619,14 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
         DrawStatePublisher,
         useCallback(
             (drawState: DrawState, prevDrawState: DrawState) => {
-                if (!imageBufferRef.current) {
+                if (!monitorInfoRef.current) {
                     return;
                 }
 
                 if (drawState === DrawState.ScrollScreenshot) {
-                    updateSelectRect(getSelectRect()!, imageBufferRef.current, undefined, true);
+                    updateSelectRect(getSelectRect()!, monitorInfoRef.current, undefined, true);
                 } else if (prevDrawState === DrawState.ScrollScreenshot) {
-                    updateSelectRect(getSelectRect()!, imageBufferRef.current, undefined, false);
+                    updateSelectRect(getSelectRect()!, monitorInfoRef.current, undefined, false);
                 }
             },
             [getSelectRect, updateSelectRect],
@@ -649,13 +668,13 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
                 return;
             }
 
-            if (!imageBufferRef.current) {
+            if (!monitorInfoRef.current) {
                 return;
             }
 
             onMouseDown(
                 new MousePosition(e.clientX, e.clientY).scale(
-                    imageBufferRef.current.monitorScaleFactor,
+                    monitorInfoRef.current.monitor_scale_factor,
                 ),
             );
         };
@@ -664,13 +683,13 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
                 return;
             }
 
-            if (!imageBufferRef.current) {
+            if (!monitorInfoRef.current) {
                 return;
             }
 
             onMouseMoveRenderCallback(
                 new MousePosition(e.clientX, e.clientY).scale(
-                    imageBufferRef.current.monitorScaleFactor,
+                    monitorInfoRef.current.monitor_scale_factor,
                 ),
             );
         };
@@ -710,8 +729,8 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
         actionRef,
         () => ({
             onExecuteScreenshot,
-            onCaptureReady: async (texture, imageBuffer) => {
-                await onCaptureReady(texture, imageBuffer);
+            onMonitorInfoReady: async (monitorInfo) => {
+                await onMonitorInfoReady(monitorInfo);
                 refreshMouseMove();
             },
             getWindowId: () => selectedWindowIdRef.current,
@@ -722,7 +741,7 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
             },
             getSelectState: () => selectStateRef.current,
         }),
-        [getSelectRect, onCaptureFinish, onCaptureReady, onExecuteScreenshot, refreshMouseMove],
+        [getSelectRect, onCaptureFinish, onExecuteScreenshot, refreshMouseMove],
     );
 
     useEffect(() => {
@@ -767,7 +786,7 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
                     prevSelectRect.min_y < prevSelectRect.max_y
                 ) {
                     setSelectRect(
-                        limitRect(prevSelectRect, getMonitorRect(imageBufferRef.current)),
+                        limitRect(prevSelectRect, getMonitorRect(monitorInfoRef.current)),
                         false,
                     );
                     setSelectState(SelectState.Selected);
