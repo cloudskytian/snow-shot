@@ -18,7 +18,5 @@ export const finishScreenshot = async () => {
 };
 
 export const releaseDrawPage = async () => {
-    console.log('releaseDrawPage');
-
     await emit('release-draw-page');
 };
