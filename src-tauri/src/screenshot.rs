@@ -242,7 +242,7 @@ pub async fn create_draw_window(app: tauri::AppHandle) {
                 .unwrap()
                 .as_secs()
         ),
-        tauri::WebviewUrl::App("/draw".into()),
+        tauri::WebviewUrl::App(format!("/draw").into()),
     )
     .resizable(false)
     .maximizable(false)

@@ -103,6 +103,7 @@ const DragButtonCore: React.FC<{
             if (!draggingRef.current) return;
 
             mouseCurrentPositionRef.current = mousePosition;
+
             updateDrawToolbarStyleRender();
         },
         [draggingRef, updateDrawToolbarStyleRender],
@@ -129,6 +130,7 @@ const DragButtonCore: React.FC<{
             if (enable) {
                 drawToolbarRef.current!.style.opacity = '1';
                 drawToolbarRef.current!.style.pointerEvents = 'auto';
+
                 updateDrawToolbarStyleRender();
             } else {
                 drawToolbarRef.current!.style.opacity = '0';

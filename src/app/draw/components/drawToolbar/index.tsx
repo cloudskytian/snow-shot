@@ -303,44 +303,17 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
     }, [drawToolbarRef, draggingRef, setDragging]);
 
     const canHandleScreenshotTypeRef = useRef(false);
-    const handleScreenshotType = useCallback(() => {
-        if (!canHandleScreenshotTypeRef.current || !enableRef.current) {
-            return;
-        }
-
-        switch (getScreenshotType()) {
-            case ScreenshotType.Fixed:
-                onFixed();
-                break;
-            case ScreenshotType.OcrDetect:
-                onToolClick(DrawState.OcrDetect);
-                break;
-            case ScreenshotType.TopWindow:
-                onTopWindow();
-                break;
-            case ScreenshotType.Default:
-            default:
-                onToolClick(DrawState.Idle);
-                break;
-        }
-        canHandleScreenshotTypeRef.current = false;
-    }, [getScreenshotType, onFixed, onToolClick, onTopWindow]);
     useStateSubscriber(
         CaptureEventPublisher,
-        useCallback(
-            (event: CaptureEventParams | undefined) => {
-                if (!event) {
-                    return;
-                }
+        useCallback((event: CaptureEventParams | undefined) => {
+            if (!event) {
+                return;
+            }
 
-                if (event.event === CaptureEvent.onCaptureReady) {
-                    canHandleScreenshotTypeRef.current = true;
-                } else if (event.event === CaptureEvent.onCaptureLoad) {
-                    handleScreenshotType();
-                }
-            },
-            [handleScreenshotType],
-        ),
+            if (event.event === CaptureEvent.onCaptureReady) {
+                canHandleScreenshotTypeRef.current = true;
+            }
+        }, []),
     );
 
     const onEnableChange = useCallback(
@@ -348,9 +321,26 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
             enableRef.current = enable;
             dragButtonActionRef.current?.setEnable(enable);
 
-            handleScreenshotType();
+            if (canHandleScreenshotTypeRef.current) {
+                switch (getScreenshotType()) {
+                    case ScreenshotType.Fixed:
+                        onFixed();
+                        break;
+                    case ScreenshotType.OcrDetect:
+                        onToolClick(DrawState.OcrDetect);
+                        break;
+                    case ScreenshotType.TopWindow:
+                        onTopWindow();
+                        break;
+                    case ScreenshotType.Default:
+                    default:
+                        onToolClick(DrawState.Idle);
+                        break;
+                }
+                canHandleScreenshotTypeRef.current = false;
+            }
         },
-        [handleScreenshotType],
+        [getScreenshotType, onFixed, onToolClick, onTopWindow],
     );
 
     const setEnable = useCallback(

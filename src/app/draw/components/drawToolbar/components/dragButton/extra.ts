@@ -110,6 +110,7 @@ export const updateElementPosition = (
     if (!(cancelOnBeyond && dragRes.isBeyond)) {
         const translateX = baseOffsetX + dragRes.rect.min_x;
         const translateY = baseOffsetY + dragRes.rect.min_y;
+
         element.style.transform = `translate(${translateX}px, ${translateY}px)`;
     }
 

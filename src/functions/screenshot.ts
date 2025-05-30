@@ -16,3 +16,9 @@ export const executeScreenshot = async (type: ScreenshotType = ScreenshotType.De
 export const finishScreenshot = async () => {
     await emit('finish-screenshot');
 };
+
+export const releaseDrawPage = async () => {
+    console.log('releaseDrawPage');
+
+    await emit('release-draw-page');
+};

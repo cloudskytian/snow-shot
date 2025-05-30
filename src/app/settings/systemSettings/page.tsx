@@ -27,7 +27,7 @@ export default function SystemSettings() {
 
     const { updateAppSettings } = useContext(AppSettingsActionContext);
     const [commonForm] = Form.useForm<AppSettingsData[AppSettingsGroup.SystemCommon]>();
-    const [renderForm] = Form.useForm<AppSettingsData[AppSettingsGroup.Render]>();
+    // const [renderForm] = Form.useForm<AppSettingsData[AppSettingsGroup.Render]>();
     const [scrollScreenshotForm] =
         Form.useForm<AppSettingsData[AppSettingsGroup.SystemScrollScreenshot]>();
     const [chatForm] = Form.useForm<AppSettingsData[AppSettingsGroup.SystemChat]>();
@@ -39,12 +39,12 @@ export default function SystemSettings() {
             (settings: AppSettingsData, preSettings?: AppSettingsData) => {
                 setAppSettingsLoading(false);
 
-                if (
-                    preSettings === undefined ||
-                    preSettings[AppSettingsGroup.Render] !== settings[AppSettingsGroup.Render]
-                ) {
-                    renderForm.setFieldsValue(settings[AppSettingsGroup.Render]);
-                }
+                // if (
+                //     preSettings === undefined ||
+                //     preSettings[AppSettingsGroup.Render] !== settings[AppSettingsGroup.Render]
+                // ) {
+                //     renderForm.setFieldsValue(settings[AppSettingsGroup.Render]);
+                // }
 
                 if (
                     preSettings === undefined ||
@@ -80,7 +80,7 @@ export default function SystemSettings() {
                     );
                 }
             },
-            [renderForm, commonForm, chatForm, networkForm, scrollScreenshotForm],
+            [commonForm, chatForm, networkForm, scrollScreenshotForm],
         ),
         true,
     );
@@ -140,7 +140,7 @@ export default function SystemSettings() {
 
             <Divider />
 
-            <GroupTitle
+            {/* <GroupTitle
                 id="renderSettings"
                 extra={
                     <ResetSettingsButton
@@ -173,7 +173,7 @@ export default function SystemSettings() {
                 </ProForm>
             </Spin>
 
-            <Divider />
+            <Divider /> */}
 
             <GroupTitle
                 id="networkSettings"

@@ -449,11 +449,6 @@ const ColorPickerCore: React.FC<{
                     },
                 );
 
-            console.log(
-                'initImageData',
-                mousePositionRef.current.mouseX,
-                mousePositionRef.current.mouseY,
-            );
             update(mousePositionRef.current.mouseX, mousePositionRef.current.mouseY);
         });
     }, [drawLayerActionRef, monitorInfoRef, mousePositionRef, update]);

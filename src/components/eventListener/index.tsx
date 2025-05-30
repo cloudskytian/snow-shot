@@ -131,6 +131,10 @@ const EventListenerCore: React.FC<{ children: React.ReactNode }> = ({ children }
                     event: 'finish-screenshot',
                     callback: async () => {},
                 });
+                defaultListener.push({
+                    event: 'release-draw-page',
+                    callback: async () => {},
+                });
             }
 
             if (isFullScreenDraw) {

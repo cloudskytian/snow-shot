@@ -741,7 +741,7 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
             },
             getSelectState: () => selectStateRef.current,
         }),
-        [getSelectRect, onCaptureFinish, onExecuteScreenshot, refreshMouseMove],
+        [getSelectRect, onCaptureFinish, onExecuteScreenshot, onMonitorInfoReady, refreshMouseMove],
     );
 
     useEffect(() => {

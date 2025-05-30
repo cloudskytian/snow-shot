@@ -12,8 +12,6 @@ type KeyConfig = {
 };
 
 const convertKeyConfigToString = (keys: Set<string>, spicalRecordKeys?: Record<string, number>) => {
-    console.log(keys, spicalRecordKeys);
-
     const keysArray = Array.from(keys).map((item) => {
         return `${item[0].toUpperCase()}${item.slice(1).toLowerCase()}`;
     });

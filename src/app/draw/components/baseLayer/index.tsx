@@ -12,10 +12,9 @@ import React, {
 import * as PIXI from 'pixi.js';
 import { ElementRect, ImageBuffer } from '@/commands';
 import styles from './index.module.css';
-import { AppSettingsData, AppSettingsGroup } from '@/app/contextWrap';
-import { useAppSettingsLoad } from '@/hooks/useAppSettingsLoad';
 import { last } from 'es-toolkit';
 import { MonitorInfo } from '@/commands/core';
+import { releaseDrawPage } from '@/functions/screenshot';
 
 export type BaseLayerContextType = {
     /** 调整画布大小 */
@@ -56,6 +55,10 @@ export const BaseLayerContext = React.createContext<BaseLayerContextType>({
 
 export type BaseLayerEventActionType = {
     /**
+     * 初始化画布
+     */
+    initCanvas: (antialias: boolean) => Promise<void>;
+    /**
      * 执行截图
      */
     onExecuteScreenshot: () => Promise<void>;
@@ -71,6 +74,10 @@ export type BaseLayerEventActionType = {
         imageBuffer: ImageBuffer,
         monitorInfo: MonitorInfo,
     ) => Promise<void>;
+    /**
+     * 显示器信息准备
+     */
+    onMonitorInfoReady: (monitorInfo: MonitorInfo) => void;
     /**
      * 截图加载完成
      */
@@ -128,10 +135,12 @@ export type BaseLayerActionType = {
 } & BaseLayerEventActionType;
 
 export const defaultBaseLayerActions: BaseLayerActionType = {
+    initCanvas: () => Promise.resolve(),
     onCanvasReady: () => {},
     onCaptureReady: () => Promise.resolve(),
     onCaptureLoad: () => Promise.resolve(),
     onCaptureFinish: () => Promise.resolve(),
+    onMonitorInfoReady: () => {},
     setEnable: () => {},
     onExecuteScreenshot: () => Promise.resolve(),
     getCanvasApp: () => null,
@@ -145,6 +154,10 @@ export const defaultBaseLayerActions: BaseLayerActionType = {
 };
 
 type BaseLayerCoreActionType = {
+    /**
+     * 初始化画布
+     */
+    initCanvas: (antialias: boolean) => Promise<void>;
     resizeCanvas: (width: number, height: number) => void;
     clearCanvas: () => Promise<void>;
     getCanvasApp: () => PIXI.Application | undefined;
@@ -188,6 +201,7 @@ export const BaseLayerCore: React.FC<
         container.y = 0;
         canvasApp.stage.addChild(container);
         canvasContainerListRef.current.push(container);
+
         return container;
     }, []);
 
@@ -201,8 +215,15 @@ export const BaseLayerCore: React.FC<
     }, []);
 
     /** 初始化画布 */
-    const initCanvas = useCallback(
+    const initedRef = useRef(false);
+    const initCanvas = useCallback<BaseLayerCoreActionType['initCanvas']>(
         async (antialias: boolean) => {
+            if (initedRef.current) {
+                return;
+            }
+
+            initedRef.current = true;
+
             disposeCanvas();
 
             const canvasApp = new PIXI.Application();
@@ -221,26 +242,14 @@ export const BaseLayerCore: React.FC<
             canvasApp.ticker.minFPS = 0;
             canvasAppRef.current = canvasApp;
             layerContainerElementRef.current?.appendChild(canvasApp.canvas);
+
             onCanvasReadyAction(canvasApp);
+
+            releaseDrawPage();
         },
         [disposeCanvas, onCanvasReadyAction],
     );
 
-    useAppSettingsLoad(
-        useCallback(
-            (settings: AppSettingsData, preSettings?: AppSettingsData) => {
-                if (
-                    preSettings === undefined ||
-                    preSettings[AppSettingsGroup.Render].antialias !==
-                        settings[AppSettingsGroup.Render].antialias
-                ) {
-                    initCanvas(settings.render.antialias);
-                }
-            },
-            [initCanvas],
-        ),
-        true,
-    );
     /** 调整画布大小 */
     const resizeCanvas = useCallback(
         (width: number, height: number) => {
@@ -249,9 +258,10 @@ export const BaseLayerCore: React.FC<
                 return;
             }
 
-            canvasApp.renderer.resize(width, height);
             // 创建根画布容器
             createNewCanvasContainer();
+
+            canvasApp.renderer.resize(width, height);
         },
         [createNewCanvasContainer],
     );
@@ -343,6 +353,12 @@ export const BaseLayerCore: React.FC<
         return canvasApp.renderer.extract.canvas(canvasApp.stage);
     }, []);
 
+    useEffect(() => {
+        return () => {
+            disposeCanvas();
+        };
+    }, [initCanvas, disposeCanvas]);
+
     useImperativeHandle(
         actionRef,
         () => ({
@@ -356,6 +372,7 @@ export const BaseLayerCore: React.FC<
             createNewCanvasContainer,
             getImageData,
             getCanvas,
+            initCanvas,
         }),
         [
             resizeCanvas,
@@ -368,6 +385,7 @@ export const BaseLayerCore: React.FC<
             createNewCanvasContainer,
             getImageData,
             getCanvas,
+            initCanvas,
         ],
     );
 
@@ -423,15 +441,27 @@ export function withBaseLayer<
 
         const [layerEnable, setLayerEnable] = useState(false);
 
+        const initCanvas = useCallback<BaseLayerActionType['initCanvas']>(
+            async (antialias: boolean) => {
+                await baseLayerCoreActionRef.current?.initCanvas(antialias);
+            },
+            [],
+        );
         const onCaptureReady = useCallback(
             async (...args: Parameters<BaseLayerActionType['onCaptureReady']>) => {
-                const [, , monitorInfo] = args;
+                await layerActionRef.current?.onCaptureReady(...args);
+            },
+            [],
+        );
+        const onMonitorInfoReady = useCallback(
+            async (...args: Parameters<BaseLayerActionType['onMonitorInfoReady']>) => {
+                const [monitorInfo] = args;
 
                 // 将画布调整为截图大小
                 const { monitor_width, monitor_height } = monitorInfo;
 
                 baseLayerCoreActionRef.current?.resizeCanvas(monitor_width, monitor_height);
-                await layerActionRef.current?.onCaptureReady(...args);
+                layerActionRef.current?.onMonitorInfoReady(...args);
             },
             [],
         );
@@ -499,6 +529,7 @@ export function withBaseLayer<
                 ...(layerActionRef.current as ActionType),
                 onCaptureReady,
                 onCaptureFinish,
+                onMonitorInfoReady,
                 setEnable,
                 getCanvasApp,
                 getLayerContainerElement,
@@ -507,10 +538,12 @@ export function withBaseLayer<
                 changeCursor,
                 getImageData,
                 getCanvas,
+                initCanvas,
             }),
             [
                 onCaptureReady,
                 onCaptureFinish,
+                onMonitorInfoReady,
                 setEnable,
                 getCanvasApp,
                 getLayerContainerElement,
@@ -519,6 +552,7 @@ export function withBaseLayer<
                 changeCursor,
                 getImageData,
                 getCanvas,
+                initCanvas,
             ],
         );
 

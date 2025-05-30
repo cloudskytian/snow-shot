@@ -112,7 +112,7 @@ const DrawCacheLayerCore: React.FC<{
                 return mousePositionRef.current;
             },
         };
-    }, [selectLayerActionRef, token.marginXXS, mousePositionRef]);
+    }, [selectLayerActionRef, monitorInfoRef, token.marginXXS, mousePositionRef]);
 
     return (
         <DrawCoreContext.Provider value={drawCoreContextValue}>
