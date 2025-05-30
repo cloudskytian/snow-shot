@@ -17,6 +17,7 @@ import { ElementRect } from '@/commands';
 import { updateElementPosition } from './extra';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
 import { DrawState, DrawStatePublisher } from '@/app/fullScreenDraw/components/drawCore/extra';
+import { CaptureEvent, CaptureEventParams, CaptureEventPublisher } from '@/app/draw/extra';
 
 export type DragButtonActionType = {
     setEnable: (enable: boolean) => void;
@@ -142,8 +143,6 @@ const DragButtonCore: React.FC<{
                     max_y: 0,
                 };
                 toolbarPreviousRectRef.current = undefined;
-                mouseOriginPositionRef.current = new MousePosition(0, 0);
-                mouseCurrentPositionRef.current = new MousePosition(0, 0);
             }
         },
         [drawToolbarRef, updateDrawToolbarStyleRender],
@@ -169,6 +168,15 @@ const DragButtonCore: React.FC<{
         [updateDrawToolbarStyleRender],
     );
     useStateSubscriber(DrawStatePublisher, onDrawStateChange);
+    useStateSubscriber(
+        CaptureEventPublisher,
+        useCallback((event: CaptureEventParams | undefined) => {
+            if (event?.event === CaptureEvent.onExecuteScreenshot) {
+                mouseOriginPositionRef.current = new MousePosition(0, 0);
+                mouseCurrentPositionRef.current = new MousePosition(0, 0);
+            }
+        }, []),
+    );
 
     useImperativeHandle(actionRef, () => {
         return {
