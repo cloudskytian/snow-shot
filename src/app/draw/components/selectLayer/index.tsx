@@ -468,17 +468,22 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
     );
 
     const setSelectRect = useCallback(
-        (rect: ElementRect, ignoreAnimation: boolean = false) => {
-            drawSelectRectAnimationRef.current?.update(
-                rect,
-                ignoreAnimation || getAppSettings()[AppSettingsGroup.Screenshot].disableAnimation,
-            );
+        (rect: ElementRect, ignoreAnimation: boolean = false, forceUpdate: boolean = false) => {
+            if (forceUpdate) {
+                updateSelectRect(rect, monitorInfoRef.current!);
+            } else {
+                drawSelectRectAnimationRef.current?.update(
+                    rect,
+                    ignoreAnimation ||
+                        getAppSettings()[AppSettingsGroup.Screenshot].disableAnimation,
+                );
+            }
             resizeToolbarActionRef.current?.setSize(
                 rect.max_x - rect.min_x,
                 rect.max_y - rect.min_y,
             );
         },
-        [getAppSettings],
+        [getAppSettings, updateSelectRect],
     );
 
     const onMouseDown = useCallback(
@@ -519,7 +524,7 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
                     currentSelectRect.max_x === getSelectRect()?.max_x &&
                     currentSelectRect.max_y === getSelectRect()?.max_y
                 ) {
-                    updateSelectRect(currentSelectRect, monitorInfoRef.current!);
+                    setSelectRect(currentSelectRect, true, true);
                 } else {
                     setSelectRect(
                         currentSelectRect,
@@ -557,7 +562,6 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
             setSelectRect,
             setSelectState,
             updateDragMode,
-            updateSelectRect,
         ],
     );
     const onMouseUp = useCallback(() => {
@@ -567,10 +571,10 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
 
         if (selectStateRef.current === SelectState.Auto) {
             setSelectState(SelectState.Selected);
-            updateSelectRect(getSelectRect()!, monitorInfoRef.current!);
+            setSelectRect(getSelectRect()!, true, true);
         } else if (selectStateRef.current === SelectState.Manual) {
             setSelectState(SelectState.Selected);
-            updateSelectRect(getSelectRect()!, monitorInfoRef.current!);
+            setSelectRect(getSelectRect()!, true, true);
         } else if (selectStateRef.current === SelectState.Drag) {
             setSelectState(SelectState.Selected);
             setSelectRect(limitRect(getSelectRect()!, getMonitorRect(monitorInfoRef.current)));
@@ -578,7 +582,7 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
         }
 
         mouseDownPositionRef.current = undefined;
-    }, [getSelectRect, setSelectRect, setSelectState, updateSelectRect]);
+    }, [getSelectRect, setSelectRect, setSelectState]);
 
     const onMouseMoveRenderCallback = useCallbackRender(onMouseMove);
     // 用上一次的鼠标移动事件触发 onMouseMove 来更新一些状态
