@@ -177,6 +177,7 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
         selectWindowElementLoadingRef.current = true;
 
         const windowElements = await getWindowElements();
+
         const rectList: ElementRect[] = [];
         const initUiElementsCachePromise = initUiElementsCache();
         const map = new Map<number, number>();
@@ -184,7 +185,12 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
         const rTree = new Flatbush(windowElements.length);
         windowElements.forEach((windowElement, index) => {
             const rect = windowElement.element_rect;
-            rectList.push(rect);
+            rectList.push({
+                min_x: rect.min_x - monitorInfoRef.current!.monitor_x,
+                min_y: rect.min_y - monitorInfoRef.current!.monitor_y,
+                max_x: rect.max_x - monitorInfoRef.current!.monitor_x,
+                max_y: rect.max_y - monitorInfoRef.current!.monitor_y,
+            });
 
             rTree.add(rect.min_x, rect.min_y, rect.max_x, rect.max_y);
             map.set(index, windowElement.window_id);
@@ -251,15 +257,6 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
                     rectIndexs[0],
                 );
             }
-
-            result = result.map((rect) => {
-                return {
-                    min_x: rect.min_x - monitorInfoRef.current!.monitor_x,
-                    min_y: rect.min_y - monitorInfoRef.current!.monitor_y,
-                    max_x: rect.max_x - monitorInfoRef.current!.monitor_x,
-                    max_y: rect.max_y - monitorInfoRef.current!.monitor_y,
-                };
-            });
 
             return result;
         },
@@ -329,6 +326,9 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
     const onMonitorInfoReady = useCallback<SelectLayerActionType['onMonitorInfoReady']>(
         async (monitorInfo): Promise<void> => {
             monitorInfoRef.current = monitorInfo;
+
+            const initSelectWindowElementPromise = initSelectWindowElement();
+
             const { mouse_x, mouse_y } = monitorInfo;
             // 初始化下坐标，用来在触发鼠标移动事件前选取坐标
             lastMouseMovePositionRef.current = new MousePosition(mouse_x, mouse_y);
@@ -344,8 +344,10 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
             selectLayerCanvasRef.current!.width = monitorInfo.monitor_width;
 
             initAnimation(monitorInfo);
+
+            await initSelectWindowElementPromise;
         },
-        [initAnimation, setSelectState],
+        [initAnimation, initSelectWindowElement, setSelectState],
     );
 
     const opacityImageDataRef = useRef<
@@ -465,7 +467,12 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
                 selectWindowFromMousePositionLevelRef.current = maxLevel;
             }
 
-            return elementRectList[currentLevel];
+            return {
+                min_x: elementRectList[currentLevel].min_x,
+                min_y: elementRectList[currentLevel].min_y,
+                max_x: elementRectList[currentLevel].max_x,
+                max_y: elementRectList[currentLevel].max_y,
+            };
         },
         [getElementRectFromMousePosition, getScreenshotType],
     );
@@ -533,14 +540,8 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
                 const currentSelectRect = await autoSelect(mousePosition);
 
                 // 注意做个纠正，防止超出显示器范围
-                currentSelectRect.min_x = Math.max(
-                    currentSelectRect.min_x,
-                    0,
-                );
-                currentSelectRect.min_y = Math.max(
-                    currentSelectRect.min_y,
-                    0,
-                );
+                currentSelectRect.min_x = Math.max(currentSelectRect.min_x, 0);
+                currentSelectRect.min_y = Math.max(currentSelectRect.min_y, 0);
                 currentSelectRect.max_x = Math.min(
                     currentSelectRect.max_x,
                     monitorInfoRef.current!.monitor_width,
@@ -645,12 +646,7 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
 
     const onExecuteScreenshot = useCallback<
         BaseLayerEventActionType['onExecuteScreenshot']
-    >(async () => {
-        await initSelectWindowElement();
-
-        // 初始化可能晚于截图准备
-        refreshMouseMove();
-    }, [initSelectWindowElement, refreshMouseMove]);
+    >(async () => {}, []);
 
     useStateSubscriber(
         DrawStatePublisher,
