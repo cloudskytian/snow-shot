@@ -10,7 +10,7 @@ import { useIntl } from 'react-intl';
 import { ModalTranslator, ModalTranslatorActionType } from './components/modalTranslator';
 
 const OcrTool: React.FC<{
-    onReplace: (result: OcrDetectResult) => void;
+    onReplace: (result: OcrDetectResult, ignoreScale?: boolean) => void;
 }> = ({ onReplace }) => {
     const intl = useIntl();
 

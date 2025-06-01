@@ -85,8 +85,8 @@ export const OcrBlocks: React.FC<{
         };
     }, [initMenu]);
 
-    const onReplace = useCallback((result: OcrDetectResult) => {
-        ocrResultActionRef.current?.updateOcrTextElements(result);
+    const onReplace = useCallback((result: OcrDetectResult, ignoreScale?: boolean) => {
+        ocrResultActionRef.current?.updateOcrTextElements(result, ignoreScale);
     }, []);
 
     const onOcrDetect = useCallback(

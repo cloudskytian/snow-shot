@@ -29,7 +29,7 @@ export type OcrResultActionType = {
     setEnable: (enable: boolean | ((enable: boolean) => boolean)) => void;
     setScale: (scale: number) => void;
     clear: () => void;
-    updateOcrTextElements: (ocrResult: OcrDetectResult) => void;
+    updateOcrTextElements: (ocrResult: OcrDetectResult, ignoreScale?: boolean) => void;
 };
 
 export const OcrResult: React.FC<{
@@ -70,7 +70,7 @@ export const OcrResult: React.FC<{
     const selectRectRef = useRef<ElementRect>(undefined);
     const monitorScaleFactorRef = useRef<number>(undefined);
     const updateOcrTextElements = useCallback(
-        (ocrResult: OcrDetectResult) => {
+        (ocrResult: OcrDetectResult, ignoreScale?: boolean) => {
             const monitorScaleFactor = monitorScaleFactorRef.current;
             const selectRect = selectRectRef.current;
 
@@ -137,16 +137,13 @@ export const OcrResult: React.FC<{
 
                 const textElement = document.createElement('div');
                 textElement.innerText = block.text;
-                textElement.style.fontSize = '12px';
                 textElement.style.color = token.colorText;
                 textElement.style.display = 'inline-block';
-                textElement.style.whiteSpace = 'nowrap';
 
                 const textWrapElement = document.createElement('div');
                 textWrapElement.style.position = 'absolute';
                 textWrapElement.style.width = `${width}px`;
                 textWrapElement.style.height = `${height}px`;
-                textWrapElement.style.textAlign = 'center';
                 textWrapElement.style.transformOrigin = 'center';
                 textWrapElement.style.backdropFilter = 'blur(8px)';
                 textWrapElement.style.display = 'flex';
@@ -158,6 +155,16 @@ export const OcrResult: React.FC<{
                 const isVertical = height > width * 1.5;
                 if (isVertical) {
                     textWrapElement.style.writingMode = 'vertical-rl';
+                }
+
+                if (ignoreScale) {
+                    textElement.style.whiteSpace = 'normal';
+                    textElement.style.fontSize = '16px';
+                    textElement.style.wordBreak = 'break-all';
+                } else {
+                    textElement.style.fontSize = '12px';
+                    textElement.style.whiteSpace = 'nowrap';
+                    textWrapElement.style.textAlign = 'center';
                 }
 
                 textWrapElement.appendChild(textElement);

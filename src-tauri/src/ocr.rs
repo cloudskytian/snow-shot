@@ -87,7 +87,7 @@ pub async fn ocr_detect(
         1.6,
         true,
         false,
-        0.0,
+        0.9, // 屏幕截取的文字质量通常较高，且非横向排版的情况较少，尽量减少角度的影响
     );
 
     match ocr_result {

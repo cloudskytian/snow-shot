@@ -8,8 +8,9 @@ import { TranslationApiType } from '@/app/settings/functionSettings/extra';
 import { OcrDetectResult } from '@/commands/ocr';
 import { AntdContext, HotkeysScope } from '@/components/globalLayoutExtra';
 import { Translator, TranslatorActionType } from '@/components/translator';
+import { useStateRef } from '@/hooks/useStateRef';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
-import { Form, Modal, Switch, theme } from 'antd';
+import { Form, Modal, Space, Switch, theme } from 'antd';
 import { trim } from 'es-toolkit';
 import React, {
     useCallback,
@@ -29,7 +30,7 @@ export type ModalTranslatorActionType = {
 export const ModalTranslator: React.FC<{
     ocrResult: OcrDetectResult | undefined;
     actionRef: React.RefObject<ModalTranslatorActionType | undefined>;
-    onReplace: (result: OcrDetectResult) => void;
+    onReplace: (result: OcrDetectResult, ignoreScale?: boolean) => void;
 }> = ({ ocrResult, actionRef, onReplace: onReplaceCallback }) => {
     const intl = useIntl();
     const { token } = theme.useToken();
@@ -38,12 +39,17 @@ export const ModalTranslator: React.FC<{
     const translatorActionRef = useRef<TranslatorActionType>(undefined);
     const { disableScope, enableScope } = useHotkeysContext();
 
-    const [autoReplace, setAutoReplace] = useState(false);
+    const [autoReplace, setAutoReplace, autoReplaceRef] = useStateRef(false);
+    const [keepLayout, setKeepLayout, keepLayoutRef] = useStateRef(false);
     useStateSubscriber(
         AppSettingsPublisher,
-        useCallback((appSettings: AppSettingsData) => {
-            setAutoReplace(appSettings[AppSettingsGroup.Cache].ocrTranslateAutoReplace);
-        }, []),
+        useCallback(
+            (appSettings: AppSettingsData) => {
+                setAutoReplace(appSettings[AppSettingsGroup.Cache].ocrTranslateAutoReplace);
+                setKeepLayout(appSettings[AppSettingsGroup.Cache].ocrTranslateKeepLayout);
+            },
+            [setAutoReplace, setKeepLayout],
+        ),
     );
     const { updateAppSettings } = useContext(AppSettingsActionContext);
 
@@ -52,14 +58,21 @@ export const ModalTranslator: React.FC<{
     const startTranslate = useCallback(() => {
         setOpen(true);
 
-        // 将 Ocr 结果转为 json 格式进行翻译
-        const textLines: Record<string, string> = {};
-        ocrResult?.text_blocks.forEach((block, index) => {
-            textLines[`line${index + 1}`] = block.text;
-        });
+        let sourceContent = '';
+        if (keepLayoutRef.current) {
+            // 将 Ocr 结果转为 json 格式进行翻译
+            const textLines: Record<string, string> = {};
+            ocrResult?.text_blocks.forEach((block, index) => {
+                textLines[`line${index + 1}`] = block.text;
+            });
 
-        translatorActionRef.current?.setSourceContent(JSON.stringify(textLines, undefined, 1));
-    }, [ocrResult]);
+            sourceContent = JSON.stringify(textLines, undefined, 1);
+        } else {
+            sourceContent = ocrResult?.text_blocks.map((block) => block.text).join('   ') ?? '';
+        }
+
+        translatorActionRef.current?.setSourceContent(sourceContent);
+    }, [keepLayoutRef, ocrResult?.text_blocks]);
 
     useImperativeHandle(
         actionRef,
@@ -70,10 +83,56 @@ export const ModalTranslator: React.FC<{
             [startTranslate],
         ),
     );
+    // 保留排版自动刷新内容
+    useEffect(() => {
+        if (!open) {
+            return;
+        }
+
+        startTranslate();
+    }, [keepLayout, open, startTranslate]);
 
     const translateResult = useRef<string>(undefined);
     const replaceOcrResult = useCallback(() => {
         if (!translateResult.current || !ocrResult) {
+            return;
+        }
+
+        if (!keepLayoutRef.current) {
+            let boxPointMinX = 0;
+            let boxPointMinY = 0;
+            let boxPointMaxX = 0;
+            let boxPointMaxY = 0;
+
+            ocrResult.text_blocks.forEach((block) => {
+                boxPointMinX = Math.min(boxPointMinX, block.box_points[0].x);
+                boxPointMinY = Math.min(boxPointMinY, block.box_points[0].y);
+                boxPointMaxX = Math.max(boxPointMaxX, block.box_points[2].x);
+                boxPointMaxY = Math.max(boxPointMaxY, block.box_points[2].y);
+            });
+
+            onReplaceCallback(
+                {
+                    text_blocks: [
+                        {
+                            box_points: [
+                                { x: boxPointMinX, y: boxPointMinY },
+                                { x: boxPointMaxX, y: boxPointMinY },
+                                { x: boxPointMaxX, y: boxPointMaxY },
+                                { x: boxPointMinX, y: boxPointMaxY },
+                            ],
+                            text: translateResult.current
+                                .split('\n')
+                                .map((line) => trim(line))
+                                .filter((line) => line.length > 0)
+                                .join('\n'),
+                            text_score: 1,
+                        },
+                    ],
+                },
+                true,
+            );
+
             return;
         }
 
@@ -142,7 +201,7 @@ export const ModalTranslator: React.FC<{
         };
 
         onReplaceCallback(result);
-    }, [intl, message, ocrResult, onReplaceCallback]);
+    }, [intl, keepLayoutRef, message, ocrResult, onReplaceCallback]);
 
     useEffect(() => {
         if (open) {
@@ -159,12 +218,12 @@ export const ModalTranslator: React.FC<{
     const onTranslateComplete = useCallback(
         (result: string) => {
             translateResult.current = result;
-            if (autoReplace) {
+            if (autoReplaceRef.current) {
                 replaceOcrResult();
                 setOpen(false);
             }
         },
-        [autoReplace, replaceOcrResult],
+        [autoReplaceRef, replaceOcrResult],
     );
 
     useEffect(() => {
@@ -190,6 +249,53 @@ export const ModalTranslator: React.FC<{
             centered
             forceRender={!!ocrResult}
         >
+            <Form style={{ margin: token.margin }}>
+                <Space size={token.margin}>
+                    <Form.Item
+                        label={<FormattedMessage id="draw.ocrDetect.translate.autoReplace" />}
+                        name="result"
+                        layout="horizontal"
+                    >
+                        <Switch
+                            checked={autoReplace}
+                            onChange={(checked) => {
+                                updateAppSettings(
+                                    AppSettingsGroup.Cache,
+                                    { ocrTranslateAutoReplace: checked },
+                                    true,
+                                    true,
+                                    false,
+                                    true,
+                                    true,
+                                );
+                                setAutoReplace(checked);
+                            }}
+                        />
+                    </Form.Item>
+                    <Form.Item
+                        label={<FormattedMessage id="draw.ocrDetect.translate.keepLayout" />}
+                        name="result"
+                        layout="horizontal"
+                    >
+                        <Switch
+                            checked={keepLayout}
+                            onChange={(checked) => {
+                                updateAppSettings(
+                                    AppSettingsGroup.Cache,
+                                    { ocrTranslateKeepLayout: checked },
+                                    true,
+                                    true,
+                                    false,
+                                    true,
+                                    true,
+                                );
+                                setKeepLayout(checked);
+                            }}
+                        />
+                    </Form.Item>
+                </Space>
+            </Form>
+
             {ocrResult && (
                 <Translator
                     disableInput
@@ -198,30 +304,6 @@ export const ModalTranslator: React.FC<{
                     tryCatchTranslation
                 />
             )}
-
-            <Form style={{ margin: token.margin }}>
-                <Form.Item
-                    label={<FormattedMessage id="draw.ocrDetect.translate.autoReplace" />}
-                    name="result"
-                    layout="horizontal"
-                >
-                    <Switch
-                        checked={autoReplace}
-                        onChange={(checked) => {
-                            updateAppSettings(
-                                AppSettingsGroup.Cache,
-                                { ocrTranslateAutoReplace: checked },
-                                true,
-                                true,
-                                false,
-                                true,
-                                true,
-                            );
-                            setAutoReplace(checked);
-                        }}
-                    />
-                </Form.Item>
-            </Form>
         </Modal>
     );
 };

@@ -101,6 +101,7 @@ export type AppSettingsData = {
         translationDomain: TranslationDomain;
         targetLanguage: string;
         ocrTranslateAutoReplace: boolean;
+        ocrTranslateKeepLayout: boolean;
         colorPickerColorFormatIndex: number;
         prevImageFormat: ImageFormat;
         prevSelectRect: ElementRect;
@@ -191,6 +192,7 @@ export const defaultAppSettingsData: AppSettingsData = {
         translationDomain: TranslationDomain.General,
         targetLanguage: '',
         ocrTranslateAutoReplace: true,
+        ocrTranslateKeepLayout: false,
         colorPickerColorFormatIndex: 0,
         prevImageFormat: ImageFormat.PNG,
         prevSelectRect: {
@@ -468,6 +470,10 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
                         typeof newSettings?.ocrTranslateAutoReplace === 'boolean'
                             ? newSettings.ocrTranslateAutoReplace
                             : (prevSettings?.ocrTranslateAutoReplace ?? true),
+                    ocrTranslateKeepLayout:
+                        typeof newSettings?.ocrTranslateKeepLayout === 'boolean'
+                            ? newSettings.ocrTranslateKeepLayout
+                            : (prevSettings?.ocrTranslateKeepLayout ?? false),
                     colorPickerColorFormatIndex:
                         typeof newSettings?.colorPickerColorFormatIndex === 'number'
                             ? newSettings.colorPickerColorFormatIndex
