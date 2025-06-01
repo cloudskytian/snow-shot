@@ -7,11 +7,13 @@ mod os;
 mod screenshot;
 mod scroll_screenshot;
 mod services;
+
 use std::sync::Mutex;
 
 use enigo::{Enigo, Settings};
 use ocr::OcrLiteWrap;
 use os::ui_automation::UIElements;
+use os::free_drag::{remove_window_proc};
 use paddle_ocr_rs::ocr_lite::OcrLite;
 use tauri::Manager;
 use tauri_plugin_log::{Target, TargetKind};
@@ -70,6 +72,13 @@ pub fn run() {
 
             Ok(())
         })
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { .. } = event {
+                if let Ok(hwnd) = window.hwnd() {
+                    let _ = remove_window_proc(hwnd);
+                }
+            }
+        })
         .manage(ui_elements)
         .manage(ocr_instance)
         .manage(auto_start_hide_window)
@@ -86,6 +95,7 @@ pub fn run() {
             screenshot::switch_always_on_top,
             screenshot::set_draw_window_style,
             core::exit_app,
+            core::enable_free_drag,
             file::save_file,
             ocr::ocr_detect,
             ocr::ocr_init,

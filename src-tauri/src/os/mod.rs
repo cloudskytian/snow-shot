@@ -4,6 +4,9 @@ pub mod ui_automation;
 #[cfg(target_os = "windows")]
 #[path = "./utils/windows.rs"]
 pub mod utils;
+#[cfg(target_os = "windows")]
+#[path = "./free_drag/windows.rs"]
+pub mod free_drag;
 
 // #[cfg(target_os = "linux")]
 // #[path = "./linux.rs"]

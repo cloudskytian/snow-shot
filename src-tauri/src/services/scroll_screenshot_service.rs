@@ -1,5 +1,5 @@
-use fast_image_resize::{FilterType, ResizeAlg, ResizeOptions};
 use fast_image_resize::{PixelType, Resizer, images::Image};
+use fast_image_resize::{ResizeAlg, ResizeOptions};
 use hora::core::ann_index::ANNIndex;
 use hora::core::metrics::Metric;
 use hora::index::{hnsw_idx::HNSWIndex, hnsw_params::HNSWParams};

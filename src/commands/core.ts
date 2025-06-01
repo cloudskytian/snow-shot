@@ -61,3 +61,8 @@ export const getCurrentMonitorInfo = async () => {
     const result = await invoke<MonitorInfo>('get_current_monitor_info');
     return result;
 };
+
+export const enableFreeDrag = async () => {
+    const result = await invoke<void>('enable_free_drag');
+    return result;
+};

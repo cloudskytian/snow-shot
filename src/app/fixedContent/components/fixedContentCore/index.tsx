@@ -4,7 +4,7 @@ import { useStateRef } from '@/hooks/useStateRef';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
 import { LogicalPosition, PhysicalSize, PhysicalPosition } from '@tauri-apps/api/dpi';
 import { Menu } from '@tauri-apps/api/menu';
-import { getCurrentWindow } from '@tauri-apps/api/window';
+import { getCurrentWindow, Window as AppWindow } from '@tauri-apps/api/window';
 import { Button, theme } from 'antd';
 import { useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { useIntl } from 'react-intl';
@@ -20,7 +20,9 @@ import clipboard from 'tauri-plugin-clipboard-api';
 import { Base64 } from 'js-base64';
 import { KeyEventKey, KeyEventValue } from '@/core/hotKeys';
 import { useHotkeys } from 'react-hotkeys-hook';
-import { MonitorInfo } from '@/commands/core';
+import { enableFreeDrag, MonitorInfo } from '@/commands/core';
+import { getCurrentWebview, Webview } from '@tauri-apps/api/webview';
+import { setDrawWindowStyle } from '@/commands/screenshot';
 
 export type FixedContentInitDrawParams = {
     monitorInfo: MonitorInfo;
@@ -78,6 +80,13 @@ export const FixedContentCore: React.FC<{
             setHotkeys(settings[AppSettingsGroup.KeyEvent]);
         }, []),
     );
+
+    const appWindowRef = useRef<AppWindow | undefined>(undefined);
+    const appWebViewRef = useRef<Webview | undefined>(undefined);
+    useEffect(() => {
+        appWindowRef.current = getCurrentWindow();
+        appWebViewRef.current = getCurrentWebview();
+    }, []);
 
     const [getAppSettings] = useStateSubscriber(AppSettingsPublisher, undefined);
     const ocrResultActionRef = useRef<OcrResultActionType>(undefined);
@@ -297,6 +306,11 @@ export const FixedContentCore: React.FC<{
         actionRef,
         () => ({
             init: async (params) => {
+                setTimeout(() => {
+                    setDrawWindowStyle();
+                    enableFreeDrag();
+                }, 128);
+
                 if ('htmlContent' in params) {
                     initHtml(params.htmlContent);
                 } else if ('textContent' in params) {
@@ -332,15 +346,22 @@ export const FixedContentCore: React.FC<{
         | undefined
     >(undefined);
     const switchThumbnail = useCallback(async () => {
+        const appWindow = appWindowRef.current;
+        if (!appWindow) {
+            return;
+        }
+
+        setDrawWindowStyle();
+
         if (originWindowSizeAndPositionRef.current) {
-            await getCurrentWindow().setSize(originWindowSizeAndPositionRef.current.size);
-            await getCurrentWindow().setPosition(originWindowSizeAndPositionRef.current.position);
+            await appWindow.setSize(originWindowSizeAndPositionRef.current.size);
+            await appWindow.setPosition(originWindowSizeAndPositionRef.current.position);
             originWindowSizeAndPositionRef.current = undefined;
             setIsThumbnail(false);
         } else {
             const [windowSize, windowPosition] = await Promise.all([
-                getCurrentWindow().innerSize(),
-                getCurrentWindow().outerPosition(),
+                appWindow.innerSize(),
+                appWindow.outerPosition(),
             ]);
 
             originWindowSizeAndPositionRef.current = {
@@ -363,14 +384,12 @@ export const FixedContentCore: React.FC<{
 
                 // 同时设置窗口大小和位置
                 await Promise.all([
-                    getCurrentWindow().setSize(new PhysicalSize(thumbnailSize, thumbnailSize)),
-                    getCurrentWindow().setPosition(
-                        new PhysicalPosition(Math.round(newX), Math.round(newY)),
-                    ),
+                    appWindow.setSize(new PhysicalSize(thumbnailSize, thumbnailSize)),
+                    appWindow.setPosition(new PhysicalPosition(Math.round(newX), Math.round(newY))),
                 ]);
             } else {
                 // 普通缩略图，只改变窗口大小
-                getCurrentWindow().setSize(new PhysicalSize(thumbnailSize, thumbnailSize));
+                appWindow.setSize(new PhysicalSize(thumbnailSize, thumbnailSize));
             }
 
             setIsThumbnail(true);
@@ -380,11 +399,15 @@ export const FixedContentCore: React.FC<{
     const menuRef = useRef<Menu>(undefined);
 
     const initMenu = useCallback(async () => {
-        const window = getCurrentWindow();
+        const appWindow = appWindowRef.current;
+        if (!appWindow) {
+            return;
+        }
+
         const menu = await Menu.new({
             items: [
                 {
-                    id: `${window.label}-copyTool`,
+                    id: `${appWindow.label}-copyTool`,
                     text: intl.formatMessage({ id: 'draw.copyTool' }),
                     action: async () => {
                         if (fixedContentType === FixedContentType.DrawCanvas) {
@@ -429,7 +452,7 @@ export const FixedContentCore: React.FC<{
                 fixedContentType === FixedContentType.DrawCanvas ||
                 fixedContentType === FixedContentType.Image
                     ? {
-                          id: `${window.label}-saveTool`,
+                          id: `${appWindow.label}-saveTool`,
                           text: intl.formatMessage({ id: 'draw.saveTool' }),
                           action: async () => {
                               const filePath = await dialog.save({
@@ -472,7 +495,7 @@ export const FixedContentCore: React.FC<{
                 fixedContentType === FixedContentType.DrawCanvas ||
                 fixedContentType === FixedContentType.Image
                     ? {
-                          id: `${window.label}-ocrTool`,
+                          id: `${appWindow.label}-ocrTool`,
                           text: intl.formatMessage({ id: 'draw.showOrHideOcrResult' }),
                           action: async () => {
                               if (initOcrParams.current) {
@@ -493,7 +516,7 @@ export const FixedContentCore: React.FC<{
                 fixedContentType === FixedContentType.Html ||
                 fixedContentType === FixedContentType.Text
                     ? {
-                          id: `${window.label}-selectTextTool`,
+                          id: `${appWindow.label}-selectTextTool`,
                           text: intl.formatMessage({ id: 'draw.selectText' }),
                           action: async () => {
                               setEnableSelectText((enable) => !enable);
@@ -501,7 +524,7 @@ export const FixedContentCore: React.FC<{
                       }
                     : undefined,
                 {
-                    id: `${window.label}-switchThumbnailTool`,
+                    id: `${appWindow.label}-switchThumbnailTool`,
                     text: intl.formatMessage({ id: 'draw.switchThumbnail' }),
                     accelerator: hotkeys?.[KeyEventKey.FixedContentSwitchThumbnail]?.hotKey,
                     action: async () => {
@@ -509,7 +532,7 @@ export const FixedContentCore: React.FC<{
                     },
                 },
                 {
-                    id: `${window.label}-closeTool`,
+                    id: `${appWindow.label}-closeTool`,
                     text: intl.formatMessage({ id: 'draw.close' }),
                     accelerator: hotkeys?.[KeyEventKey.FixedContentCloseWindow]?.hotKey,
                     action: async () => {
@@ -549,6 +572,12 @@ export const FixedContentCore: React.FC<{
 
     const scaleWindow = useCallback(
         async (scaleDelta: number) => {
+            const appWindow = appWindowRef.current;
+            const appWebView = appWebViewRef.current;
+            if (!appWindow || !appWebView) {
+                return;
+            }
+
             if (!styleRef.current.width) {
                 return;
             }
@@ -560,8 +589,6 @@ export const FixedContentCore: React.FC<{
 
             const zoomWithMouse =
                 getAppSettings()[AppSettingsGroup.FunctionFixedContent].zoomWithMouse;
-
-            const window = getCurrentWindow();
 
             let targetScale = scaleRef.current + scaleDelta;
 
@@ -575,6 +602,8 @@ export const FixedContentCore: React.FC<{
                 return;
             }
 
+            setDrawWindowStyle();
+
             // 计算新的窗口尺寸
             const newWidth = Math.round((canvasPropsRef.current.width * targetScale) / 100);
             const newHeight = Math.round((canvasPropsRef.current.height * targetScale) / 100);
@@ -583,8 +612,8 @@ export const FixedContentCore: React.FC<{
                 try {
                     // 获取当前鼠标位置和窗口位置
                     const [mouseX, mouseY] = await getMousePosition();
-                    const currentPosition = await window.outerPosition();
-                    const currentSize = await window.outerSize();
+                    const currentPosition = await appWindow.outerPosition();
+                    const currentSize = await appWindow.outerSize();
 
                     // 计算鼠标相对于窗口的位置（比例）
                     const mouseRelativeX = (mouseX - currentPosition.x) / currentSize.width;
@@ -596,19 +625,26 @@ export const FixedContentCore: React.FC<{
 
                     // 同时设置窗口大小和位置
                     await Promise.all([
-                        window.setSize(new PhysicalSize(newWidth, newHeight)),
-                        window.setPosition(
+                        appWindow.setSize(new PhysicalSize(newWidth, newHeight)),
+                        appWebView.setSize(new PhysicalSize(newWidth, newHeight)),
+                        appWindow.setPosition(
                             new PhysicalPosition(Math.round(newX), Math.round(newY)),
                         ),
                     ]);
                 } catch (error) {
                     console.error('Error during mouse-centered scaling:', error);
                     // 如果出错，回退到普通缩放
-                    window.setSize(new PhysicalSize(newWidth, newHeight));
+                    await Promise.all([
+                        appWindow.setSize(new PhysicalSize(newWidth, newHeight)),
+                        appWebView.setSize(new PhysicalSize(newWidth, newHeight)),
+                    ]);
                 }
             } else {
                 // 普通缩放，只改变窗口大小
-                window.setSize(new PhysicalSize(newWidth, newHeight));
+                await Promise.all([
+                    appWindow.setSize(new PhysicalSize(newWidth, newHeight)),
+                    appWebView.setSize(new PhysicalSize(newWidth, newHeight)),
+                ]);
             }
 
             setScale(targetScale);

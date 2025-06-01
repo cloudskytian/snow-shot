@@ -375,7 +375,7 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
             subToolContainer.style.opacity = '1';
             drawToolbarOpacityWrapRef.current.style.transition = subToolContainer.style.transition;
             drawToolbarOpacityWrapRef.current.style.opacity = subToolContainer.style.opacity;
-        }, 1000);
+        }, 512);
     }, [token.motionDurationMid, token.motionEaseInOut]);
     useStateSubscriber(
         DrawEventPublisher,

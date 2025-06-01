@@ -24,7 +24,7 @@ tauri = { version = "^2.3", features = [
     "tray-icon",
     "devtools",
     "image-ico",
-    "image-png"
+    "image-png",
 ] }
 tauri-plugin-log = "^2"
 tauri-plugin-fs = "^2"
@@ -35,6 +35,8 @@ image = { version = "^0.25", features = ["png", "webp"] }
 windows = { version = "0.61.1", features = [
     "Win32_Foundation",
     "UI_UIAutomation",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_System_LibraryLoader",
 ] }
 thiserror = "2.0.12"
 uiautomation = "^0.18"
