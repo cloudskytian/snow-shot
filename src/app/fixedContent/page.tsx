@@ -4,9 +4,9 @@ import { useCallback, useEffect, useRef } from 'react';
 import { FixedContentCore, FixedContentActionType } from './components/fixedContentCore';
 import clipboard from 'tauri-plugin-clipboard-api';
 import { showWindow } from '@/utils/window';
-import { getCurrentWindow, PhysicalSize } from '@tauri-apps/api/window';
+import { getCurrentWindow, PhysicalPosition, PhysicalSize } from '@tauri-apps/api/window';
 import { setDrawWindowStyle } from '@/commands/screenshot';
-import { readImageFromClipboard } from '@/commands/core';
+import { getCurrentMonitorInfo, readImageFromClipboard } from '@/commands/core';
 import { scrollScreenshotClear, scrollScreenshotGetImageData } from '@/commands/scrollScreenshot';
 
 export default function FixedContentPage() {
@@ -72,6 +72,8 @@ export default function FixedContentPage() {
                 return;
             }
 
+            const monitorInfoPromise = getCurrentMonitorInfo();
+
             let width = 0;
             let height = 0;
             if ('width' in container && 'height' in container) {
@@ -90,9 +92,19 @@ export default function FixedContentPage() {
             if (width > 0 && height > 0) {
                 const windowWidth = Math.floor(width / scaleFactor);
                 const windowHeight = Math.floor(height / scaleFactor);
+                const monitorInfo = await monitorInfoPromise;
                 await Promise.all([
                     appWindow.setSize(new PhysicalSize(windowWidth, windowHeight)),
-                    appWindow.center(),
+                    appWindow.setPosition(
+                        new PhysicalPosition(
+                            Math.round(
+                                monitorInfo.monitor_x + monitorInfo.mouse_x - windowWidth / 2,
+                            ),
+                            Math.round(
+                                monitorInfo.monitor_y + monitorInfo.mouse_y - windowHeight / 2,
+                            ),
+                        ),
+                    ),
                 ]);
                 showWindow();
                 setDrawWindowStyle();

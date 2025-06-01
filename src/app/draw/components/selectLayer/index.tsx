@@ -185,12 +185,7 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
         const rTree = new Flatbush(windowElements.length);
         windowElements.forEach((windowElement, index) => {
             const rect = windowElement.element_rect;
-            rectList.push({
-                min_x: rect.min_x - monitorInfoRef.current!.monitor_x,
-                min_y: rect.min_y - monitorInfoRef.current!.monitor_y,
-                max_x: rect.max_x - monitorInfoRef.current!.monitor_x,
-                max_y: rect.max_y - monitorInfoRef.current!.monitor_y,
-            });
+            rectList.push(rect);
 
             rTree.add(rect.min_x, rect.min_y, rect.max_x, rect.max_y);
             map.set(index, windowElement.window_id);
@@ -209,12 +204,7 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
      * 通过鼠标坐标获取候选框
      */
     const getElementRectFromMousePosition = useCallback(
-        async (mousePositionParams: MousePosition): Promise<ElementRect[] | undefined> => {
-            const mousePosition = new MousePosition(
-                mousePositionParams.mouseX + monitorInfoRef.current!.monitor_x,
-                mousePositionParams.mouseY + monitorInfoRef.current!.monitor_y,
-            );
-
+        async (mousePosition: MousePosition): Promise<ElementRect[] | undefined> => {
             if (selectWindowElementLoadingRef.current) {
                 return undefined;
             }
@@ -228,8 +218,8 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
             if (isEnableFindChildrenElements()) {
                 try {
                     elementRectList = await getElementFromPosition(
-                        mousePosition.mouseX,
-                        mousePosition.mouseY,
+                        mousePosition.mouseX + monitorInfoRef.current!.monitor_x,
+                        mousePosition.mouseY + monitorInfoRef.current!.monitor_y,
                     );
                 } catch {
                     // 获取元素失败，忽略
@@ -327,8 +317,6 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
         async (monitorInfo): Promise<void> => {
             monitorInfoRef.current = monitorInfo;
 
-            const initSelectWindowElementPromise = initSelectWindowElement();
-
             const { mouse_x, mouse_y } = monitorInfo;
             // 初始化下坐标，用来在触发鼠标移动事件前选取坐标
             lastMouseMovePositionRef.current = new MousePosition(mouse_x, mouse_y);
@@ -344,10 +332,8 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
             selectLayerCanvasRef.current!.width = monitorInfo.monitor_width;
 
             initAnimation(monitorInfo);
-
-            await initSelectWindowElementPromise;
         },
-        [initAnimation, initSelectWindowElement, setSelectState],
+        [initAnimation, setSelectState],
     );
 
     const opacityImageDataRef = useRef<
@@ -646,7 +632,12 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
 
     const onExecuteScreenshot = useCallback<
         BaseLayerEventActionType['onExecuteScreenshot']
-    >(async () => {}, []);
+    >(async () => {
+        await initSelectWindowElement();
+
+        // 初始化可能晚于截图准备
+        refreshMouseMove();
+    }, [initSelectWindowElement, refreshMouseMove]);
 
     useStateSubscriber(
         DrawStatePublisher,

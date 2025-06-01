@@ -182,10 +182,10 @@ pub async fn get_window_elements() -> Result<Vec<WindowElement>, ()> {
 
         rect_list.push(WindowElement {
             element_rect: ElementRect {
-                min_x: x,
-                min_y: y,
-                max_x: x + width as i32,
-                max_y: y + height as i32,
+                min_x: x - monitor_min_x,
+                min_y: y - monitor_min_y,
+                max_x: x + width as i32 - monitor_min_x,
+                max_y: y + height as i32 - monitor_min_y,
             },
             window_id,
         });

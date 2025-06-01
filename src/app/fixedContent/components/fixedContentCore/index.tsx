@@ -347,15 +347,19 @@ export const FixedContentCore: React.FC<{
     >(undefined);
     const switchThumbnail = useCallback(async () => {
         const appWindow = appWindowRef.current;
-        if (!appWindow) {
+        const appWebView = appWebViewRef.current;
+        if (!appWindow || !appWebView) {
             return;
         }
 
         setDrawWindowStyle();
 
         if (originWindowSizeAndPositionRef.current) {
-            await appWindow.setSize(originWindowSizeAndPositionRef.current.size);
-            await appWindow.setPosition(originWindowSizeAndPositionRef.current.position);
+            await Promise.all([
+                appWindow.setSize(originWindowSizeAndPositionRef.current.size),
+                appWebView.setSize(originWindowSizeAndPositionRef.current.size),
+                appWindow.setPosition(originWindowSizeAndPositionRef.current.position),
+            ]);
             originWindowSizeAndPositionRef.current = undefined;
             setIsThumbnail(false);
         } else {
@@ -386,10 +390,14 @@ export const FixedContentCore: React.FC<{
                 await Promise.all([
                     appWindow.setSize(new PhysicalSize(thumbnailSize, thumbnailSize)),
                     appWindow.setPosition(new PhysicalPosition(Math.round(newX), Math.round(newY))),
+                    appWebView.setSize(new PhysicalSize(thumbnailSize, thumbnailSize)),
                 ]);
             } else {
                 // 普通缩略图，只改变窗口大小
-                appWindow.setSize(new PhysicalSize(thumbnailSize, thumbnailSize));
+                await Promise.all([
+                    appWindow.setSize(new PhysicalSize(thumbnailSize, thumbnailSize)),
+                    appWebView.setSize(new PhysicalSize(thumbnailSize, thumbnailSize)),
+                ]);
             }
 
             setIsThumbnail(true);
@@ -611,9 +619,11 @@ export const FixedContentCore: React.FC<{
             if (zoomWithMouse) {
                 try {
                     // 获取当前鼠标位置和窗口位置
-                    const [mouseX, mouseY] = await getMousePosition();
-                    const currentPosition = await appWindow.outerPosition();
-                    const currentSize = await appWindow.outerSize();
+                    const [[mouseX, mouseY], currentPosition, currentSize] = await Promise.all([
+                        getMousePosition(),
+                        appWindow.outerPosition(),
+                        appWindow.outerSize(),
+                    ]);
 
                     // 计算鼠标相对于窗口的位置（比例）
                     const mouseRelativeX = (mouseX - currentPosition.x) / currentSize.width;

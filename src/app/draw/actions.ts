@@ -137,7 +137,12 @@ export const fixedToScreen = async (
         fixedContentAction.init({ canvas: imageCanvas, monitorInfo }).then(async () => {
             await hidePromise;
             await Promise.all([
-                appWindow.setPosition(new PhysicalPosition(selectRect.min_x, selectRect.min_y)),
+                appWindow.setPosition(
+                    new PhysicalPosition(
+                        selectRect.min_x + monitorInfo.monitor_x,
+                        selectRect.min_y + monitorInfo.monitor_y,
+                    ),
+                ),
                 appWindow.setSize(
                     new PhysicalSize(
                         selectRect.max_x - selectRect.min_x,
