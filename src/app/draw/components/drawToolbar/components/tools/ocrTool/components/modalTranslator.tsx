@@ -68,7 +68,7 @@ export const ModalTranslator: React.FC<{
 
             sourceContent = JSON.stringify(textLines, undefined, 1);
         } else {
-            sourceContent = ocrResult?.text_blocks.map((block) => block.text).join('   ') ?? '';
+            sourceContent = ocrResult?.text_blocks.map((block) => block.text).join('\n') ?? '';
         }
 
         translatorActionRef.current?.setSourceContent(sourceContent);

@@ -152,7 +152,8 @@ export const OcrResult: React.FC<{
                 textWrapElement.style.backgroundColor = Color(token.colorBgContainer)
                     .alpha(0.42)
                     .toString();
-                const isVertical = height > width * 1.5;
+
+                const isVertical = !ignoreScale && height > width * 1.5;
                 if (isVertical) {
                     textWrapElement.style.writingMode = 'vertical-rl';
                 }
