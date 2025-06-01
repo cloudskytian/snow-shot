@@ -69,10 +69,18 @@ pub async fn init_ui_elements(
         Err(_) => return Err(()),
     };
 
-    match ui_elements.init(match window.hwnd() {
-        Ok(hwnd) => Some(hwnd),
-        Err(_) => None,
-    }) {
+    // 多显示器时会获取错误
+    // 临时用显示器坐标做个转换，后面兼容跨屏截图时取消
+    let (_, _, monitor) = get_target_monitor();
+
+    match ui_elements.init(
+        match window.hwnd() {
+            Ok(hwnd) => Some(hwnd),
+            Err(_) => None,
+        },
+        monitor.x().unwrap_or(0),
+        monitor.y().unwrap_or(0),
+    ) {
         Ok(_) => Ok(()),
         Err(_) => Err(()),
     }

@@ -92,6 +92,8 @@ pub struct UIElements {
     element_rect_tree: Arena<uiautomation::types::Rect>,
     init_window: Option<UIElement>,
     init_window_runtime_id: Option<Vec<i32>>,
+    monitor_x: i32,
+    monitor_y: i32,
 }
 
 unsafe impl Send for UIElements {}
@@ -108,10 +110,20 @@ impl UIElements {
             element_rect_tree: Arena::new(),
             element_cache: RTree::new(),
             element_level_map: HashMap::new(),
+            monitor_x: 0,
+            monitor_y: 0,
         }
     }
 
-    pub fn init(&mut self, hwnd: Option<HWND>) -> Result<(), AutomationError> {
+    pub fn init(
+        &mut self,
+        hwnd: Option<HWND>,
+        monitor_x: i32,
+        monitor_y: i32,
+    ) -> Result<(), AutomationError> {
+        self.monitor_x = monitor_x;
+        self.monitor_y = monitor_y;
+
         if self.automation.is_some() && self.automation_walker.is_some() {
             return Ok(());
         }
@@ -188,6 +200,7 @@ impl UIElements {
             current_level,
             root_element_rect,
             root_tree_token,
+            true,
         );
 
         if let Ok(mut current_child) = automation_walker.get_first_child(&root_element) {
@@ -220,6 +233,7 @@ impl UIElements {
                 current_level,
                 parent_rtree_rect,
                 parent_tree_token,
+                true,
             );
             while let Ok(sibling) = automation_walker.get_next_sibling(&current_child) {
                 if sibling
@@ -247,6 +261,7 @@ impl UIElements {
                     current_level,
                     parent_rtree_rect,
                     parent_tree_token,
+                    true,
                 );
 
                 current_child = sibling;
@@ -284,8 +299,20 @@ impl UIElements {
         element_level: ElementLevel,
         parent_element_rect: uiautomation::types::Rect,
         parent_tree_token: Token,
+        ignore_clip: bool,
     ) -> (uiautomation::types::Rect, Token) {
-        let element_rect = Self::clip_rect(element_rect, parent_element_rect);
+        let element_rect = uiautomation::types::Rect::new(
+            element_rect.get_left() - self.monitor_x,
+            element_rect.get_top() - self.monitor_y,
+            element_rect.get_right() - self.monitor_x,
+            element_rect.get_bottom() - self.monitor_y,
+        );
+
+        let element_rect = if ignore_clip {
+            element_rect
+        } else {
+            Self::clip_rect(element_rect, parent_element_rect)
+        };
         self.element_cache.insert(
             Self::convert_element_rect_to_rtree_rect(element_rect),
             element_level,
@@ -376,10 +403,10 @@ impl UIElements {
                 Err(_) => continue,
             };
 
-            let current_element_left = current_element_rect.get_left();
-            let current_element_right = current_element_rect.get_right();
-            let current_element_top = current_element_rect.get_top();
-            let current_element_bottom = current_element_rect.get_bottom();
+            let current_element_left = current_element_rect.get_left() - self.monitor_x;
+            let current_element_right = current_element_rect.get_right() - self.monitor_x;
+            let current_element_top = current_element_rect.get_top() - self.monitor_y;
+            let current_element_bottom = current_element_rect.get_bottom() - self.monitor_y;
 
             if !(current_element_left == 0
                 && current_element_right == 0
@@ -392,6 +419,7 @@ impl UIElements {
                     current_level,
                     parent_rect,
                     parent_tree_token,
+                    false
                 );
 
                 if current_element_left <= mouse_x

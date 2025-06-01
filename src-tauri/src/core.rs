@@ -225,8 +225,8 @@ pub async fn get_current_monitor_info() -> Result<MonitorInfo, ()> {
     let monitor_scale_factor = monitor.scale_factor().unwrap();
 
     let monitor_info = MonitorInfo {
-        mouse_x: mouse_x,
-        mouse_y: mouse_y,
+        mouse_x: mouse_x - monitor_x,
+        mouse_y: mouse_y - monitor_y,
         monitor_x: monitor_x,
         monitor_y: monitor_y,
         monitor_width: monitor_width,

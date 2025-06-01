@@ -203,7 +203,12 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
      * 通过鼠标坐标获取候选框
      */
     const getElementRectFromMousePosition = useCallback(
-        async (mousePosition: MousePosition): Promise<ElementRect[] | undefined> => {
+        async (mousePositionParams: MousePosition): Promise<ElementRect[] | undefined> => {
+            const mousePosition = new MousePosition(
+                mousePositionParams.mouseX + monitorInfoRef.current!.monitor_x,
+                mousePositionParams.mouseY + monitorInfoRef.current!.monitor_y,
+            );
+
             if (selectWindowElementLoadingRef.current) {
                 return undefined;
             }
@@ -246,6 +251,15 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
                     rectIndexs[0],
                 );
             }
+
+            result = result.map((rect) => {
+                return {
+                    min_x: rect.min_x - monitorInfoRef.current!.monitor_x,
+                    min_y: rect.min_y - monitorInfoRef.current!.monitor_y,
+                    max_x: rect.max_x - monitorInfoRef.current!.monitor_x,
+                    max_y: rect.max_y - monitorInfoRef.current!.monitor_y,
+                };
+            });
 
             return result;
         },
@@ -517,6 +531,25 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
                 }
 
                 const currentSelectRect = await autoSelect(mousePosition);
+
+                // 注意做个纠正，防止超出显示器范围
+                currentSelectRect.min_x = Math.max(
+                    currentSelectRect.min_x,
+                    0,
+                );
+                currentSelectRect.min_y = Math.max(
+                    currentSelectRect.min_y,
+                    0,
+                );
+                currentSelectRect.max_x = Math.min(
+                    currentSelectRect.max_x,
+                    monitorInfoRef.current!.monitor_width,
+                );
+                currentSelectRect.max_y = Math.min(
+                    currentSelectRect.max_y,
+                    monitorInfoRef.current!.monitor_height,
+                );
+
                 if (
                     drawSelectRectAnimationRef.current?.isDone() &&
                     currentSelectRect.min_x === getSelectRect()?.min_x &&
