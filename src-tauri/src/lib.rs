@@ -129,6 +129,7 @@ pub fn run() {
             video_record::video_record_resume,
             video_record::video_record_kill,
             video_record::video_record_get_microphone_device_names,
+            video_record::video_record_init,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

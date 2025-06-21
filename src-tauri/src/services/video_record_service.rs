@@ -1,7 +1,8 @@
 use ffmpeg_sidecar::{child::FfmpegChild, command::FfmpegCommand, event::FfmpegEvent};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
-use std::io::Result;
+use std::{io::Result, path::PathBuf};
+use tauri::{Manager, path::BaseDirectory};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Copy)]
 pub enum VideoRecordState {
@@ -50,6 +51,7 @@ pub struct VideoRecordService {
     segments: Vec<String>,                     // 存储所有片段文件路径
     segment_counter: u32,                      // 片段计数器
     recording_params: Option<RecordingParams>, // 录制参数，用于恢复录制
+    ffmpeg_path: Option<PathBuf>,
 }
 
 impl VideoRecordService {
@@ -60,11 +62,26 @@ impl VideoRecordService {
             segments: Vec::new(),
             segment_counter: 0,
             recording_params: None,
+            ffmpeg_path: None,
+        }
+    }
+
+    pub fn init(&mut self, app: &tauri::AppHandle) {
+        if self.ffmpeg_path.is_none() {
+            let resource_path = match app.path().resolve("ffmpeg", BaseDirectory::Resource) {
+                Ok(resource_path) => resource_path,
+                Err(_) => panic!("[VideoRecordService] Failed to get resource path"),
+            };
+            self.ffmpeg_path = Some(resource_path.join("ffmpeg.exe"));
         }
     }
 
     pub fn get_ffmpeg_command(&self) -> FfmpegCommand {
-        FfmpegCommand::new_with_path("./ffmpeg/ffmpeg.exe")
+        FfmpegCommand::new_with_path(
+            self.ffmpeg_path
+                .as_ref()
+                .expect("[VideoRecordService] valid ffmpeg path"),
+        )
     }
 
     pub fn start(

@@ -18,6 +18,7 @@ import { ElementRect } from '@/commands';
 import { getVideoRecordParams, getVideoRecordSaveDirectory, VideoRecordState } from '../extra';
 import {
     VideoFormat,
+    videoRecordInit,
     videoRecordKill,
     videoRecordPause,
     videoRecordResume,
@@ -110,17 +111,18 @@ export default function VideoRecordToolbar() {
             );
         });
 
+        videoRecordInit();
         videoRecordKill();
 
-        const stopVideoRecord = () => {
-            videoRecordStop();
+        const killVideoRecord = () => {
+            videoRecordKill();
         };
 
-        window.addEventListener('beforeunload', stopVideoRecord);
+        window.addEventListener('beforeunload', killVideoRecord);
 
         return () => {
-            videoRecordStop();
-            window.removeEventListener('beforeunload', stopVideoRecord);
+            videoRecordKill();
+            window.removeEventListener('beforeunload', killVideoRecord);
             removeListener(listenerId);
         };
     }, [addListener, init, removeListener]);

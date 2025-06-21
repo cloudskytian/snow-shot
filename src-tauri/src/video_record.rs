@@ -4,6 +4,16 @@ use tauri::command;
 
 use crate::services::VideoFormat;
 
+#[command]
+pub async fn video_record_init(
+    app: tauri::AppHandle,
+    video_service: tauri::State<'_, Mutex<crate::services::VideoRecordService>>,
+) -> Result<(), String> {
+    let mut service = video_service.lock().unwrap();
+    service.init(&app);
+    Ok(())
+}
+
 /// 开始视频录制
 #[command]
 pub async fn video_record_start(

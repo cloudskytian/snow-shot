@@ -312,9 +312,12 @@ export const ScrollScreenshot: React.FC<{
     const pendingScrollThroughRef = useRef<boolean>(false);
 
     const enableeCursorEventsDebounce = useMemo(() => {
-        return debounce(() => {
-            getCurrentWindow().setIgnoreCursorEvents(false);
-        }, 128 + 64);
+        return debounce(
+            () => {
+                getCurrentWindow().setIgnoreCursorEvents(false);
+            },
+            128 + 128 + 16,
+        );
     }, []);
 
     const onWheel = useCallback<WheelEventHandler<HTMLDivElement>>(
