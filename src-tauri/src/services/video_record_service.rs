@@ -226,6 +226,16 @@ impl VideoRecordService {
             params.format.extension()
         );
 
+        // 确保输出文件的目录存在
+        if let Some(parent_dir) = std::path::Path::new(&segment_filename).parent() {
+            if let Err(e) = std::fs::create_dir_all(parent_dir) {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    format!("Failed to create output directory: {}", e),
+                ));
+            }
+        }
+
         // 根据格式设置不同的参数
         match params.format {
             VideoFormat::Mp4 => {

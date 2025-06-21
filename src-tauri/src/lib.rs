@@ -102,6 +102,7 @@ pub fn run() {
             core::exit_app,
             core::enable_free_drag,
             file::save_file,
+            file::create_dir,
             ocr::ocr_detect,
             ocr::ocr_init,
             ocr::ocr_release,
