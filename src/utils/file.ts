@@ -1,7 +1,8 @@
 import dayjs from 'dayjs';
 import * as dialog from '@tauri-apps/plugin-dialog';
 import { AppSettingsData, AppSettingsGroup } from '@/app/contextWrap';
-import path from 'path';
+import { join as joinPath } from '@tauri-apps/api/path';
+import { createDir } from '@/commands/file';
 
 const parseTemplate = (template: string): string => {
     const regex = /\{([^}]+)\}/g;
@@ -79,10 +80,10 @@ export const getImageFormat = (filePath: string) => {
     return imageFormat;
 };
 
-export const getImagePathFromSettings = (
+export const getImagePathFromSettings = async (
     appSettings: AppSettingsData | undefined,
     method: 'auto' | 'fast',
-): ImagePath | undefined => {
+): Promise<ImagePath | undefined> => {
     if (!appSettings) {
         return undefined;
     }
@@ -104,9 +105,11 @@ export const getImagePathFromSettings = (
             break;
     }
 
+    await createDir(screenshotSettings.saveFileDirectory);
+
     return {
         filePath: joinImagePath(
-            path.join(screenshotSettings.saveFileDirectory, fileName),
+            await joinPath(screenshotSettings.saveFileDirectory, fileName),
             screenshotSettings.saveFileFormat,
         ),
         imageFormat: screenshotSettings.saveFileFormat,

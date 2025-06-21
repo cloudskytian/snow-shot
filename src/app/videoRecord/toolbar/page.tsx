@@ -18,7 +18,6 @@ import { ElementRect } from '@/commands';
 import { getVideoRecordParams, getVideoRecordSaveDirectory, VideoRecordState } from '../extra';
 import {
     VideoFormat,
-    videoRecordInit,
     videoRecordKill,
     videoRecordPause,
     videoRecordResume,
@@ -111,7 +110,6 @@ export default function VideoRecordToolbar() {
             );
         });
 
-        videoRecordInit();
         videoRecordKill();
 
         const killVideoRecord = () => {

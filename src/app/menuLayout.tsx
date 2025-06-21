@@ -46,6 +46,7 @@ import { useStateSubscriber } from '@/hooks/useStateSubscriber';
 import { GlobalEventHandler } from './components/globalEventHandler';
 import { withStatePublisher } from '@/hooks/useStatePublisher';
 import { CheckVersion } from '@/components/checkVersion';
+import { InitService } from '@/components/initService';
 
 type MenuItem = ItemType<MenuItemType>;
 
@@ -676,7 +677,16 @@ export const MenuLayout = ({ children }: { children: React.ReactNode }) => {
     const mainWindow = !noLayout;
     return (
         <MenuLayoutContext.Provider value={{ noLayout, pathname, mainWindow }}>
-            <EventListener>{noLayout ? children : <ML>{children}</ML>}</EventListener>
+            <EventListener>
+                {noLayout ? (
+                    children
+                ) : (
+                    <>
+                        <InitService />
+                        <ML>{children}</ML>
+                    </>
+                )}
+            </EventListener>
         </MenuLayoutContext.Provider>
     );
 };

@@ -147,25 +147,27 @@ export default function SystemSettings() {
         { label: string; value: string }[]
     >([]);
     useEffect(() => {
-        videoRecordGetMicrophoneDeviceNames().then((microphoneDeviceNames) => {
-            const options: { label: string; value: string }[] = [
-                {
-                    label: intl.formatMessage({
-                        id: 'settings.functionSettings.videoRecordSettings.microphoneDeviceName.default',
-                    }),
-                    value: '',
-                },
-            ];
+        const options: { label: string; value: string }[] = [
+            {
+                label: intl.formatMessage({
+                    id: 'settings.functionSettings.videoRecordSettings.microphoneDeviceName.default',
+                }),
+                value: '',
+            },
+        ];
 
-            for (const microphoneDeviceName of microphoneDeviceNames) {
-                options.push({
-                    label: microphoneDeviceName,
-                    value: microphoneDeviceName,
-                });
-            }
-
-            setMicrophoneDeviceNameOptions(options);
-        });
+        videoRecordGetMicrophoneDeviceNames()
+            .then((microphoneDeviceNames) => {
+                for (const microphoneDeviceName of microphoneDeviceNames) {
+                    options.push({
+                        label: microphoneDeviceName,
+                        value: microphoneDeviceName,
+                    });
+                }
+            })
+            .finally(() => {
+                setMicrophoneDeviceNameOptions(options);
+            });
     }, [intl]);
 
     return (

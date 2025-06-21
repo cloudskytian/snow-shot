@@ -38,13 +38,15 @@ export const getVideoRecordParams = () => {
 export const getVideoRecordSaveDirectory = async (appSettings: AppSettingsData) => {
     let savePath = appSettings[AppSettingsGroup.FunctionVideoRecord].saveDirectory;
 
-    const currentPlatform = platform();
-    if (currentPlatform === 'windows') {
-        savePath = await joinPath(await homeDir(), 'Videos', 'Snow Shot Videos');
-    } else if (currentPlatform === 'macos') {
-        savePath = await joinPath(await homeDir(), 'Movies', 'Snow Shot Videos');
-    } else if (currentPlatform === 'linux') {
-        savePath = await joinPath(await homeDir(), 'Videos', 'Snow Shot Videos');
+    if (!savePath) {
+        const currentPlatform = platform();
+        if (currentPlatform === 'windows') {
+            savePath = await joinPath(await homeDir(), 'Videos', 'Snow Shot Videos');
+        } else if (currentPlatform === 'macos') {
+            savePath = await joinPath(await homeDir(), 'Movies', 'Snow Shot Videos');
+        } else if (currentPlatform === 'linux') {
+            savePath = await joinPath(await homeDir(), 'Videos', 'Snow Shot Videos');
+        }
     }
 
     return savePath;
