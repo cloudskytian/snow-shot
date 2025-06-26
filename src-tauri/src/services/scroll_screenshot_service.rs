@@ -392,7 +392,7 @@ impl ScrollScreenshotService {
         if self.enable_corner_fast12.is_none() {
             let fast12_corners = corners::corners_fast12(image, self.corner_threshold);
 
-            if fast12_corners.len() > 512 {
+            if fast12_corners.len() > 256 {
                 corners = fast12_corners;
                 self.enable_corner_fast12 = Some(true);
             } else {
