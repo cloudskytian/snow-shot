@@ -291,8 +291,8 @@ export const defaultAppSettingsData: AppSettingsData = {
     },
     [AppSettingsGroup.SystemScrollScreenshot]: {
         imageFeatureThreshold: 100,
-        minSide: 64,
-        maxSide: 64,
+        minSide: 83,
+        maxSide: 83,
         sampleRate: 1,
         imageFeatureDescriptionLength: 32,
     },
