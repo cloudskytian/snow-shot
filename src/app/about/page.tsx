@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Divider, Tag, Typography, Space, Button, theme, Badge } from 'antd';
 import { GithubOutlined, MessageOutlined, MailOutlined } from '@ant-design/icons';
 import { getVersion } from '@tauri-apps/api/app';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { useIntl } from 'react-intl';
 import { getLatestVersion } from '@/components/checkVersion';
+import { compare } from 'compare-versions';
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -36,6 +37,10 @@ const About = () => {
         init();
     }, [init]);
 
+    const hasNewVersion = useMemo(() => {
+        return latestVersion !== undefined && compare(latestVersion, version, '>');
+    }, [latestVersion, version]);
+
     return (
         <div
             style={{
@@ -58,7 +63,7 @@ const About = () => {
                 <Title level={2} style={{ marginTop: token.marginSM }}>
                     <Badge
                         count={
-                            latestVersion !== undefined && latestVersion !== version
+                            hasNewVersion
                                 ? intl.formatMessage({ id: 'about.newVersion' })
                                 : undefined
                         }

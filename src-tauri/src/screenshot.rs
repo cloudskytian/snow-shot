@@ -101,6 +101,17 @@ pub async fn init_ui_elements_cache(
     Ok(())
 }
 
+#[command]
+pub async fn recovery_window_z_order(
+    ui_elements: tauri::State<'_, Mutex<UIElements>>,
+) -> Result<(), ()> {
+    let ui_elements = ui_elements.lock().await;
+
+    ui_elements.recovery_window_z_order();
+
+    Ok(())
+}
+
 #[derive(PartialEq, Eq, Serialize, Clone, Debug, Copy, Hash)]
 pub struct WindowElement {
     element_rect: ElementRect,

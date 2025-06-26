@@ -39,6 +39,7 @@ import { ImageFormat } from '@/utils/file';
 import { appConfigDir, join as joinPath } from '@tauri-apps/api/path';
 import { DrawState } from './fullScreenDraw/components/drawCore/extra';
 import { OcrDetectAfterAction } from './fixedContent/components/ocrResult';
+import { OcrModel } from '@/commands/ocr';
 
 export enum AppSettingsGroup {
     Common = 'common',
@@ -53,7 +54,7 @@ export enum AppSettingsGroup {
     SystemCommon = 'systemCommon',
     SystemChat = 'systemChat',
     SystemNetwork = 'systemNetwork',
-    SystemScreenshot = 'systemScreenshot',
+    SystemScreenshot = 'systemScreenshot_20250626',
     SystemScrollScreenshot = 'systemScrollScreenshot_20250523',
     FunctionChat = 'functionChat',
     FunctionTranslation = 'functionTranslation',
@@ -201,6 +202,7 @@ export type AppSettingsData = {
     };
     [AppSettingsGroup.SystemScreenshot]: {
         tryGetElementByFocus: TryGetElementByFocus;
+        ocrModel: OcrModel;
     };
     [AppSettingsGroup.SystemScrollScreenshot]: {
         minSide: number;
@@ -315,7 +317,8 @@ export const defaultAppSettingsData: AppSettingsData = {
         encoderPreset: 'ultrafast',
     },
     [AppSettingsGroup.SystemScreenshot]: {
-        tryGetElementByFocus: TryGetElementByFocus.Never,
+        tryGetElementByFocus: TryGetElementByFocus.WhiteList,
+        ocrModel: OcrModel.PaddleOcrV4,
     },
 };
 
@@ -1064,6 +1067,10 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
                             ? (newSettings.tryGetElementByFocus as TryGetElementByFocus)
                             : (prevSettings?.tryGetElementByFocus ??
                               defaultAppSettingsData[group].tryGetElementByFocus),
+                    ocrModel:
+                        typeof newSettings?.ocrModel === 'string'
+                            ? (newSettings.ocrModel as OcrModel)
+                            : (prevSettings?.ocrModel ?? defaultAppSettingsData[group].ocrModel),
                 };
             } else {
                 return defaultAppSettingsData[group];

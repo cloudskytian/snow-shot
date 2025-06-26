@@ -1,5 +1,7 @@
 use num_cpus;
 use paddle_ocr_rs::ocr_lite::OcrLite;
+use serde::Deserialize;
+use serde::Serialize;
 use std::io::Cursor;
 use tauri::{Manager, command, path::BaseDirectory};
 use tokio::sync::Mutex;
@@ -8,10 +10,17 @@ pub struct OcrLiteWrap {
     pub ocr_instance: Option<OcrLite>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Copy, PartialOrd, Serialize, Deserialize)]
+pub enum OcrModel {
+    PaddleOcrV5,
+    PaddleOcrV4,
+}
+
 #[command]
 pub async fn ocr_init(
     app: tauri::AppHandle,
     ocr_instance: tauri::State<'_, Mutex<OcrLiteWrap>>,
+    model: OcrModel,
 ) -> Result<(), ()> {
     let mut ocr_wrap_instance = ocr_instance.lock().await;
 
@@ -25,23 +34,46 @@ pub async fn ocr_init(
         None => return Err(()),
     };
 
-    ocr_instance
-        .init_models(
-            &resource_path
-                .join("ch_PP-OCRv5_mobile_det.onnx")
-                .display()
-                .to_string(),
-            &resource_path
-                .join("ch_ppocr_mobile_v2.0_cls_infer.onnx")
-                .display()
-                .to_string(),
-            &resource_path
-                .join("ch_PP-OCRv5_rec_mobile_infer.onnx")
-                .display()
-                .to_string(),
-            (num_cpus::get() / 2).max(1),
-        )
-        .unwrap();
+    match model {
+        OcrModel::PaddleOcrV5 => {
+            ocr_instance
+                .init_models(
+                    &resource_path
+                        .join("paddle_ocr_v5/ch_PP-OCRv5_mobile_det.onnx")
+                        .display()
+                        .to_string(),
+                    &resource_path
+                        .join("paddle_ocr_v5/ch_ppocr_mobile_v2.0_cls_infer.onnx")
+                        .display()
+                        .to_string(),
+                    &resource_path
+                        .join("paddle_ocr_v5/ch_PP-OCRv5_rec_mobile_infer.onnx")
+                        .display()
+                        .to_string(),
+                    (num_cpus::get() / 2).max(1),
+                )
+                .unwrap();
+        }
+        OcrModel::PaddleOcrV4 => {
+            ocr_instance
+                .init_models(
+                    &resource_path
+                        .join("paddle_ocr_v4/ch_PP-OCRv4_det_infer.onnx")
+                        .display()
+                        .to_string(),
+                    &resource_path
+                        .join("paddle_ocr_v4/ch_ppocr_mobile_v2.0_cls_infer.onnx")
+                        .display()
+                        .to_string(),
+                    &resource_path
+                        .join("paddle_ocr_v4/ch_PP-OCRv4_rec_infer.onnx")
+                        .display()
+                        .to_string(),
+                    (num_cpus::get() / 2).max(1),
+                )
+                .unwrap();
+        }
+    }
 
     Ok(())
 }

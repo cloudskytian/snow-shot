@@ -1,5 +1,6 @@
 use std::cmp::Ordering;
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::mem;
 
 use crate::app_error::AutomationError;
@@ -17,6 +18,7 @@ use uiautomation::UITreeWalker;
 use uiautomation::types::Point;
 use windows::Win32::Foundation::HWND;
 use windows::Win32::UI::WindowsAndMessaging::GetClassNameW;
+use windows::Win32::UI::WindowsAndMessaging::SetForegroundWindow;
 use xcap::Window;
 
 use super::ElementRect;
@@ -110,13 +112,16 @@ pub struct UIElements {
     element_rect_tree: Arena<uiautomation::types::Rect>,
     monitor_rect: ElementRect,
     element_children_next_sibling_cache: HashMap<ElementLevel, Option<(UIElement, ElementLevel)>>,
-    window_rect_map: HashMap<i32, uiautomation::types::Rect>,
+    window_rect_map: HashMap<ElementLevel, uiautomation::types::Rect>,
     window_focus_count_map: HashMap<i32, i32>,
+    window_index_level_map: HashMap<i32, ElementLevel>,
     try_get_element_by_focus: TryGetElementByFocus,
 }
 
 unsafe impl Send for UIElements {}
 unsafe impl Sync for UIElements {}
+
+const DISABLE_FOCUS_COUNT: i32 = 999;
 
 impl UIElements {
     pub fn new() -> Self {
@@ -137,6 +142,7 @@ impl UIElements {
             window_rect_map: HashMap::new(),
             window_focus_count_map: HashMap::new(),
             try_get_element_by_focus: TryGetElementByFocus::Always,
+            window_index_level_map: HashMap::new(),
         }
     }
 
@@ -235,6 +241,7 @@ impl UIElements {
         self.element_children_next_sibling_cache.clear();
         self.window_rect_map.clear();
         self.window_focus_count_map.clear();
+        self.window_index_level_map.clear();
 
         self.try_get_element_by_focus = try_get_element_by_focus;
 
@@ -266,8 +273,6 @@ impl UIElements {
                 continue;
             }
 
-            let mut disable_focus = false;
-
             let window_title = match window.title() {
                 Ok(title) => {
                     if title.eq("Shell Handwriting Canvas") || title.eq("Snow Shot - Draw") {
@@ -286,6 +291,8 @@ impl UIElements {
                     if let Ok(element) = automation
                         .element_from_handle(uiautomation::types::Handle::from(hwnd as isize))
                     {
+                        let disable_focus;
+
                         match self.try_get_element_by_focus {
                             TryGetElementByFocus::Never => {
                                 disable_focus = true;
@@ -310,8 +317,6 @@ impl UIElements {
                                 }
                             }
                             TryGetElementByFocus::Always => {
-                                disable_focus = false;
-
                                 let mut class_name = [0u16; 256];
                                 let class_name_len =
                                     unsafe { GetClassNameW(HWND(hwnd), &mut class_name) };
@@ -321,6 +326,8 @@ impl UIElements {
                                     .eq("Shell_TrayWnd")
                                 {
                                     disable_focus = true;
+                                } else {
+                                    disable_focus = false;
                                 }
                             }
                         }
@@ -364,11 +371,13 @@ impl UIElements {
             );
 
             self.window_rect_map
-                .insert(current_level.window_index, current_child_rect);
+                .insert(current_level.clone(), current_child_rect);
+            self.window_index_level_map
+                .insert(current_level.window_index, current_level.clone());
 
             if disable_focus {
                 self.window_focus_count_map
-                    .insert(current_level.window_index, 999);
+                    .insert(current_level.window_index, DISABLE_FOCUS_COUNT);
             }
         }
 
@@ -413,7 +422,7 @@ impl UIElements {
         let mut element_rect = Self::normalize_rect(element_rect);
         let window_rect = self
             .window_rect_map
-            .get(&element_level.window_index)
+            .get(&element_level)
             .unwrap_or(&element_rect)
             .clone();
         if Self::beyond_rect(element_rect, window_rect) {
@@ -681,6 +690,69 @@ impl UIElements {
         }
 
         return Ok(result_rect_list);
+    }
+
+    pub fn recovery_window_z_order(&self) {
+        if self.try_get_element_by_focus == TryGetElementByFocus::Never {
+            return;
+        }
+
+        // 开启 try_get_element_by_focus 后窗口的排序会受焦点影响
+        // 这里获取下可能受影响的窗口，然后恢复排序
+
+        let mut focused_window_rect_list = Vec::with_capacity(8);
+        let mut max_window_index = 0;
+        for (window_index, count) in self.window_focus_count_map.iter() {
+            if *count > 0 && *count < DISABLE_FOCUS_COUNT {
+                let rect = self
+                    .window_rect_map
+                    .get(self.window_index_level_map.get(window_index).unwrap())
+                    .unwrap();
+                focused_window_rect_list.push(rect);
+                max_window_index = max_window_index.max(*window_index);
+            }
+        }
+
+        let mut window_element_level_set: HashSet<ElementLevel> =
+            HashSet::with_capacity(focused_window_rect_list.len() * 2);
+        for rect in focused_window_rect_list {
+            // 通过 level 获取窗口 rect，然后通过 rect 获取范围内的窗口
+            let element_rect_iter = self.element_cache.search(Rect::new(
+                [rect.get_left(), rect.get_top()],
+                [rect.get_right(), rect.get_bottom()],
+            ));
+
+            for rect in element_rect_iter {
+                // 判断是否是窗口
+                if self.window_rect_map.contains_key(&rect.data) {
+                    window_element_level_set.insert(rect.data.clone());
+                }
+            }
+        }
+
+        // 将受影响的窗口按 window_index 排序
+        // 然后从底部到顶部依次设置 set focus 以恢复焦点
+        let mut window_element_level_list = window_element_level_set.iter().collect::<Vec<_>>();
+        window_element_level_list.sort_by_key(|level| level.window_index);
+
+        // 按从大到小依次设置
+        for level in window_element_level_list.iter().rev() {
+            if level.window_index > max_window_index {
+                continue;
+            }
+
+            let (element, _) = self.element_level_map.get(level).unwrap();
+
+            match element.get_native_window_handle() {
+                Ok(handle) => unsafe {
+                    let result = SetForegroundWindow(HWND::from(handle.into()));
+                    if result.as_bool() {
+                        sleep(Duration::from_millis(16));
+                    }
+                },
+                Err(_) => {}
+            }
+        }
     }
 }
 

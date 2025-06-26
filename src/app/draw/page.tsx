@@ -41,7 +41,6 @@ import {
     FixedContentActionType,
 } from '../fixedContent/components/fixedContentCore';
 import { OcrBlocks, OcrBlocksActionType } from './components/ocrBlocks';
-import { ocrInit } from '@/commands/ocr';
 import {
     executeScreenshot as executeScreenshotFunc,
     releaseDrawPage,
@@ -751,16 +750,6 @@ const DrawPageCore: React.FC = () => {
             document.removeEventListener('mousemove', handleMouseMove);
         };
     }, [isFixed, onCopyToClipboard]);
-
-    const ocrInitRef = useRef(false);
-    useEffect(() => {
-        if (ocrInitRef.current) {
-            return;
-        }
-
-        ocrInit();
-        ocrInitRef.current = true;
-    }, []);
 
     useEffect(() => {
         document.oncopy = function () {

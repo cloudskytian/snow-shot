@@ -9,6 +9,7 @@ import {
     getWindowElements,
     initUiElements,
     initUiElementsCache,
+    recoveryWindowZOrder,
 } from '@/commands';
 import { AppSettingsData, AppSettingsGroup, AppSettingsPublisher } from '@/app/contextWrap';
 import Flatbush from 'flatbush';
@@ -41,6 +42,7 @@ import { isHotkeyPressed } from 'react-hotkeys-hook';
 import { KeyEventKey } from '../drawToolbar/components/keyEventWrap/extra';
 import { DrawState, DrawStatePublisher } from '@/app/fullScreenDraw/components/drawCore/extra';
 import { MonitorInfo } from '@/commands/core';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 
 export type SelectLayerActionType = {
     getSelectRect: () => ElementRect | undefined;
@@ -135,6 +137,15 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
 
     const setSelectState = useCallback(
         (state: SelectState) => {
+            if (
+                selectStateRef.current === SelectState.Auto &&
+                (state === SelectState.Selected || state === SelectState.Manual)
+            ) {
+                recoveryWindowZOrder().then(() => {
+                    getCurrentWindow().setFocus();
+                });
+            }
+
             selectStateRef.current = state;
 
             if (state === SelectState.Selected) {
@@ -798,6 +809,9 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
                 selectStateRef.current !== SelectState.Selected
             ) {
                 finishCapture();
+                // 提前结束截图后，恢复窗口的层级
+                recoveryWindowZOrder();
+
                 e.preventDefault();
             }
 

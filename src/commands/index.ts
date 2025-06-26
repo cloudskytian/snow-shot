@@ -61,6 +61,12 @@ export const initUiElementsCache = async (tryGetElementByFocus: TryGetElementByF
     return result;
 };
 
+export const recoveryWindowZOrder = async () => {
+    const result = await invoke<void>('recovery_window_z_order');
+    return result;
+};
+
+
 export const initUiElements = async () => {
     const result = await invoke<void>('init_ui_elements');
     return result;
