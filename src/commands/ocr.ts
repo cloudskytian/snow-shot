@@ -28,8 +28,7 @@ export const ocrDetect = async (
 };
 
 export enum OcrModel {
-    PaddleOcrV5 = 'PaddleOcrV5',
-    PaddleOcrV4 = 'PaddleOcrV4',
+    PaddleOcr = 'PaddleOcr',
 }
 
 export const ocrInit = async (model: OcrModel): Promise<void> => {

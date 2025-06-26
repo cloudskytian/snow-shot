@@ -207,6 +207,5 @@ export const settings = {
         '仅针对白名单中的程序',
     'settings.systemSettings.screenshotSettings.tryGetElementByFocus.always': '保持启用',
     'settings.systemSettings.screenshotSettings.ocrModel': 'OCR 模型',
-    'settings.systemSettings.screenshotSettings.ocrModel.paddleOcrV5': 'Paddle OCR V5',
-    'settings.systemSettings.screenshotSettings.ocrModel.paddleOcrV4': 'Paddle OCR V4',
+    'settings.systemSettings.screenshotSettings.ocrModel.paddleOcr': 'Rapid OCR',
 };

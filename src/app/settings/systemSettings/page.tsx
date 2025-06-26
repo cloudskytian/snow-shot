@@ -275,15 +275,9 @@ export default function SystemSettings() {
                                 options={[
                                     {
                                         label: (
-                                            <FormattedMessage id="settings.systemSettings.screenshotSettings.ocrModel.paddleOcrV5" />
+                                            <FormattedMessage id="settings.systemSettings.screenshotSettings.ocrModel.paddleOcr" />
                                         ),
-                                        value: OcrModel.PaddleOcrV5,
-                                    },
-                                    {
-                                        label: (
-                                            <FormattedMessage id="settings.systemSettings.screenshotSettings.ocrModel.paddleOcrV4" />
-                                        ),
-                                        value: OcrModel.PaddleOcrV4,
+                                        value: OcrModel.PaddleOcr,
                                     },
                                 ]}
                             />
@@ -486,11 +480,11 @@ export default function SystemSettings() {
                                 }
                                 name="maxSide"
                                 min={64}
-                                max={4096}
+                                max={1024}
                                 step={1}
                                 marks={{
                                     64: '64',
-                                    4096: '4096',
+                                    1024: '1024',
                                 }}
                             />
                         </Col>

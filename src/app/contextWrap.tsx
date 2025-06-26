@@ -55,7 +55,7 @@ export enum AppSettingsGroup {
     SystemChat = 'systemChat',
     SystemNetwork = 'systemNetwork',
     SystemScreenshot = 'systemScreenshot_20250626',
-    SystemScrollScreenshot = 'systemScrollScreenshot_20250523',
+    SystemScrollScreenshot = 'systemScrollScreenshot_20250626',
     FunctionChat = 'functionChat',
     FunctionTranslation = 'functionTranslation',
     FunctionScreenshot = 'functionScreenshot',
@@ -290,9 +290,9 @@ export const defaultAppSettingsData: AppSettingsData = {
         ocrCopyText: false,
     },
     [AppSettingsGroup.SystemScrollScreenshot]: {
-        imageFeatureThreshold: 32,
-        minSide: 128,
-        maxSide: 128,
+        imageFeatureThreshold: 100,
+        minSide: 64,
+        maxSide: 64,
         sampleRate: 1,
         imageFeatureDescriptionLength: 32,
     },
@@ -318,7 +318,7 @@ export const defaultAppSettingsData: AppSettingsData = {
     },
     [AppSettingsGroup.SystemScreenshot]: {
         tryGetElementByFocus: TryGetElementByFocus.WhiteList,
-        ocrModel: OcrModel.PaddleOcrV4,
+        ocrModel: OcrModel.PaddleOcr,
     },
 };
 
@@ -981,11 +981,11 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
                               defaultAppSettingsData[group].imageFeatureThreshold),
                     minSide:
                         typeof newSettings?.minSide === 'number'
-                            ? Math.min(Math.max(newSettings.minSide, 0), 4096)
+                            ? Math.min(Math.max(newSettings.minSide, 0), 1024)
                             : (prevSettings?.minSide ?? defaultAppSettingsData[group].minSide),
                     maxSide:
                         typeof newSettings?.maxSide === 'number'
-                            ? Math.min(Math.max(newSettings.maxSide, 64), 4096)
+                            ? Math.min(Math.max(newSettings.maxSide, 64), 1024)
                             : (prevSettings?.maxSide ?? defaultAppSettingsData[group].maxSide),
                     sampleRate:
                         typeof newSettings?.sampleRate === 'number'
