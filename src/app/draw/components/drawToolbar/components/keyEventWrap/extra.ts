@@ -60,7 +60,7 @@ export const defaultDrawToolbarKeyEventSettings: Record<KeyEventKey, KeyEventVal
         unique: true,
     },
     [KeyEventKey.LockDrawTool]: {
-        hotKey: 'Ctrl+L',
+        hotKey: 'Ctrl+Alt+L',
         unique: true,
     },
     [KeyEventKey.RectTool]: {
