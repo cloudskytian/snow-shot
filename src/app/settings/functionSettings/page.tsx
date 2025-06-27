@@ -218,9 +218,9 @@ export default function SystemSettings() {
                         <Col span={12}>
                             <ProFormSwitch
                                 label={
-                                    <FormattedMessage id="settings.functionSettings.screenshotSettings.autoOcrAfterFixed" />
+                                    <FormattedMessage id="settings.functionSettings.screenshotSettings.shortcutCanleTip" />
                                 }
-                                name="autoOcrAfterFixed"
+                                name="shortcutCanleTip"
                                 layout="horizontal"
                             />
                         </Col>
@@ -228,9 +228,9 @@ export default function SystemSettings() {
                         <Col span={12}>
                             <ProFormSwitch
                                 label={
-                                    <FormattedMessage id="settings.functionSettings.screenshotSettings.shortcutCanleTip" />
+                                    <FormattedMessage id="settings.functionSettings.screenshotSettings.lockDrawTool" />
                                 }
-                                name="shortcutCanleTip"
+                                name="lockDrawTool"
                                 layout="horizontal"
                             />
                         </Col>
@@ -274,6 +274,16 @@ export default function SystemSettings() {
                                 label={
                                     <FormattedMessage id="settings.functionSettings.screenshotSettings.ocrCopyText" />
                                 }
+                            />
+                        </Col>
+
+                        <Col span={12}>
+                            <ProFormSwitch
+                                label={
+                                    <FormattedMessage id="settings.functionSettings.screenshotSettings.autoOcrAfterFixed" />
+                                }
+                                name="autoOcrAfterFixed"
+                                layout="horizontal"
                             />
                         </Col>
                     </Row>

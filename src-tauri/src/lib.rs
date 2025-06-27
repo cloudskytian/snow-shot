@@ -25,7 +25,6 @@ pub fn run() {
         ocr_instance: Some(OcrLite::new()),
     };
     let ocr_instance = Mutex::new(ocr_instance);
-    let scroll_screenshot_service = Mutex::new(services::ScrollScreenshotService::new());
     let video_record_service = Mutex::new(services::VideoRecordService::new());
 
     let enigo_instance = Enigo::new(&Settings::default()).unwrap();
@@ -33,6 +32,9 @@ pub fn run() {
 
     let ui_elements = Mutex::new(UIElements::new());
     let auto_start_hide_window = Mutex::new(false);
+
+    let scroll_screenshot_service = Mutex::new(services::ScrollScreenshotService::new());
+    let scroll_screenshot_image_service = Mutex::new(services::ScrollScreenshotImageService::new());
 
     let mut app_builder = tauri::Builder::default().plugin(tauri_plugin_os::init());
 
@@ -89,6 +91,7 @@ pub fn run() {
         .manage(enigo_instance)
         .manage(scroll_screenshot_service)
         .manage(video_record_service)
+        .manage(scroll_screenshot_image_service)
         .invoke_handler(tauri::generate_handler![
             screenshot::capture_current_monitor,
             screenshot::get_window_elements,
@@ -121,6 +124,7 @@ pub fn run() {
             scroll_screenshot::scroll_screenshot_get_image_data,
             scroll_screenshot::scroll_screenshot_init,
             scroll_screenshot::scroll_screenshot_capture,
+            scroll_screenshot::scroll_screenshot_handle_image,
             scroll_screenshot::scroll_screenshot_save_to_file,
             scroll_screenshot::scroll_screenshot_save_to_clipboard,
             scroll_screenshot::scroll_screenshot_get_size,

@@ -8,7 +8,13 @@ import React from 'react';
 import { DragButton, DragButtonActionType } from './components/dragButton';
 import { DrawToolbarContext } from './extra';
 import { KeyEventKey } from './components/keyEventWrap/extra';
-import { AppstoreOutlined, CloseOutlined, CopyOutlined, DragOutlined } from '@ant-design/icons';
+import {
+    AppstoreOutlined,
+    CloseOutlined,
+    CopyOutlined,
+    DragOutlined,
+    LockOutlined,
+} from '@ant-design/icons';
 import {
     ArrowIcon,
     ArrowSelectIcon,
@@ -48,10 +54,21 @@ import {
     ScrollScreenshotActionType,
 } from './components/tools/scrollScreenshotTool';
 import { AntdContext } from '@/components/globalLayoutExtra';
-import { AppSettingsData, AppSettingsGroup, AppSettingsPublisher } from '@/app/contextWrap';
+import {
+    AppSettingsActionContext,
+    AppSettingsData,
+    AppSettingsGroup,
+    AppSettingsPublisher,
+} from '@/app/contextWrap';
 import { DrawSubTools } from './components/tools/drawSubTools';
 import { debounce } from 'es-toolkit';
-import { DrawState, DrawStatePublisher } from '@/app/fullScreenDraw/components/drawCore/extra';
+import {
+    DrawState,
+    DrawStatePublisher,
+    ExcalidrawEventParams,
+    ExcalidrawEventPublisher,
+} from '@/app/fullScreenDraw/components/drawCore/extra';
+import { useStateRef } from '@/hooks/useStateRef';
 
 export type DrawToolbarProps = {
     actionRef: React.RefObject<DrawToolbarActionType | undefined>;
@@ -82,6 +99,7 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
     onTopWindow,
     onOcrDetect,
 }) => {
+    const { updateAppSettings } = useContext(AppSettingsActionContext);
     const { drawCacheLayerActionRef, selectLayerActionRef } = useContext(DrawContext);
 
     const [getDrawToolbarState, setDrawToolbarState] = useStateSubscriber(
@@ -96,6 +114,8 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
     const intl = useIntl();
 
     const enableRef = useRef(false);
+    const [showLockDrawTool, setShowLockDrawTool, showLockDrawToolRef] = useStateRef(false);
+    const [enableLockDrawTool, setEnableLockDrawTool, enableLockDrawToolRef] = useStateRef(false);
     const [enableFastSave, setEnableFastSave] = useState(false);
     const [enableScrollScreenshot, setEnableScrollScreenshot] = useState(false);
     const [shortcutCanleTip, setShortcutCanleTip] = useState(false);
@@ -107,13 +127,20 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
     const [, setEnableKeyEvent] = useStateSubscriber(EnableKeyEventPublisher, undefined);
     useStateSubscriber(
         AppSettingsPublisher,
-        useCallback((settings: AppSettingsData) => {
-            setShortcutCanleTip(settings[AppSettingsGroup.FunctionScreenshot].shortcutCanleTip);
-            setEnableFastSave(
-                settings[AppSettingsGroup.FunctionScreenshot].enhanceSaveFile &&
-                    settings[AppSettingsGroup.FunctionScreenshot].fastSave,
-            );
-        }, []),
+        useCallback(
+            (settings: AppSettingsData) => {
+                setShortcutCanleTip(settings[AppSettingsGroup.FunctionScreenshot].shortcutCanleTip);
+                setEnableFastSave(
+                    settings[AppSettingsGroup.FunctionScreenshot].enhanceSaveFile &&
+                        settings[AppSettingsGroup.FunctionScreenshot].fastSave,
+                );
+                // 不显示锁定绘制工具
+                setShowLockDrawTool(!settings[AppSettingsGroup.FunctionScreenshot].lockDrawTool);
+                // 是否启用锁定绘制工具
+                setEnableLockDrawTool(settings[AppSettingsGroup.Cache].enableLockDrawTool);
+            },
+            [setEnableLockDrawTool, setShowLockDrawTool],
+        ),
     );
     const draggingRef = useRef(false);
 
@@ -166,6 +193,20 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
                 }
             }
 
+            if (drawState === DrawState.Lock) {
+                updateAppSettings(
+                    AppSettingsGroup.Cache,
+                    { enableLockDrawTool: !enableLockDrawToolRef.current },
+                    true,
+                    true,
+                    false,
+                    true,
+                    false,
+                );
+
+                return;
+            }
+
             let next = drawState;
             if (prev === drawState && prev !== DrawState.Idle) {
                 if (drawState === DrawState.ScrollScreenshot) {
@@ -179,6 +220,11 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
                 setCaptureStep(CaptureStep.Draw);
             } else {
                 setCaptureStep(CaptureStep.Select);
+            }
+
+            let toolLocked = true;
+            if (showLockDrawToolRef.current) {
+                toolLocked = enableLockDrawToolRef.current;
             }
 
             switch (next) {
@@ -198,49 +244,49 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
                     drawCacheLayerActionRef.current?.setEnable(true);
                     drawCacheLayerActionRef.current?.setActiveTool({
                         type: 'rectangle',
-                        locked: true,
+                        locked: toolLocked,
                     });
                     break;
                 case DrawState.Diamond:
                     drawCacheLayerActionRef.current?.setEnable(true);
                     drawCacheLayerActionRef.current?.setActiveTool({
                         type: 'diamond',
-                        locked: true,
+                        locked: toolLocked,
                     });
                     break;
                 case DrawState.Ellipse:
                     drawCacheLayerActionRef.current?.setEnable(true);
                     drawCacheLayerActionRef.current?.setActiveTool({
                         type: 'ellipse',
-                        locked: true,
+                        locked: toolLocked,
                     });
                     break;
                 case DrawState.Arrow:
                     drawCacheLayerActionRef.current?.setEnable(true);
                     drawCacheLayerActionRef.current?.setActiveTool({
                         type: 'arrow',
-                        locked: true,
+                        locked: toolLocked,
                     });
                     break;
                 case DrawState.Line:
                     drawCacheLayerActionRef.current?.setEnable(true);
                     drawCacheLayerActionRef.current?.setActiveTool({
                         type: 'line',
-                        locked: true,
+                        locked: toolLocked,
                     });
                     break;
                 case DrawState.Pen:
                     drawCacheLayerActionRef.current?.setEnable(true);
                     drawCacheLayerActionRef.current?.setActiveTool({
                         type: 'freedraw',
-                        locked: true,
+                        locked: toolLocked,
                     });
                     break;
                 case DrawState.Text:
                     drawCacheLayerActionRef.current?.setEnable(true);
                     drawCacheLayerActionRef.current?.setActiveTool({
                         type: 'text',
-                        locked: true,
+                        locked: toolLocked,
                     });
                     break;
                 case DrawState.SerialNumber:
@@ -250,14 +296,14 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
                     drawCacheLayerActionRef.current?.setEnable(true);
                     drawCacheLayerActionRef.current?.setActiveTool({
                         type: 'blur',
-                        locked: true,
+                        locked: toolLocked,
                     });
                     break;
                 case DrawState.Eraser:
                     drawCacheLayerActionRef.current?.setEnable(true);
                     drawCacheLayerActionRef.current?.setActiveTool({
                         type: 'eraser',
-                        locked: true,
+                        locked: toolLocked,
                     });
                     break;
                 case DrawState.OcrDetect:
@@ -287,6 +333,7 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
         },
         [
             drawCacheLayerActionRef,
+            enableLockDrawToolRef,
             getDrawState,
             intl,
             message,
@@ -294,7 +341,31 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
             selectLayerActionRef,
             setCaptureStep,
             setDrawState,
+            showLockDrawToolRef,
+            updateAppSettings,
         ],
+    );
+
+    useStateSubscriber(
+        ExcalidrawEventPublisher,
+        useCallback(
+            (params: ExcalidrawEventParams | undefined) => {
+                if (!enableRef.current) {
+                    return;
+                }
+
+                if (params?.event === 'onChange') {
+                    if (
+                        params.params.appState.activeTool.type === 'selection' &&
+                        getDrawState() !== DrawState.Select &&
+                        getDrawState() !== DrawState.Idle
+                    ) {
+                        onToolClick(DrawState.Select);
+                    }
+                }
+            },
+            [getDrawState, onToolClick],
+        ),
     );
 
     const drawToolbarContextValue = useMemo(() => {
@@ -464,6 +535,21 @@ const DrawToolbarCore: React.FC<DrawToolbarProps> = ({
                                     onToolClick(DrawState.Select);
                                 }}
                             />
+
+                            {showLockDrawTool && (
+                                <>
+                                    {/* 锁定绘制工具 */}
+                                    <ToolButton
+                                        componentKey={KeyEventKey.LockDrawTool}
+                                        icon={<LockOutlined />}
+                                        drawState={DrawState.Lock}
+                                        enableState={enableLockDrawTool}
+                                        onClick={() => {
+                                            onToolClick(DrawState.Lock);
+                                        }}
+                                    />
+                                </>
+                            )}
 
                             <div className="draw-toolbar-splitter" />
 

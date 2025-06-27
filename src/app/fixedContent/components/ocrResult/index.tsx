@@ -233,6 +233,7 @@ export const OcrResult: React.FC<{
                 const ocrResult = await ocrDetect(
                     await imageBlob.arrayBuffer(),
                     monitorInfo.monitor_scale_factor,
+                    getAppSettings()[AppSettingsGroup.SystemScreenshot].ocrDetectAngle,
                 );
 
                 const ocrAfterAction =
@@ -284,12 +285,13 @@ export const OcrResult: React.FC<{
                 const ocrResult = await ocrDetect(
                     await imageBlob.arrayBuffer(),
                     monitorScaleFactorRef.current,
+                    getAppSettings()[AppSettingsGroup.SystemScreenshot].ocrDetectAngle,
                 );
                 updateOcrTextElements(ocrResult);
                 onOcrDetect?.(ocrResult);
             }
         },
-        [onOcrDetect, updateOcrTextElements],
+        [getAppSettings, onOcrDetect, updateOcrTextElements],
     );
 
     useImperativeHandle(

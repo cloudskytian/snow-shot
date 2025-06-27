@@ -13,7 +13,9 @@ use zune_core::colorspace::ColorSpace;
 use zune_core::options::EncoderOptions;
 use zune_jpegxl::JxlSimpleEncoder;
 
-use crate::services::{ScrollDirection, ScrollImageList, ScrollScreenshotService};
+use crate::services::{
+    ScrollDirection, ScrollImageList, ScrollScreenshotImageService, ScrollScreenshotService,
+};
 
 #[command]
 pub async fn scroll_screenshot_init(
@@ -27,6 +29,7 @@ pub async fn scroll_screenshot_init(
     corner_threshold: u8,
     descriptor_patch_size: usize,
     min_size_delta: i32,
+    try_rollback: bool,
 ) -> Result<(), ()> {
     let mut scroll_screenshot_service = scroll_screenshot_service.lock().await;
 
@@ -40,6 +43,7 @@ pub async fn scroll_screenshot_init(
         corner_threshold,
         descriptor_patch_size,
         min_size_delta,
+        try_rollback,
     );
 
     Ok(())
@@ -47,7 +51,7 @@ pub async fn scroll_screenshot_init(
 
 #[command]
 pub async fn scroll_screenshot_capture(
-    scroll_screenshot_service: tauri::State<'_, Mutex<ScrollScreenshotService>>,
+    scroll_screenshot_image_service: tauri::State<'_, Mutex<ScrollScreenshotImageService>>,
     scroll_image_list: ScrollImageList,
     monitor_x: i32,
     monitor_y: i32,
@@ -55,28 +59,48 @@ pub async fn scroll_screenshot_capture(
     min_y: u32,
     max_x: u32,
     max_y: u32,
+) -> Result<(), ()> {
+    // 区域截图
+    let image = {
+        let monitor = Monitor::from_point(monitor_x, monitor_y).unwrap();
+
+        match monitor.capture_region(min_x, min_y, max_x - min_x, max_y - min_y) {
+            Ok(image) => image,
+            Err(_) => return Err(()),
+        }
+    };
+
+    scroll_screenshot_image_service
+        .lock()
+        .await
+        .push_image(image::DynamicImage::ImageRgba8(image), scroll_image_list);
+
+    Ok(())
+}
+
+/**
+ * 处理目前截取到的所有图片
+ */
+#[command]
+pub async fn scroll_screenshot_handle_image(
+    scroll_screenshot_service: tauri::State<'_, Mutex<ScrollScreenshotService>>,
+    scroll_screenshot_image_service: tauri::State<'_, Mutex<ScrollScreenshotImageService>>,
     thumbnail_size: u32,
 ) -> Result<Response, ()> {
     let mut scroll_screenshot_service = scroll_screenshot_service.lock().await;
 
-    let monitor = Monitor::from_point(monitor_x, monitor_y).unwrap();
+    // 把 scroll_screenshot_image_service.lock 后置，降低阻塞截图的概率，让截图堆积在截图队列中
+    let scroll_image = {
+        let mut scroll_screenshot_image_service = scroll_screenshot_image_service.lock().await;
 
-    // 区域截图
-    let image = match monitor.capture_region(min_x, min_y, max_x - min_x, max_y - min_y) {
-        Ok(image) => image,
-        Err(_) => return Err(()),
+        match scroll_screenshot_image_service.pop_image() {
+            Some(scroll_image) => scroll_image,
+            None => return Ok(Response::new(vec![2])), // 特殊标记，表示没有图片
+        }
     };
 
-    // let timestamp = SystemTime::now()
-    //     .duration_since(UNIX_EPOCH)
-    //     .unwrap()
-    //     .as_secs();
-    // image
-    //     .save(&format!("captuers/img_{}.png", timestamp))
-    //     .unwrap();
-
-    let (handle_result, is_origin) = scroll_screenshot_service
-        .handle_image(image::DynamicImage::ImageRgba8(image), scroll_image_list);
+    let (handle_result, is_origin) =
+        scroll_screenshot_service.handle_image(scroll_image.image, scroll_image.direction);
 
     if is_origin {
         return Ok(Response::new(vec![1])); // 特殊标记，表示是未变化

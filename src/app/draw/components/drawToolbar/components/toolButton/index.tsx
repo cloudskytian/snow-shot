@@ -14,6 +14,7 @@ const ToolButtonCore: React.FC<{
     onClick: () => void;
     drawState: DrawState;
     extraDrawState?: DrawState[];
+    enableState?: boolean;
     disable?: boolean;
     confirmTip?: React.ReactNode;
     hotkeyScope?: HotkeysScope;
@@ -24,6 +25,7 @@ const ToolButtonCore: React.FC<{
     onClick,
     drawState: propDrawState,
     extraDrawState,
+    enableState,
     disable,
     confirmTip,
     hotkeyScope,
@@ -34,11 +36,13 @@ const ToolButtonCore: React.FC<{
         (drawState: DrawState) => {
             setButtonType(
                 getButtonTypeByState(
-                    drawState === propDrawState || (extraDrawState?.includes(drawState) ?? false),
+                    drawState === propDrawState ||
+                        enableState ||
+                        (extraDrawState?.includes(drawState) ?? false),
                 ),
             );
         },
-        [propDrawState, extraDrawState],
+        [propDrawState, enableState, extraDrawState],
     );
 
     useStateSubscriber(DrawStatePublisher, updateButtonType);

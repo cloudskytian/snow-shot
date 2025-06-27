@@ -51,8 +51,12 @@ export const zIndexs = {
     // FullscreenDraw 全屏截图窗口 BEGIN
     /** 全屏截图绘制图层 */
     FullScreenDraw_DrawLayer: 0,
+    /** 全屏截图绘制工具栏 */
+    FullScreenDraw_Toolbar: 205,
     /** 全屏截图绘制图层 */
-    FullScreenDraw_LayoutMenu: 1,
+    FullScreenDraw_LayoutMenu: 207,
+    /** 全屏截图绘制工具栏 hover 状态 */
+    FullScreenDraw_ToolbarHover: 208,
     // FullscreenDraw 全屏截图窗口 END
 
     // VideoRecord 视频录制窗口 BEGIN

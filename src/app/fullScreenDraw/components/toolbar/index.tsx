@@ -13,15 +13,27 @@ import {
     TextIcon,
 } from '@/components/icons';
 import { ButtonProps, Flex, theme } from 'antd';
-import { DrawState, DrawStatePublisher } from '../drawCore/extra';
-import { useCallback, useImperativeHandle, useMemo, useState } from 'react';
+import {
+    DrawState,
+    DrawStatePublisher,
+    ExcalidrawEventPublisher,
+    ExcalidrawEventParams,
+} from '../drawCore/extra';
+import { useCallback, useContext, useImperativeHandle, useMemo, useState } from 'react';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
 import { useFullScreenDrawContext } from '../../extra';
-import { CloseOutlined } from '@ant-design/icons';
+import { CloseOutlined, LockOutlined } from '@ant-design/icons';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useIntl } from 'react-intl';
-import { AppSettingsData, AppSettingsGroup, AppSettingsPublisher } from '@/app/contextWrap';
+import {
+    AppSettingsActionContext,
+    AppSettingsData,
+    AppSettingsGroup,
+    AppSettingsPublisher,
+} from '@/app/contextWrap';
 import { fullScreenDrawChangeMouseThrough, closeFullScreenDraw } from '@/functions/fullScreenDraw';
+import { useStateRef } from '@/hooks/useStateRef';
+import { zIndexs } from '@/utils/zIndex';
 
 export type FullScreenDrawToolbarActionType = {
     setTool: (drawState: DrawState) => void;
@@ -33,16 +45,44 @@ export const FullScreenDrawToolbar: React.FC<{
     const intl = useIntl();
     const { token } = theme.useToken();
 
+    const { updateAppSettings } = useContext(AppSettingsActionContext);
     const { getDrawCoreAction } = useFullScreenDrawContext();
     const [getDrawState, setDrawState] = useStateSubscriber(DrawStatePublisher, undefined);
 
+    const [showLockDrawTool, setShowLockDrawTool, showLockDrawToolRef] = useStateRef(false);
+    const [enableLockDrawTool, setEnableLockDrawTool, enableLockDrawToolRef] = useStateRef(false);
+
+    useStateSubscriber(
+        AppSettingsPublisher,
+        useCallback(
+            (settings: AppSettingsData) => {
+                // 不显示锁定绘制工具
+                setShowLockDrawTool(!settings[AppSettingsGroup.FunctionScreenshot].lockDrawTool);
+                // 是否启用锁定绘制工具
+                setEnableLockDrawTool(settings[AppSettingsGroup.Cache].enableLockDrawTool);
+            },
+            [setEnableLockDrawTool, setShowLockDrawTool],
+        ),
+    );
     const onToolClick = useCallback(
         (drawState: DrawState) => {
-            console.log('onToolClick', drawState);
-
             const drawCoreAction = getDrawCoreAction();
 
             const prev = getDrawState();
+
+            if (drawState === DrawState.Lock) {
+                updateAppSettings(
+                    AppSettingsGroup.Cache,
+                    { enableLockDrawTool: !enableLockDrawToolRef.current },
+                    true,
+                    true,
+                    false,
+                    true,
+                    false,
+                );
+
+                return;
+            }
 
             let next = drawState;
 
@@ -54,6 +94,11 @@ export const FullScreenDrawToolbar: React.FC<{
                 }
             }
 
+            let toolLocked = true;
+            if (showLockDrawToolRef.current) {
+                toolLocked = enableLockDrawToolRef.current;
+            }
+
             switch (next) {
                 case DrawState.Select:
                     drawCoreAction?.setActiveTool({
@@ -63,31 +108,31 @@ export const FullScreenDrawToolbar: React.FC<{
                 case DrawState.Rect:
                     drawCoreAction?.setActiveTool({
                         type: 'rectangle',
-                        locked: true,
+                        locked: toolLocked,
                     });
                     break;
                 case DrawState.Ellipse:
                     drawCoreAction?.setActiveTool({
                         type: 'ellipse',
-                        locked: true,
+                        locked: toolLocked,
                     });
                     break;
                 case DrawState.Arrow:
                     drawCoreAction?.setActiveTool({
                         type: 'arrow',
-                        locked: true,
+                        locked: toolLocked,
                     });
                     break;
                 case DrawState.Pen:
                     drawCoreAction?.setActiveTool({
                         type: 'freedraw',
-                        locked: true,
+                        locked: toolLocked,
                     });
                     break;
                 case DrawState.Text:
                     drawCoreAction?.setActiveTool({
                         type: 'text',
-                        locked: true,
+                        locked: toolLocked,
                     });
                     break;
                 case DrawState.SerialNumber:
@@ -95,7 +140,7 @@ export const FullScreenDrawToolbar: React.FC<{
                 case DrawState.Eraser:
                     drawCoreAction?.setActiveTool({
                         type: 'eraser',
-                        locked: true,
+                        locked: toolLocked,
                     });
                     break;
                 case DrawState.LaserPointer:
@@ -115,7 +160,25 @@ export const FullScreenDrawToolbar: React.FC<{
 
             setDrawState(next);
         },
-        [getDrawCoreAction, getDrawState, setDrawState],
+        [enableLockDrawToolRef, getDrawCoreAction, getDrawState, setDrawState, updateAppSettings],
+    );
+
+    useStateSubscriber(
+        ExcalidrawEventPublisher,
+        useCallback(
+            (params: ExcalidrawEventParams | undefined) => {
+                if (params?.event === 'onChange') {
+                    if (
+                        params.params.appState.activeTool.type === 'selection' &&
+                        getDrawState() !== DrawState.Select &&
+                        getDrawState() !== DrawState.Idle
+                    ) {
+                        onToolClick(DrawState.Select);
+                    }
+                }
+            },
+            [getDrawState, onToolClick],
+        ),
     );
 
     useImperativeHandle(
@@ -179,6 +242,21 @@ export const FullScreenDrawToolbar: React.FC<{
                         }}
                     />
 
+                    {showLockDrawTool && (
+                        <>
+                            {/* 锁定绘制工具 */}
+                            <ToolButton
+                                componentKey={KeyEventKey.LockDrawTool}
+                                icon={<LockOutlined />}
+                                drawState={DrawState.Lock}
+                                enableState={enableLockDrawTool}
+                                onClick={() => {
+                                    onToolClick(DrawState.Lock);
+                                }}
+                            />
+                        </>
+                    )}
+
                     <div className="draw-toolbar-splitter" />
 
                     <ToolButton
@@ -198,8 +276,6 @@ export const FullScreenDrawToolbar: React.FC<{
                             <CircleIcon
                                 style={{
                                     fontSize: '1em',
-                                    position: 'relative',
-                                    bottom: '0.02em',
                                 }}
                             />
                         }
@@ -216,9 +292,7 @@ export const FullScreenDrawToolbar: React.FC<{
                         icon={
                             <ArrowIcon
                                 style={{
-                                    fontSize: '0.83em',
-                                    position: 'relative',
-                                    bottom: '0.08em',
+                                    fontSize: '0.9em',
                                 }}
                             />
                         }
@@ -233,7 +307,7 @@ export const FullScreenDrawToolbar: React.FC<{
                     {/* 画笔 */}
                     <ToolButton
                         componentKey={KeyEventKey.PenTool}
-                        icon={<PenIcon style={{ fontSize: '1.08em' }} />}
+                        icon={<PenIcon style={{ fontSize: '1.15em' }} />}
                         buttonProps={toolButtonProps}
                         drawState={DrawState.Pen}
                         onClick={() => {
@@ -244,7 +318,7 @@ export const FullScreenDrawToolbar: React.FC<{
                     {/* 文本 */}
                     <ToolButton
                         componentKey={KeyEventKey.TextTool}
-                        icon={<TextIcon style={{ fontSize: '1.08em' }} />}
+                        icon={<TextIcon style={{ fontSize: '1.15em' }} />}
                         drawState={DrawState.Text}
                         buttonProps={toolButtonProps}
                         onClick={() => {
@@ -259,8 +333,6 @@ export const FullScreenDrawToolbar: React.FC<{
                             <SerialNumberIcon
                                 style={{
                                     fontSize: '1.16em',
-                                    position: 'relative',
-                                    top: '0.03em',
                                 }}
                             />
                         }
@@ -277,9 +349,7 @@ export const FullScreenDrawToolbar: React.FC<{
                         icon={
                             <EraserIcon
                                 style={{
-                                    fontSize: '0.9em',
-                                    position: 'relative',
-                                    bottom: '0.05em',
+                                    fontSize: '0.95em',
                                 }}
                             />
                         }
@@ -297,8 +367,6 @@ export const FullScreenDrawToolbar: React.FC<{
                             <LaserPointerIcon
                                 style={{
                                     fontSize: '1.1em',
-                                    position: 'relative',
-                                    bottom: '0.02em',
                                 }}
                             />
                         }
@@ -319,8 +387,6 @@ export const FullScreenDrawToolbar: React.FC<{
                                 style={{
                                     fontSize: '0.9em',
                                     color: token.colorError,
-                                    position: 'relative',
-                                    bottom: '0.05em',
                                 }}
                             />
                         }
@@ -337,8 +403,6 @@ export const FullScreenDrawToolbar: React.FC<{
                             <MouseThroughIcon
                                 style={{
                                     fontSize: '0.95em',
-                                    position: 'relative',
-                                    bottom: '0.03em',
                                 }}
                             />
                         }
@@ -363,15 +427,23 @@ export const FullScreenDrawToolbar: React.FC<{
                     width: 100%;
                     display: flex;
                     justify-content: center;
+                    z-index: ${zIndexs.FullScreenDraw_Toolbar};
+                }
+
+                .full-screen-draw-toolbar-container:hover {
+                    z-index: ${zIndexs.FullScreenDraw_ToolbarHover};
                 }
 
                 .full-screen-draw-toolbar :global(.ant-btn) :global(.ant-btn-icon) {
                     font-size: 24px;
+                    display: flex;
+                    align-items: center;
                 }
 
                 .full-screen-draw-toolbar {
                     pointer-events: auto;
                     margin-top: ${token.marginLG}px;
+                    z-index: ${zIndexs.FullScreenDraw_Toolbar};
                 }
 
                 .full-screen-draw-toolbar {

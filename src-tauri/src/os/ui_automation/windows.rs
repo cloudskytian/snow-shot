@@ -420,9 +420,15 @@ impl UIElements {
         );
 
         let mut element_rect = Self::normalize_rect(element_rect);
+
         let window_rect = self
             .window_rect_map
-            .get(&element_level)
+            .get(
+                &self
+                    .window_index_level_map
+                    .get(&element_level.window_index)
+                    .unwrap_or(&element_level),
+            )
             .unwrap_or(&element_rect)
             .clone();
         if Self::beyond_rect(element_rect, window_rect) {

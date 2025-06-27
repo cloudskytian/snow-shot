@@ -18,17 +18,20 @@ export interface OcrDetectResult {
 export const ocrDetect = async (
     data: ArrayBuffer | Uint8Array,
     scaleFactor: number,
+    detectAngle: boolean,
 ): Promise<OcrDetectResult> => {
     const result = await invoke<string>('ocr_detect', data, {
         headers: {
             'x-scale-factor': scaleFactor.toFixed(3),
+            'x-detect-angle': detectAngle ? 'true' : 'false',
         },
     });
     return JSON.parse(result) as OcrDetectResult;
 };
 
 export enum OcrModel {
-    PaddleOcr = 'PaddleOcr',
+    RapidOcrV4 = 'RapidOcrV4',
+    RapidOcrV5 = 'RapidOcrV5',
 }
 
 export const ocrInit = async (model: OcrModel): Promise<void> => {

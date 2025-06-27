@@ -12,7 +12,8 @@ pub struct OcrLiteWrap {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Copy, PartialOrd, Serialize, Deserialize)]
 pub enum OcrModel {
-    PaddleOcr,
+    RapidOcrV4,
+    RapidOcrV5,
 }
 
 #[command]
@@ -34,7 +35,26 @@ pub async fn ocr_init(
     };
 
     match model {
-        OcrModel::PaddleOcr => {
+        OcrModel::RapidOcrV4 => {
+            ocr_instance
+                .init_models(
+                    &resource_path
+                        .join("paddle_ocr/ch_PP-OCRv4_det_infer.onnx")
+                        .display()
+                        .to_string(),
+                    &resource_path
+                        .join("paddle_ocr/ch_ppocr_mobile_v2.0_cls_infer.onnx")
+                        .display()
+                        .to_string(),
+                    &resource_path
+                        .join("paddle_ocr/ch_PP-OCRv4_rec_infer.onnx")
+                        .display()
+                        .to_string(),
+                    num_cpus::get_physical(),
+                )
+                .unwrap();
+        }
+        OcrModel::RapidOcrV5 => {
             ocr_instance
                 .init_models(
                     &resource_path
@@ -88,6 +108,14 @@ pub async fn ocr_detect(
         None => return Err(()),
     };
 
+    let detect_angle = match request.headers().get("x-detect-angle") {
+        Some(header) => match header.to_str() {
+            Ok(detect_angle) => detect_angle.parse::<bool>().unwrap(),
+            Err(_) => return Err(()),
+        },
+        None => return Err(()),
+    };
+
     let image_buffer = image.to_rgb8();
     let ocr_result = ocr_instance.detect_angle_rollback(
         &image_buffer,
@@ -96,7 +124,7 @@ pub async fn ocr_detect(
         0.5,
         0.3,
         1.6,
-        true,
+        detect_angle,
         false,
         0.9, // 屏幕截取的文字质量通常较高，且非横向排版的情况较少，尽量减少角度的影响
     );

@@ -95,6 +95,7 @@ export const settings = {
         '选定截图区域后，绘制的元素在超出选区范围时显示的透明度',
     'settings.functionSettings.screenshotSettings.autoOcrAfterFixed': '固定屏幕后自动 OCR',
     'settings.functionSettings.screenshotSettings.shortcutCanleTip': '快捷键取消截图提示',
+    'settings.functionSettings.screenshotSettings.lockDrawTool': '锁定绘制工具',
     'settings.functionSettings.screenshotSettings.ocrAfterAction': 'OCR 后自动执行',
     'settings.functionSettings.screenshotSettings.ocrAfterAction.none': '无操作',
     'settings.functionSettings.screenshotSettings.ocrAfterAction.copyText': '复制文本',
@@ -143,6 +144,9 @@ export const settings = {
     'settings.functionSettings.videoRecordSettings.hwaccel': '启用硬件加速',
     'settings.functionSettings.videoRecordSettings.saveDirectory': '保存目录',
     'settings.systemSettings.scrollScreenshotSettings': '滚动截图',
+    'settings.systemSettings.scrollScreenshotSettings.tryRollback': '匹配两侧图片',
+    'settings.systemSettings.scrollScreenshotSettings.tryRollback.tip':
+        '滚动截图存在上下、左右两种情况，滚动时会根据滚动方向匹配一侧图片，开启后会在一侧匹配失败时尝试匹配另一侧（常适用于匹配失败重新滚动到匹配失败位置时，如果关闭，必须再次向匹配方向进行滚动操作，但可能存在错误匹配导致拼接错误的情况）',
     'settings.systemSettings.scrollScreenshotSettings.imageFeatureThreshold': '图片特征阈值',
     'settings.systemSettings.scrollScreenshotSettings.imageFeatureThreshold.tip':
         '值越大，选取特征点的要求越高，采用 FAST 算法（https://en.wikipedia.org/wiki/Features_from_accelerated_segment_test）',
@@ -207,5 +211,7 @@ export const settings = {
         '仅针对白名单中的程序',
     'settings.systemSettings.screenshotSettings.tryGetElementByFocus.always': '保持启用',
     'settings.systemSettings.screenshotSettings.ocrModel': 'OCR 模型',
-    'settings.systemSettings.screenshotSettings.ocrModel.paddleOcr': 'Rapid OCR',
+    'settings.systemSettings.screenshotSettings.ocrModel.rapidOcrV4': 'Rapid OCR V4',
+    'settings.systemSettings.screenshotSettings.ocrModel.rapidOcrV5': 'Rapid OCR V5',
+    'settings.systemSettings.screenshotSettings.ocrDetectAngle': 'OCR 检测角度',
 };

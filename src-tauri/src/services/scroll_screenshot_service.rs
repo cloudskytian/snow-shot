@@ -120,6 +120,8 @@ pub struct ScrollScreenshotService {
     pub image_scroll_side_size: i32,
     /// 是否启用 fast12 算法进行角点检测
     pub enable_corner_fast12: Option<bool>,
+    /// 是否尝试回滚
+    pub try_rollback: bool,
 }
 
 impl ScrollScreenshotService {
@@ -216,6 +218,7 @@ impl ScrollScreenshotService {
             top_image_ann_index: ScrollIndex::new(0),
             bottom_image_ann_index: ScrollIndex::new(0),
             enable_corner_fast12: None,
+            try_rollback: false,
         }
     }
 
@@ -237,6 +240,7 @@ impl ScrollScreenshotService {
         corner_threshold: u8,
         descriptor_patch_size: usize,
         min_size_delta: i32,
+        try_rollback: bool,
     ) {
         self.top_image_list.clear();
         self.bottom_image_list.clear();
@@ -252,6 +256,7 @@ impl ScrollScreenshotService {
         self.bottom_image_index_size = 0;
         self.top_image_ann_index = ScrollIndex::new(self.get_descriptor_size());
         self.bottom_image_ann_index = ScrollIndex::new(self.get_descriptor_size());
+        self.try_rollback = try_rollback;
 
         let image_scale_side_size;
         if self.current_direction == ScrollDirection::Vertical {
@@ -785,7 +790,7 @@ impl ScrollScreenshotService {
         offsets = first_offsets;
 
         // 如果第一个方向没有找到匹配，尝试另一个方向
-        if offsets.is_none() {
+        if offsets.is_none() && self.try_rollback {
             let second_index = if scroll_image_list == ScrollImageList::Top {
                 &self.bottom_image_ann_index
             } else {

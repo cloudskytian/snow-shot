@@ -27,7 +27,7 @@ import { FormattedMessage } from 'react-intl';
 import { ContentWrap } from '@/components/contentWrap';
 import { IconLabel } from '@/components/iconLable';
 import { ResetSettingsButton } from '@/components/resetSettingsButton';
-import ProForm, { ProFormSelect, ProFormSlider } from '@ant-design/pro-form';
+import ProForm, { ProFormSelect, ProFormSlider, ProFormSwitch } from '@ant-design/pro-form';
 import { openPath } from '@tauri-apps/plugin-opener';
 import { AntdContext } from '@/components/globalLayoutExtra';
 import { clearAllAppStore } from '@/utils/appStore';
@@ -275,11 +275,31 @@ export default function SystemSettings() {
                                 options={[
                                     {
                                         label: (
-                                            <FormattedMessage id="settings.systemSettings.screenshotSettings.ocrModel.paddleOcr" />
+                                            <FormattedMessage id="settings.systemSettings.screenshotSettings.ocrModel.rapidOcrV4" />
                                         ),
-                                        value: OcrModel.PaddleOcr,
+                                        value: OcrModel.RapidOcrV4,
+                                    },
+                                    {
+                                        label: (
+                                            <FormattedMessage id="settings.systemSettings.screenshotSettings.ocrModel.rapidOcrV5" />
+                                        ),
+                                        value: OcrModel.RapidOcrV5,
                                     },
                                 ]}
+                            />
+                        </Col>
+
+                        <Col span={12}>
+                            <ProFormSwitch
+                                label={
+                                    <IconLabel
+                                        label={
+                                            <FormattedMessage id="settings.systemSettings.screenshotSettings.ocrDetectAngle" />
+                                        }
+                                    />
+                                }
+                                name="ocrDetectAngle"
+                                valuePropName="checked"
                             />
                         </Col>
                     </Row>
@@ -401,6 +421,24 @@ export default function SystemSettings() {
                 >
                     <Row gutter={token.margin}>
                         <Col span={12}>
+                            <ProFormSwitch
+                                label={
+                                    <IconLabel
+                                        label={
+                                            <FormattedMessage id="settings.systemSettings.scrollScreenshotSettings.tryRollback" />
+                                        }
+                                        tooltipTitle={
+                                            <FormattedMessage id="settings.systemSettings.scrollScreenshotSettings.tryRollback.tip" />
+                                        }
+                                    />
+                                }
+                                name="tryRollback"
+                            />
+                        </Col>
+                    </Row>
+
+                    <Row gutter={token.margin}>
+                        <Col span={12}>
                             <ProFormSlider
                                 label={
                                     <IconLabel
@@ -420,6 +458,7 @@ export default function SystemSettings() {
                                     0: '0',
                                     255: '255',
                                 }}
+                                layout="vertical"
                             />
                         </Col>
                         <Col span={12}>
@@ -442,6 +481,7 @@ export default function SystemSettings() {
                                     0: '0.1',
                                     1: '1',
                                 }}
+                                layout="vertical"
                             />
                         </Col>
                         <Col span={12}>
@@ -464,6 +504,7 @@ export default function SystemSettings() {
                                     64: '64',
                                     1024: '1024',
                                 }}
+                                layout="vertical"
                             />
                         </Col>
                         <Col span={12}>
@@ -486,6 +527,7 @@ export default function SystemSettings() {
                                     64: '64',
                                     1024: '1024',
                                 }}
+                                layout="vertical"
                             />
                         </Col>
                         <Col span={12}>
@@ -508,6 +550,7 @@ export default function SystemSettings() {
                                     8: '8',
                                     128: '128',
                                 }}
+                                layout="vertical"
                             />
                         </Col>
                     </Row>

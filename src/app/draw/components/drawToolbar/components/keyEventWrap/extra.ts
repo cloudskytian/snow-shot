@@ -14,6 +14,7 @@ export type KeyEventComponentValue = KeyEventValue & {
 export enum KeyEventKey {
     MoveTool = 'moveTool',
     SelectTool = 'selectTool',
+    LockDrawTool = 'lockDrawTool',
     RectTool = 'rectTool',
     EllipseTool = 'ellipseTool',
     ArrowTool = 'arrowTool',
@@ -56,6 +57,10 @@ export const defaultDrawToolbarKeyEventSettings: Record<KeyEventKey, KeyEventVal
     },
     [KeyEventKey.SelectTool]: {
         hotKey: 'V',
+        unique: true,
+    },
+    [KeyEventKey.LockDrawTool]: {
+        hotKey: 'Ctrl+L',
         unique: true,
     },
     [KeyEventKey.RectTool]: {

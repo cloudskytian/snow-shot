@@ -138,8 +138,9 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
     const setSelectState = useCallback(
         (state: SelectState) => {
             if (
-                selectStateRef.current === SelectState.Auto &&
-                (state === SelectState.Selected || state === SelectState.Manual)
+                state === SelectState.Selected &&
+                (selectStateRef.current === SelectState.Manual ||
+                    selectStateRef.current === SelectState.Auto)
             ) {
                 recoveryWindowZOrder().then(() => {
                     getCurrentWindow().setFocus();

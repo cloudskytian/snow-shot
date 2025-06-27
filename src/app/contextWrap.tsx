@@ -54,8 +54,8 @@ export enum AppSettingsGroup {
     SystemCommon = 'systemCommon',
     SystemChat = 'systemChat',
     SystemNetwork = 'systemNetwork',
-    SystemScreenshot = 'systemScreenshot_20250626',
-    SystemScrollScreenshot = 'systemScrollScreenshot_20250626',
+    SystemScreenshot = 'systemScreenshot_20250627',
+    SystemScrollScreenshot = 'systemScrollScreenshot_20250628',
     FunctionChat = 'functionChat',
     FunctionTranslation = 'functionTranslation',
     FunctionScreenshot = 'functionScreenshot',
@@ -113,6 +113,8 @@ export type AppSettingsData = {
         prevImageFormat: ImageFormat;
         prevSelectRect: ElementRect;
         enableMicrophone: boolean;
+        /** 是否启用锁定绘制工具 */
+        enableLockDrawTool: boolean;
     };
     [AppSettingsGroup.CacheV2]: {
         disableArrowPicker: boolean;
@@ -167,6 +169,8 @@ export type AppSettingsData = {
         ocrAfterAction: OcrDetectAfterAction;
         /** OCR 复制时复制文本 */
         ocrCopyText: boolean;
+        /** 锁定绘制工具 */
+        lockDrawTool: boolean;
     };
     [AppSettingsGroup.FunctionOutput]: {
         /** 手动保存文件名格式 */
@@ -203,8 +207,10 @@ export type AppSettingsData = {
     [AppSettingsGroup.SystemScreenshot]: {
         tryGetElementByFocus: TryGetElementByFocus;
         ocrModel: OcrModel;
+        ocrDetectAngle: boolean;
     };
     [AppSettingsGroup.SystemScrollScreenshot]: {
+        tryRollback: boolean;
         minSide: number;
         maxSide: number;
         sampleRate: number;
@@ -247,6 +253,7 @@ export const defaultAppSettingsData: AppSettingsData = {
             max_y: 0,
         },
         enableMicrophone: false,
+        enableLockDrawTool: false,
     },
     [AppSettingsGroup.CacheV2]: {
         disableArrowPicker: true,
@@ -288,13 +295,15 @@ export const defaultAppSettingsData: AppSettingsData = {
         saveFileFormat: ImageFormat.PNG,
         ocrAfterAction: OcrDetectAfterAction.None,
         ocrCopyText: false,
+        lockDrawTool: true,
     },
     [AppSettingsGroup.SystemScrollScreenshot]: {
-        imageFeatureThreshold: 100,
-        minSide: 83,
-        maxSide: 83,
+        tryRollback: false,
+        imageFeatureThreshold: 24,
+        minSide: 128,
+        maxSide: 128,
         sampleRate: 1,
-        imageFeatureDescriptionLength: 32,
+        imageFeatureDescriptionLength: 28,
     },
     [AppSettingsGroup.FunctionFixedContent]: {
         zoomWithMouse: false,
@@ -318,7 +327,8 @@ export const defaultAppSettingsData: AppSettingsData = {
     },
     [AppSettingsGroup.SystemScreenshot]: {
         tryGetElementByFocus: TryGetElementByFocus.WhiteList,
-        ocrModel: OcrModel.PaddleOcr,
+        ocrModel: OcrModel.RapidOcrV4,
+        ocrDetectAngle: false,
     },
 };
 
@@ -557,6 +567,10 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
                         typeof newSettings?.enableMicrophone === 'boolean'
                             ? newSettings.enableMicrophone
                             : (prevSettings?.enableMicrophone ?? false),
+                    enableLockDrawTool:
+                        typeof newSettings?.enableLockDrawTool === 'boolean'
+                            ? newSettings.enableLockDrawTool
+                            : (prevSettings?.enableLockDrawTool ?? false),
                 };
             } else if (group === AppSettingsGroup.CacheV2) {
                 newSettings = newSettings as AppSettingsData[typeof group];
@@ -930,6 +944,10 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
                         typeof newSettings?.ocrCopyText === 'boolean'
                             ? newSettings.ocrCopyText
                             : (prevSettings?.ocrCopyText ?? false),
+                    lockDrawTool:
+                        typeof newSettings?.lockDrawTool === 'boolean'
+                            ? newSettings.lockDrawTool
+                            : (prevSettings?.lockDrawTool ?? true),
                 };
             } else if (group === AppSettingsGroup.FunctionOutput) {
                 newSettings = newSettings as AppSettingsData[typeof group];
@@ -997,6 +1015,11 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
                             ? Math.min(Math.max(newSettings.imageFeatureDescriptionLength, 8), 128)
                             : (prevSettings?.imageFeatureDescriptionLength ??
                               defaultAppSettingsData[group].imageFeatureDescriptionLength),
+                    tryRollback:
+                        typeof newSettings?.tryRollback === 'boolean'
+                            ? newSettings.tryRollback
+                            : (prevSettings?.tryRollback ??
+                              defaultAppSettingsData[group].tryRollback),
                 };
             } else if (group === AppSettingsGroup.CommonTrayIcon) {
                 newSettings = newSettings as AppSettingsData[typeof group];
@@ -1071,6 +1094,11 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
                         typeof newSettings?.ocrModel === 'string'
                             ? (newSettings.ocrModel as OcrModel)
                             : (prevSettings?.ocrModel ?? defaultAppSettingsData[group].ocrModel),
+                    ocrDetectAngle:
+                        typeof newSettings?.ocrDetectAngle === 'boolean'
+                            ? newSettings.ocrDetectAngle
+                            : (prevSettings?.ocrDetectAngle ??
+                              defaultAppSettingsData[group].ocrDetectAngle),
                 };
             } else {
                 return defaultAppSettingsData[group];

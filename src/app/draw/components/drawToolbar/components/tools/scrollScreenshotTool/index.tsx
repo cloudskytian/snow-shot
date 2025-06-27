@@ -4,13 +4,14 @@ import { ElementRect } from '@/commands';
 import { clickThrough, scrollThrough } from '@/commands/core';
 import {
     SCROLL_SCREENSHOT_CAPTURE_RESULT_EXTRA_DATA_SIZE,
-    ScrollDirection,
     ScrollImageList,
+    ScrollDirection,
     scrollScreenshotCapture,
     ScrollScreenshotCaptureResult,
     ScrollScreenshotCaptureSize,
     scrollScreenshotClear,
     scrollScreenshotGetSize,
+    scrollScreenshotHandleImage,
     scrollScreenshotInit,
 } from '@/commands/scrollScreenshot';
 import { useStateRef } from '@/hooks/useStateRef';
@@ -53,7 +54,7 @@ export const ScrollScreenshot: React.FC<{
 
     const [, setDrawEvent] = useStateSubscriber(DrawEventPublisher, undefined);
 
-    const [loading, setLoading, loadingRef] = useStateRef(false);
+    const [loading, setLoading] = useState(false);
     const { selectLayerActionRef, monitorInfoRef } = useContext(DrawContext);
     const [positionRect, setPositionRect, positionRectRef] = useStateRef<ElementRect | undefined>(
         undefined,
@@ -204,59 +205,127 @@ export const ScrollScreenshot: React.FC<{
         );
     }, [intl, message]);
 
+    /**
+     * @returns 是否需要继续处理
+     */
+    const handleCaptureImage = useCallback(async (): Promise<boolean> => {
+        setDrawEvent({
+            event: DrawEvent.ScrollScreenshot,
+            params: undefined,
+        });
+        setDrawEvent(undefined);
+        setLoading(true);
+        let captureResult: ScrollScreenshotCaptureResult;
+
+        let needContinue = false;
+
+        try {
+            captureResult = await scrollScreenshotHandleImage(
+                THUMBNAIL_WIDTH * monitorInfoRef.current!.monitor_scale_factor,
+            );
+        } catch (error) {
+            console.error(error);
+            message.error(intl.formatMessage({ id: 'draw.scrollScreenshot.captureError' }));
+            return needContinue;
+        }
+
+        needContinue = captureResult.type !== 'no_image';
+
+        setLoading(false);
+
+        if (captureResult.type === 'no_image') {
+            return needContinue;
+        } else if (
+            captureResult.edge_position === 0 &&
+            captureResult.thumbnail_buffer === undefined
+        ) {
+            return needContinue;
+        } else if (captureResult.edge_position === undefined) {
+            showCaptureMissMessage();
+            return needContinue;
+        }
+
+        updateImageUrlList(captureResult);
+
+        return needContinue;
+    }, [
+        setDrawEvent,
+        setLoading,
+        updateImageUrlList,
+        monitorInfoRef,
+        message,
+        intl,
+        showCaptureMissMessage,
+    ]);
+
+    const pendingCaptureImageListRef = useRef<boolean>(false);
+    const handleCaptureImageList = useCallback(async () => {
+        if (pendingCaptureImageListRef.current) {
+            return;
+        }
+        pendingCaptureImageListRef.current = true;
+
+        let needContinue = true;
+        while (needContinue) {
+            try {
+                needContinue = await handleCaptureImage();
+            } catch (error) {
+                console.error('[handleCaptureImageList] error', error);
+                break;
+            }
+        }
+
+        pendingCaptureImageListRef.current = false;
+    }, [handleCaptureImage]);
+
+    const handleCaptureImageListDebounce = useMemo(() => {
+        return debounce(handleCaptureImageList, 128);
+    }, [handleCaptureImageList]);
+
+    const pendingCaptureRef = useRef<boolean>(false);
+    const captureImageCore = useCallback(
+        async (scrollImageList: ScrollImageList) => {
+            const rect = selectLayerActionRef.current!.getSelectRect()!;
+
+            if (pendingCaptureRef.current) {
+                return;
+            }
+
+            pendingCaptureRef.current = true;
+
+            await Promise.all([
+                Promise.all([
+                    new Promise((resolve) => setTimeout(resolve)),
+                    scrollScreenshotCapture(
+                        scrollImageList,
+                        monitorInfoRef.current!.monitor_x,
+                        monitorInfoRef.current!.monitor_y,
+                        rect.min_x,
+                        rect.min_y,
+                        rect.max_x,
+                        rect.max_y,
+                    ),
+                ]),
+            ]);
+
+            pendingCaptureRef.current = false;
+
+            handleCaptureImageListDebounce();
+        },
+        [monitorInfoRef, selectLayerActionRef, handleCaptureImageListDebounce],
+    );
+
+    const captureImageDebounce = useMemo(() => {
+        return debounce(captureImageCore, 128);
+    }, [captureImageCore]);
+
     const captureImage = useCallback(
         async (scrollImageList: ScrollImageList) => {
-            setDrawEvent({
-                event: DrawEvent.ScrollScreenshot,
-                params: undefined,
-            });
-            setDrawEvent(undefined);
-            setLoading(true);
-            let captureResult: ScrollScreenshotCaptureResult;
-
-            const rect = selectLayerActionRef.current!.getSelectRect()!;
-            try {
-                captureResult = await scrollScreenshotCapture(
-                    scrollImageList,
-                    monitorInfoRef.current!.monitor_x,
-                    monitorInfoRef.current!.monitor_y,
-                    rect.min_x,
-                    rect.min_y,
-                    rect.max_x,
-                    rect.max_y,
-                    THUMBNAIL_WIDTH * monitorInfoRef.current!.monitor_scale_factor,
-                );
-            } catch (error) {
-                console.error(error);
-                message.error(intl.formatMessage({ id: 'draw.scrollScreenshot.captureError' }));
-                return;
-            }
-
-            setLoading(false);
-
-            if (captureResult.edge_position === 0 && captureResult.thumbnail_buffer === undefined) {
-                return;
-            } else if (captureResult.edge_position === undefined) {
-                showCaptureMissMessage();
-                return;
-            }
-
-            updateImageUrlList(captureResult);
+            await captureImageCore(scrollImageList);
+            captureImageDebounce(scrollImageList);
         },
-        [
-            setDrawEvent,
-            setLoading,
-            selectLayerActionRef,
-            updateImageUrlList,
-            monitorInfoRef,
-            message,
-            intl,
-            showCaptureMissMessage,
-        ],
+        [captureImageCore, captureImageDebounce],
     );
-    const captuerDebounce = useMemo(() => {
-        return throttle(captureImage, 64, { edges: ['trailing'] });
-    }, [captureImage]);
 
     const [showTip, setShowTip] = useState(false);
     const init = useCallback(
@@ -284,8 +353,9 @@ export const ScrollScreenshot: React.FC<{
                     scrollSettings.imageFeatureThreshold,
                     scrollSettings.imageFeatureDescriptionLength,
                     scrollDirectionRef.current === ScrollDirection.Horizontal
-                        ? Math.ceil((rect.max_x - rect.min_x) / 1.25)
-                        : Math.ceil((rect.max_y - rect.min_y) / 1.25),
+                        ? Math.ceil((rect.max_x - rect.min_x) * 0.8)
+                        : Math.ceil((rect.max_y - rect.min_y) * 0.8),
+                    scrollSettings.tryRollback,
                 );
             } catch (error) {
                 console.error(error);
@@ -299,13 +369,13 @@ export const ScrollScreenshot: React.FC<{
             captureImage(ScrollImageList.Bottom);
         },
         [
-            captureImage,
-            getAppSettings,
             monitorInfoRef,
-            intl,
-            message,
-            scrollDirectionRef,
             setPositionRect,
+            getAppSettings,
+            captureImage,
+            scrollDirectionRef,
+            message,
+            intl,
         ],
     );
 
@@ -348,13 +418,9 @@ export const ScrollScreenshot: React.FC<{
                     pendingScrollThroughRef.current = false;
                 });
 
-            if (loadingRef.current) {
-                return;
-            }
-
-            captuerDebounce(event.deltaY > 0 ? ScrollImageList.Bottom : ScrollImageList.Top);
+            captureImage(event.deltaY > 0 ? ScrollImageList.Bottom : ScrollImageList.Top);
         },
-        [captuerDebounce, enableeCursorEventsDebounce, loadingRef, scrollDirectionRef],
+        [captureImage, enableeCursorEventsDebounce, scrollDirectionRef],
     );
 
     const enableIgnoreCursorEventsRef = useRef(false);

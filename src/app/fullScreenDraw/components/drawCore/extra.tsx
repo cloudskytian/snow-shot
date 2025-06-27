@@ -136,6 +136,8 @@ export enum DrawState {
     Blur = 10,
     // 橡皮擦
     Eraser = 11,
+    // 锁定
+    Lock = 12,
     // 撤销
     Undo = 101,
     // 重做

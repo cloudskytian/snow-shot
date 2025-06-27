@@ -17,6 +17,11 @@ import { useHotkeysApp } from '@/hooks/useHotkeysApp';
 import { useStateRef } from '@/hooks/useStateRef';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
 import { zIndexs } from '@/utils/zIndex';
+import {
+    BoundElement,
+    ExcalidrawElement,
+    ExcalidrawTextElement,
+} from '@mg-chao/excalidraw/element/types';
 import { AppState } from '@mg-chao/excalidraw/types';
 import Color from 'color';
 import React, {
@@ -57,7 +62,7 @@ const generateSerialNumber = (
         textHeight = 45;
     }
 
-    const res = [];
+    const res: ExcalidrawElement[] = [];
 
     let ellipseBackgroundColor = appState.currentItemBackgroundColor;
     const ellipseBackgroundColorInstance = new Color(ellipseBackgroundColor);
@@ -93,10 +98,10 @@ const generateSerialNumber = (
             angle: 0,
             strokeColor: appState.currentItemStrokeColor,
             backgroundColor: ellipseBackgroundColor,
-            fillStyle: 'solid',
+            fillStyle: appState.currentItemFillStyle,
             strokeWidth: appState.currentItemStrokeWidth,
             strokeStyle: appState.currentItemStrokeStyle,
-            roughness: 0,
+            roughness: appState.currentItemRoughness,
             opacity: appState.currentItemOpacity,
             groupIds: [serialNumberGroupNumber],
             frameId: null,
@@ -105,10 +110,11 @@ const generateSerialNumber = (
             versionNonce: 1149037384,
             isDeleted: false,
             boundElements: [],
-            fontSize: fontSize,
-            fontFamily: appState.currentItemFontFamily,
             link: null,
             locked: false,
+            seed: 0,
+            index: null,
+            updated: 0,
         });
     }
 
@@ -126,7 +132,7 @@ const generateSerialNumber = (
             fillStyle: appState.currentItemFillStyle,
             strokeWidth: appState.currentItemStrokeWidth,
             strokeStyle: appState.currentItemStrokeStyle,
-            roughness: 0,
+            roughness: appState.currentItemRoughness,
             opacity: appState.currentItemOpacity,
             groupIds: [serialNumberGroupNumber],
             frameId: null,
@@ -135,10 +141,11 @@ const generateSerialNumber = (
             versionNonce: 1149037384,
             isDeleted: false,
             boundElements: [],
-            fontSize: fontSize,
-            fontFamily: appState.currentItemFontFamily,
             link: null,
             locked: false,
+            seed: 0,
+            index: null,
+            updated: 0,
         },
         {
             id: textId,
@@ -153,7 +160,7 @@ const generateSerialNumber = (
             fillStyle: appState.currentItemFillStyle,
             strokeWidth: 1,
             strokeStyle: appState.currentItemStrokeStyle,
-            roughness: 0,
+            roughness: appState.currentItemRoughness,
             opacity: appState.currentItemOpacity,
             groupIds: [serialNumberGroupNumber],
             frameId: null,
@@ -172,7 +179,10 @@ const generateSerialNumber = (
             containerId: null,
             originalText: number.toString(),
             autoResize: false,
-            lineHeight: 1.25,
+            lineHeight: 1.25 as ExcalidrawTextElement['lineHeight'],
+            seed: 0,
+            index: null,
+            updated: 0,
         },
     );
 
@@ -186,6 +196,30 @@ export const SerialNumberTool: React.FC = () => {
     const arrowElementIdsRef = useRef<Set<string>>(new Set());
     const [enable, setEnable, enableRef] = useStateRef(false);
     const [maskStyle, setMaskStyle] = useState<React.CSSProperties>({});
+
+    const [disableArrowHotKey, setDisableArrowHotKey] = useState('');
+    const [disableArrow, setDisableArrow, disableArrowRef] = useStateRef(false);
+    const { updateAppSettings } = useContext(AppSettingsActionContext);
+    const [getAppSettings] = useStateSubscriber(
+        AppSettingsPublisher,
+        useCallback(
+            (appSettings: AppSettingsData) => {
+                setDisableArrow(appSettings[AppSettingsGroup.CacheV2].disableArrowPicker);
+                setDisableArrowHotKey(
+                    appSettings[AppSettingsGroup.DrawToolbarKeyEvent].serialNumberDisableArrow
+                        .hotKey,
+                );
+            },
+            [setDisableArrow],
+        ),
+    );
+    const lockTool = useCallback(() => {
+        let toolLocked = true;
+        if (!getAppSettings()[AppSettingsGroup.FunctionScreenshot].lockDrawTool) {
+            toolLocked = getAppSettings()[AppSettingsGroup.Cache].enableLockDrawTool;
+        }
+        return toolLocked;
+    }, [getAppSettings]);
 
     useStateSubscriber(
         DrawStatePublisher,
@@ -226,7 +260,7 @@ export const SerialNumberTool: React.FC = () => {
         ),
     );
 
-    const [disableArrow, setDisableArrow, disableArrowRef] = useStateRef(false);
+    const latestSerialNumberElementListRef = useRef<ExcalidrawElement[]>([]);
     const onMouseDown = useCallback(() => {
         const mousePosition = getMousePosition();
         if (!mousePosition) {
@@ -273,7 +307,11 @@ export const SerialNumberTool: React.FC = () => {
 
             sceneElements.forEach((item) => {
                 if (item.id === newArrowElement.id) {
-                    serialNumberElement[0].boundElements = [
+                    (
+                        serialNumberElement[0] as ExcalidrawElement & {
+                            boundElements: BoundElement[];
+                        }
+                    ).boundElements = [
                         {
                             id: newArrowElement.id,
                             type: 'arrow',
@@ -290,11 +328,52 @@ export const SerialNumberTool: React.FC = () => {
             });
         }
 
+        latestSerialNumberElementListRef.current = serialNumberElement;
+
         getAction()?.updateScene({
             elements: [...sceneElements, ...serialNumberElement],
             captureUpdate: 'IMMEDIATELY',
         });
     }, [disableArrowRef, getAction, getMousePosition]);
+
+    const onMouseUp = useCallback(() => {
+        if (!lockTool()) {
+            const action = getAction();
+
+            // 自动框选新增元素
+            if (
+                disableArrowRef.current &&
+                action &&
+                Array.isArray(latestSerialNumberElementListRef.current)
+            ) {
+                action.setActiveTool({
+                    type: 'selection',
+                });
+
+                const selectedElementIds: Readonly<{
+                    [id: string]: true;
+                }> = latestSerialNumberElementListRef.current.reduce(
+                    (acc, item) => {
+                        acc[item.id] = true;
+                        return acc;
+                    },
+                    {} as {
+                        [id: string]: true;
+                    },
+                );
+
+                action.updateScene({
+                    appState: {
+                        selectedGroupIds: {
+                            [latestSerialNumberElementListRef.current[0].groupIds[0]]: true,
+                        },
+                        selectedElementIds,
+                    },
+                    captureUpdate: 'IMMEDIATELY',
+                });
+            }
+        }
+    }, [disableArrowRef, getAction, lockTool]);
 
     useStateSubscriber(
         ExcalidrawEventPublisher,
@@ -306,25 +385,11 @@ export const SerialNumberTool: React.FC = () => {
 
                 if (params?.event === 'onPointerDown') {
                     onMouseDown();
+                } else if (params?.event === 'onDraw') {
+                    latestSerialNumberElementListRef.current = [];
                 }
             },
-            [onMouseDown, enableRef],
-        ),
-    );
-
-    const [disableArrowHotKey, setDisableArrowHotKey] = useState('');
-    const { updateAppSettings } = useContext(AppSettingsActionContext);
-    useStateSubscriber(
-        AppSettingsPublisher,
-        useCallback(
-            (appSettings: AppSettingsData) => {
-                setDisableArrow(appSettings[AppSettingsGroup.CacheV2].disableArrowPicker);
-                setDisableArrowHotKey(
-                    appSettings[AppSettingsGroup.DrawToolbarKeyEvent].serialNumberDisableArrow
-                        .hotKey,
-                );
-            },
-            [setDisableArrow],
+            [enableRef, onMouseDown],
         ),
     );
 
@@ -358,18 +423,20 @@ export const SerialNumberTool: React.FC = () => {
             return;
         }
 
+        const toolLocked = lockTool();
+
         if (disableArrowRef.current) {
             getAction()?.setActiveTool({
                 type: 'ellipse',
-                locked: true,
+                locked: toolLocked,
             });
         } else {
             getAction()?.setActiveTool({
                 type: 'arrow',
-                locked: true,
+                locked: toolLocked,
             });
         }
-    }, [disableArrowRef, getAction, enableRef]);
+    }, [enableRef, lockTool, disableArrowRef, getAction]);
     useEffect(() => {
         updateActiveTool();
     }, [updateActiveTool, enable, disableArrow]);
@@ -386,6 +453,7 @@ export const SerialNumberTool: React.FC = () => {
             className="serial-number-tool-mask"
             style={{ ...maskStyle, display: enableMask ? 'block' : 'none' }}
             onMouseDown={onMouseDown}
+            onMouseUp={onMouseUp}
             onWheel={onMaskWheel}
         >
             <style jsx>{`

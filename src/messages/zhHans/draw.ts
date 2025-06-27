@@ -34,6 +34,7 @@ export const draw = {
     'draw.rgb': 'RGB ({r}, {g}, {b})',
     'draw.moveTool': '移动',
     'draw.selectTool': '选择',
+    'draw.lockDrawTool': '锁定绘制工具',
     'draw.rectTool': '矩形',
     'draw.diamondTool': '菱形',
     'draw.ellipseTool': '椭圆',

@@ -24,6 +24,7 @@ export const scrollScreenshotInit = async (
     cornerThreshold: number,
     descriptorPatchSize: number,
     minSizeDelta: number,
+    tryRollback: boolean,
 ) => {
     const result = await invoke('scroll_screenshot_init', {
         direction,
@@ -35,20 +36,19 @@ export const scrollScreenshotInit = async (
         cornerThreshold,
         descriptorPatchSize,
         minSizeDelta,
+        tryRollback,
     });
     return result;
 };
 
 export type ScrollScreenshotCaptureResult = {
+    type: 'no_data' | 'no_change' | 'success' | 'no_image';
     thumbnail_buffer: ArrayBuffer | undefined;
     edge_position: number | undefined;
 };
 
 export const SCROLL_SCREENSHOT_CAPTURE_RESULT_EXTRA_DATA_SIZE = 4;
 
-/**
- * @returns WebP 的 buffer 数据
- */
 export const scrollScreenshotCapture = async (
     scrollImageList: ScrollImageList,
     monitorX: number,
@@ -57,7 +57,6 @@ export const scrollScreenshotCapture = async (
     minY: number,
     maxX: number,
     maxY: number,
-    thumbnailSize: number,
 ) => {
     const result = await invoke<ArrayBuffer>('scroll_screenshot_capture', {
         scrollImageList,
@@ -67,21 +66,56 @@ export const scrollScreenshotCapture = async (
         minY,
         maxX,
         maxY,
-        thumbnailSize,
     });
+
+    return result;
+};
+
+/**
+ * @returns JPG 的 buffer 数据
+ */
+export const scrollScreenshotHandleImage = async (
+    thumbnailSize: number,
+): Promise<ScrollScreenshotCaptureResult> => {
+    let result: ArrayBuffer | undefined;
+    try {
+        result = await invoke<ArrayBuffer>('scroll_screenshot_handle_image', {
+            thumbnailSize,
+        });
+    } catch (error) {
+        console.error('[scrollScreenshotHandleImage] error', error);
+        result = new ArrayBuffer();
+    }
 
     if (result.byteLength === 0) {
         return {
+            type: 'no_data',
             thumbnail_buffer: result,
             edge_position: undefined,
         };
     }
 
     if (result.byteLength === 1) {
-        return {
-            thumbnail_buffer: undefined,
-            edge_position: 0,
-        };
+        const array = new Uint8Array(result);
+        if (array[0] === 1) {
+            return {
+                type: 'no_change',
+                thumbnail_buffer: undefined,
+                edge_position: 0,
+            };
+        } else if (array[0] === 2) {
+            return {
+                type: 'no_image',
+                thumbnail_buffer: undefined,
+                edge_position: 0,
+            };
+        } else {
+            return {
+                type: 'no_data',
+                thumbnail_buffer: new ArrayBuffer(),
+                edge_position: undefined,
+            };
+        }
     }
 
     // 将屏幕信息和图像数据分离
@@ -96,6 +130,7 @@ export const scrollScreenshotCapture = async (
     const edgePosition = screenInfoView.getInt32(0, true); // i32
 
     return {
+        type: 'success',
         thumbnail_buffer: result,
         edge_position: edgePosition,
     };
