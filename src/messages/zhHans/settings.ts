@@ -176,7 +176,7 @@ export const settings = {
     'settings.hotKeySettings.fixedContent.fixedContentCloseWindow': '关闭窗口',
     'settings.functionSettings.fixedContentSettings': '固定到屏幕',
     'settings.functionSettings.fixedContentSettings.zoomWithMouse': '以鼠标为中心缩放',
-    'settings.functionSettings.fixedContentSettings.autoOcr': '固定屏幕后自动 OCR',
+    'settings.functionSettings.fixedContentSettings.autoOcr': '自动 OCR',
     'settings.printScreen.tip':
         'Windows 下如无法唤起截图，请禁用系统的截图工具后再次尝试，如无响应可尝试重启',
     'settings.functionSettings.translationSettings.apiConfig': 'API 配置',

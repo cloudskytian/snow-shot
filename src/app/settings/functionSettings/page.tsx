@@ -438,9 +438,9 @@ export default function SystemSettings() {
                         <Col span={12}>
                             <ProFormSwitch
                                 label={
-                                    <FormattedMessage id="settings.functionSettings.screenshotSettings.autoOcrAfterFixed" />
+                                    <FormattedMessage id="settings.functionSettings.fixedContentSettings.autoOcr" />
                                 }
-                                name="autoOcrAfterFixed"
+                                name="autoOcr"
                                 layout="horizontal"
                             />
                         </Col>
