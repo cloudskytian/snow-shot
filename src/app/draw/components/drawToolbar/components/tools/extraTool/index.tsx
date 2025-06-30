@@ -15,6 +15,7 @@ import { DrawContext } from '@/app/draw/types';
 
 export enum ExtraToolList {
     ScanQrcode = 0,
+    VideoRecord = 1,
 }
 
 export const ExtraTool: React.FC<{
@@ -63,7 +64,7 @@ export const ExtraTool: React.FC<{
                     <Button
                         icon={<VideoRecordIcon />}
                         title={intl.formatMessage({ id: 'draw.extraTool.videoRecord' })}
-                        type={getButtonTypeByState(activeTool === ExtraToolList.ScanQrcode)}
+                        type={getButtonTypeByState(activeTool === ExtraToolList.VideoRecord)}
                         key="videoRecord"
                         onClick={() => {
                             const monitorInfo = monitorInfoRef.current;
