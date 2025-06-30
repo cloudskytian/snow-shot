@@ -308,7 +308,7 @@ export const defaultAppSettingsData: AppSettingsData = {
         imageFeatureDescriptionLength: 28,
     },
     [AppSettingsGroup.FunctionFixedContent]: {
-        zoomWithMouse: false,
+        zoomWithMouse: true,
     },
     [AppSettingsGroup.FunctionOutput]: {
         manualSaveFileNameFormat: `SnowShot_{YYYY-MM-DD_HH-mm-ss}`,

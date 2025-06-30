@@ -391,36 +391,25 @@ export const FixedContentCore: React.FC<{
                 position: windowPosition,
             };
 
-            const zoomWithMouse =
-                getAppSettings()[AppSettingsGroup.FunctionFixedContent].zoomWithMouse;
-
             const thumbnailSize = Math.floor(42 * window.devicePixelRatio);
 
-            if (zoomWithMouse) {
-                // 获取当前鼠标位置
-                const [mouseX, mouseY] = await getMousePosition();
+            // 获取当前鼠标位置
+            const [mouseX, mouseY] = await getMousePosition();
 
-                // 计算缩略图窗口的新位置，使其以鼠标为中心
-                const newX = Math.round(mouseX - thumbnailSize / 2);
-                const newY = Math.round(mouseY - thumbnailSize / 2);
+            // 计算缩略图窗口的新位置，使其以鼠标为中心
+            const newX = Math.round(mouseX - thumbnailSize / 2);
+            const newY = Math.round(mouseY - thumbnailSize / 2);
 
-                // 同时设置窗口大小和位置
-                await Promise.all([
-                    appWindow.setSize(new PhysicalSize(thumbnailSize, thumbnailSize)),
-                    appWindow.setPosition(new PhysicalPosition(newX, newY)),
-                    appWebView.setSize(new PhysicalSize(thumbnailSize, thumbnailSize)),
-                ]);
-            } else {
-                // 普通缩略图，只改变窗口大小
-                await Promise.all([
-                    appWindow.setSize(new PhysicalSize(thumbnailSize, thumbnailSize)),
-                    appWebView.setSize(new PhysicalSize(thumbnailSize, thumbnailSize)),
-                ]);
-            }
+            // 同时设置窗口大小和位置
+            await Promise.all([
+                appWindow.setSize(new PhysicalSize(thumbnailSize, thumbnailSize)),
+                appWindow.setPosition(new PhysicalPosition(newX, newY)),
+                appWebView.setSize(new PhysicalSize(thumbnailSize, thumbnailSize)),
+            ]);
 
             setIsThumbnail(true);
         }
-    }, [getAppSettings]);
+    }, []);
 
     const menuRef = useRef<Menu>(undefined);
 
@@ -895,6 +884,7 @@ export const FixedContentCore: React.FC<{
 
                 <div
                     className="scale-info"
+                    data-tauri-drag-region
                     style={{
                         position: 'absolute',
                         bottom: 0,
@@ -947,6 +937,15 @@ export const FixedContentCore: React.FC<{
 
                 .fixed-image-container-inner:active {
                     cursor: grabbing;
+                }
+
+                .fixed-image-container-thumbnail-drag-region {
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    z-index: 99999999;
                 }
 
                 .fixed-html-content,
