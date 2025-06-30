@@ -8,7 +8,7 @@ import { ExcalidrawImperativeAPI } from '@mg-chao/excalidraw/types';
 import { createPublisher } from '@/hooks/useStatePublisher';
 import { ExcalidrawElement, OrderedExcalidrawElement } from '@mg-chao/excalidraw/element/types';
 import { ElementRect } from '@/commands';
-import { createContext, MouseEventHandler, WheelEventHandler } from 'react';
+import { createContext } from 'react';
 import { MousePosition } from '@/utils/mousePosition';
 
 export type DrawCoreActionType = {
