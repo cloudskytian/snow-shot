@@ -313,7 +313,16 @@ const TrayIconLoaderComponent = () => {
             closeTrayIcon();
             window.removeEventListener('beforeunload', closeTrayIcon);
         };
-    }, [disableShortcut, iconPath, intl, message, router, setTrayIconState, shortcutKeys]);
+    }, [
+        disableShortcut,
+        getAppSettings,
+        iconPath,
+        intl,
+        message,
+        router,
+        setTrayIconState,
+        shortcutKeys,
+    ]);
 
     return null;
 };

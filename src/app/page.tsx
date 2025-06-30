@@ -238,7 +238,7 @@ export default function Home() {
         );
 
         return { configs, groupConfigs };
-    }, [getTrayIconState]);
+    }, [getAppSettings, getTrayIconState]);
 
     const [shortcutKeyStatus, setShortcutKeyStatus] =
         useState<Record<AppFunction, ShortcutKeyStatus>>();

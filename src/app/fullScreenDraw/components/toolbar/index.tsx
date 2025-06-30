@@ -160,7 +160,14 @@ export const FullScreenDrawToolbar: React.FC<{
 
             setDrawState(next);
         },
-        [enableLockDrawToolRef, getDrawCoreAction, getDrawState, setDrawState, updateAppSettings],
+        [
+            enableLockDrawToolRef,
+            getDrawCoreAction,
+            getDrawState,
+            setDrawState,
+            showLockDrawToolRef,
+            updateAppSettings,
+        ],
     );
 
     useStateSubscriber(
