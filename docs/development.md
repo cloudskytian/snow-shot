@@ -1,10 +1,10 @@
-#### 开发文档
+## 开发文档
 
-GUI 框架使用 [Tauri](https://tauri.app/)
-Web 开发框架使用 [Next.js](https://nextjs.org/)
+GUI 框架使用 [Tauri](https://tauri.app/) 
+Web 开发框架使用 [Next.js](https://nextjs.org/) 
 UI 组件库使用 [Ant Design](https://ant.design/)
 
-##### 开发环境
+### 开发环境
 
 | 软件                                         | 版本       |
 | -------------------------------------------- | ---------- |
@@ -15,14 +15,15 @@ UI 组件库使用 [Ant Design](https://ant.design/)
 | [rust](https://rust-lang.org)                | 1.84.1     |
 | [cargo](https://rust-lang.org)               | 1.84.1     |
 
+### 运行项目
 
-##### 运行项目
+#### 1. 准备 Excalidraw
 
 在安装 Snow Shot 的项目依赖前，还需要手动准备一下 [@mg-chao/excalidraw](https://github.com/mg-chao/excalidraw) 项目作为项目的依赖。
 
 因为 Snow Shot 需要自定义 Excalidraw 非常多的功能，Excalidraw 的官方组件远远没法满足 Snow Shot 的支持。
 
-将 @mg-chao/excalidraw 项目 clone 到 Snow Shot 的同级目录后，并 checkout 到 `custom/master`，使用一下命令安装依赖。
+将 `@mg-chao/excalidraw` 项目 `clone` 到 Snow Shot 的同级目录后，使用 git 切换到项目的 `custom/master` 分支，然后使用以下命令安装依赖。
 
 ```bash
 yarn i
@@ -36,15 +37,32 @@ Excalidraw 使用 yarn 作为包管理器，这点和 Snow Shot 不同。
 pnpm update:excalidraw
 ```
 
-准备好上述环境后，首先需要安装前端的依赖
+#### 2. 准备 ONNX 模型的运行环境
+
+Snow Shot 使用 ONNX 调用 OCR 模型，为了更好的兼容性，使用了静态编译来包含模型所需的库。所以需要下载将 ONNX Runtime 的静态库放到 `src-tauri/lib` 目录下供静态编译使用。
+
+ONNX Runtime 可以从 [ONNX Runtime Releases](https://github.com/supertone-inc/onnxruntime-build/releases) 下载，选择 `onnxruntime-win-x64-static_lib-1.21.1.zip`。
+
+下载完毕后将 `onnxruntime.lib` 文件放到 `src-tauri/lib` 下即可。
+
+#### 3. 准备视频录制环境（可选）
+
+为了完成视频录制，Snow Shot 选择调用 FFmpeg CLI 进行屏幕录制。如果不准备进行视频录制相关功能的开发，可以选择不安装 FFmpeg。
+
+可以从 [FFmpeg Builds](https://www.gyan.dev/ffmpeg/builds/) 下载 FFmpeg 的 CLI 程序，然后将 `ffmpeg.exe` 文件放入 `src-tauri/ffmpeg` 中。
+
+#### 4. 安装前端依赖
+
+使用以下命令安装前端依赖。
 
 ```bash
 pnpm i
 ```
+
+#### 5. 运行
 
 安装完成后，使用以下命令运行项目
 
 ```bash
 pnpm tauri dev
 ```
-
