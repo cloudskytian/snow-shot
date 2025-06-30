@@ -285,11 +285,8 @@ const DrawCoreComponent: React.FC<{
             getCanvas,
             getDrawCacheLayerElement: () => drawCacheLayerElementRef.current,
             getExcalidrawAPI: () => excalidrawAPIRef.current,
-            handleWheel: (ev: WheelEvent | React.WheelEvent<HTMLDivElement>) => {
-                handleWheel(ev);
-            },
         }),
-        [getCanvas, getCanvasContext, getImageData, handleWheel, setEnable, updateScene],
+        [getCanvas, getCanvasContext, getImageData, setEnable, updateScene],
     );
 
     const shouldResizeFromCenter = useCallback<
@@ -365,6 +362,19 @@ const DrawCoreComponent: React.FC<{
         (activeTool, pointerDownState) => {
             setExcalidrawEvent({
                 event: 'onPointerDown',
+                params: {
+                    activeTool,
+                    pointerDownState,
+                },
+            });
+            setExcalidrawEvent(undefined);
+        },
+        [setExcalidrawEvent],
+    );
+    const onPointerUp = useCallback<NonNullable<ExcalidrawProps['onPointerUp']>>(
+        (activeTool, pointerDownState) => {
+            setExcalidrawEvent({
+                event: 'onPointerUp',
                 params: {
                     activeTool,
                     pointerDownState,
@@ -455,6 +465,7 @@ const DrawCoreComponent: React.FC<{
                     initialData={initialData}
                     handleKeyboardGlobally
                     onPointerDown={onPointerDown}
+                    onPointerUp={onPointerUp}
                     excalidrawAPI={excalidrawAPICallback}
                     customOptions={excalidrawCustomOptions}
                     onChange={excalidrawOnChange}

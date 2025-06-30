@@ -18,6 +18,7 @@ import { DrawContext } from '../../types';
 import { ElementRect } from '@/commands';
 import { theme } from 'antd';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
+import { NormalizedZoomValue } from '@mg-chao/excalidraw/types';
 
 const DrawCacheLayerCore: React.FC<{
     actionRef: React.RefObject<DrawCacheLayerActionType | undefined>;
@@ -63,6 +64,11 @@ const DrawCacheLayerCore: React.FC<{
                     appState: {
                         // 清除在编辑中的元素
                         newElement: undefined,
+                        zoom: {
+                            value: 1 as NormalizedZoomValue,
+                        },
+                        scrollX: 0,
+                        scrollY: 0,
                     },
                     captureUpdate: 'IMMEDIATELY',
                 });
@@ -86,9 +92,6 @@ const DrawCacheLayerCore: React.FC<{
             },
             getExcalidrawAPI: () => {
                 return drawCoreActionRef.current?.getExcalidrawAPI();
-            },
-            handleWheel: (ev: WheelEvent | React.WheelEvent<HTMLDivElement>) => {
-                drawCoreActionRef.current?.handleWheel(ev);
             },
         }),
         [history, setExcalidrawEvent],

@@ -15,5 +15,4 @@ export type DrawCacheLayerActionType = {
     getAppState: () => AppState | undefined;
     getDrawCacheLayerElement: () => HTMLDivElement | null | undefined;
     getExcalidrawAPI: () => ExcalidrawImperativeAPI | undefined;
-    handleWheel: (ev: WheelEvent | React.WheelEvent<HTMLDivElement>) => void;
 };
