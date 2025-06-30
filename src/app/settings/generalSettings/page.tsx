@@ -31,6 +31,7 @@ export default function GeneralSettings() {
     const { updateAppSettings } = useContext(AppSettingsActionContext);
     const [commonForm] = Form.useForm<AppSettingsData[AppSettingsGroup.Common]>();
     const [screenshotForm] = Form.useForm<AppSettingsData[AppSettingsGroup.Screenshot]>();
+    const [fixedContentForm] = Form.useForm<AppSettingsData[AppSettingsGroup.FixedContent]>();
     const [trayIconForm] = Form.useForm<AppSettingsData[AppSettingsGroup.CommonTrayIcon]>();
 
     const [appSettingsLoading, setAppSettingsLoading] = useStateRef(true);
@@ -60,8 +61,16 @@ export default function GeneralSettings() {
                 ) {
                     trayIconForm.setFieldsValue(settings[AppSettingsGroup.CommonTrayIcon]);
                 }
+
+                if (
+                    preSettings === undefined ||
+                    preSettings[AppSettingsGroup.FixedContent] !==
+                        settings[AppSettingsGroup.FixedContent]
+                ) {
+                    fixedContentForm.setFieldsValue(settings[AppSettingsGroup.FixedContent]);
+                }
             },
-            [commonForm, screenshotForm, setAppSettingsLoading, trayIconForm],
+            [commonForm, fixedContentForm, screenshotForm, setAppSettingsLoading, trayIconForm],
         ),
         true,
     );
@@ -147,12 +156,6 @@ export default function GeneralSettings() {
                 form={screenshotForm}
                 submitter={false}
                 onValuesChange={(_, values) => {
-                    if (typeof values.fixedBorderColor === 'object') {
-                        values.fixedBorderColor = (
-                            values.fixedBorderColor as AggregationColor
-                        ).toHexString();
-                    }
-
                     if (typeof values.fullScreenAuxiliaryLineColor === 'object') {
                         values.fullScreenAuxiliaryLineColor = (
                             values.fullScreenAuxiliaryLineColor as AggregationColor
@@ -255,20 +258,6 @@ export default function GeneralSettings() {
 
                         <Col span={12}>
                             <ProForm.Item
-                                name="fixedBorderColor"
-                                label={
-                                    <IconLabel
-                                        label={<FormattedMessage id="settings.fixedBorderColor" />}
-                                    />
-                                }
-                                required={false}
-                            >
-                                <ColorPicker showText placement="bottom" />
-                            </ProForm.Item>
-                        </Col>
-
-                        <Col span={12}>
-                            <ProForm.Item
                                 name="fullScreenAuxiliaryLineColor"
                                 label={
                                     <IconLabel
@@ -278,9 +267,66 @@ export default function GeneralSettings() {
                                     />
                                 }
                                 required={false}
+                                validateDebounce={1000}
                             >
                                 <ColorPicker showText placement="bottom" />
                             </ProForm.Item>
+                        </Col>
+                    </Row>
+                </Spin>
+            </ProForm>
+
+            <Divider />
+
+            <GroupTitle
+                id="fixedContentSettings"
+                extra={
+                    <ResetSettingsButton
+                        title={intl.formatMessage({ id: 'settings.fixedContentSettings' })}
+                        appSettingsGroup={AppSettingsGroup.FixedContent}
+                    />
+                }
+            >
+                <FormattedMessage id="settings.fixedContentSettings" />
+            </GroupTitle>
+
+            <ProForm<AppSettingsData[AppSettingsGroup.FixedContent]>
+                className="settings-form fixed-content-settings-form"
+                form={fixedContentForm}
+                submitter={false}
+                onValuesChange={(_, values) => {
+                    if (typeof values.borderColor === 'object') {
+                        values.borderColor = (values.borderColor as AggregationColor).toHexString();
+                    }
+
+                    updateAppSettings(
+                        AppSettingsGroup.FixedContent,
+                        values,
+                        true,
+                        true,
+                        true,
+                        true,
+                        false,
+                    );
+                }}
+                layout="vertical"
+            >
+                <Spin spinning={appSettingsLoading}>
+                    <Row gutter={token.margin}>
+                        <Col span={12}>
+                            <Form.Item
+                                name="borderColor"
+                                label={
+                                    <IconLabel
+                                        label={
+                                            <FormattedMessage id="settings.fixedContentSettings.borderColor" />
+                                        }
+                                    />
+                                }
+                                required={false}
+                            >
+                                <ColorPicker showText placement="bottom" />
+                            </Form.Item>
                         </Col>
                     </Row>
                 </Spin>

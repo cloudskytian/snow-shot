@@ -76,7 +76,7 @@ export const FixedContentCore: React.FC<{
     useStateSubscriber(
         AppSettingsPublisher,
         useCallback((settings: AppSettingsData) => {
-            setFixedBorderColor(settings[AppSettingsGroup.Screenshot].fixedBorderColor);
+            setFixedBorderColor(settings[AppSettingsGroup.FixedContent].borderColor);
             setHotkeys(settings[AppSettingsGroup.KeyEvent]);
         }, []),
     );
@@ -257,7 +257,7 @@ export const FixedContentCore: React.FC<{
                 max_x: canvas.width,
                 max_y: canvas.height,
             };
-            if (!getAppSettings()[AppSettingsGroup.FunctionScreenshot].autoOcrAfterFixed) {
+            if (!getAppSettings()[AppSettingsGroup.FunctionFixedContent].autoOcr) {
                 initOcrParams.current = {
                     selectRect: ocrRect,
                     monitorInfo,
@@ -292,7 +292,7 @@ export const FixedContentCore: React.FC<{
             );
 
             if (
-                getAppSettings()[AppSettingsGroup.FunctionScreenshot].autoOcrAfterFixed &&
+                getAppSettings()[AppSettingsGroup.FunctionFixedContent].autoOcr &&
                 ocrResultActionRef.current
             ) {
                 ocrResultActionRef.current.init({

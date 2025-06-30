@@ -288,16 +288,6 @@ export default function SystemSettings() {
                                 }
                             />
                         </Col>
-
-                        <Col span={12}>
-                            <ProFormSwitch
-                                label={
-                                    <FormattedMessage id="settings.functionSettings.screenshotSettings.autoOcrAfterFixed" />
-                                }
-                                name="autoOcrAfterFixed"
-                                layout="horizontal"
-                            />
-                        </Col>
                     </Row>
 
                     <Row gutter={token.padding}>
@@ -442,6 +432,16 @@ export default function SystemSettings() {
                                 label={
                                     <FormattedMessage id="settings.functionSettings.fixedContentSettings.zoomWithMouse" />
                                 }
+                            />
+                        </Col>
+
+                        <Col span={12}>
+                            <ProFormSwitch
+                                label={
+                                    <FormattedMessage id="settings.functionSettings.screenshotSettings.autoOcrAfterFixed" />
+                                }
+                                name="autoOcrAfterFixed"
+                                layout="horizontal"
                             />
                         </Col>
                     </Row>

@@ -47,6 +47,7 @@ export enum AppSettingsGroup {
     Cache = 'cache',
     CacheV2 = 'cacheV2',
     Screenshot = 'screenshot',
+    FixedContent = 'fixedContent',
     DrawToolbarKeyEvent = 'drawToolbarKeyEvent_20250526',
     KeyEvent = 'KeyEvent',
     AppFunction = 'appFunction',
@@ -90,12 +91,14 @@ export type AppSettingsData = {
         colorPickerShowMode: ColorPickerShowMode;
         /** 超出选区范围的元素透明度 */
         beyondSelectRectElementOpacity: number;
-        /** 固定屏幕后边框颜色 */
-        fixedBorderColor: string;
         /** 全屏辅助线颜色 */
         fullScreenAuxiliaryLineColor: string;
         /** 禁用动画 */
         disableAnimation: boolean;
+    };
+    [AppSettingsGroup.FixedContent]: {
+        /** 边框颜色 */
+        borderColor: string;
     };
     [AppSettingsGroup.CommonTrayIcon]: {
         /** 自定义托盘图标 */
@@ -151,8 +154,6 @@ export type AppSettingsData = {
     [AppSettingsGroup.FunctionScreenshot]: {
         /** 选取窗口子元素 */
         findChildrenElements: boolean;
-        /** 固定屏幕后自动 OCR */
-        autoOcrAfterFixed: boolean;
         /** 截图快捷键提示 */
         shortcutCanleTip: boolean;
         /** 增强保存文件功能 */
@@ -187,6 +188,8 @@ export type AppSettingsData = {
     [AppSettingsGroup.FunctionFixedContent]: {
         /** 以鼠标为中心缩放 */
         zoomWithMouse: boolean;
+        /** 固定屏幕后自动 OCR */
+        autoOcr: boolean;
     };
     [AppSettingsGroup.FunctionFullScreenDraw]: {
         /** 默认工具 */
@@ -229,11 +232,13 @@ export const defaultAppSettingsData: AppSettingsData = {
     },
     [AppSettingsGroup.Screenshot]: {
         controlNode: AppSettingsControlNode.Circle,
-        fixedBorderColor: '#dbdbdb',
         disableAnimation: false,
         colorPickerShowMode: ColorPickerShowMode.BeyondSelectRect,
         beyondSelectRectElementOpacity: 100,
         fullScreenAuxiliaryLineColor: '#00000000',
+    },
+    [AppSettingsGroup.FixedContent]: {
+        borderColor: '#dbdbdb',
     },
     [AppSettingsGroup.CommonTrayIcon]: {
         iconPath: '',
@@ -288,7 +293,6 @@ export const defaultAppSettingsData: AppSettingsData = {
     },
     [AppSettingsGroup.FunctionScreenshot]: {
         findChildrenElements: true,
-        autoOcrAfterFixed: true,
         shortcutCanleTip: true,
         enhanceSaveFile: false,
         autoSaveOnCopy: true,
@@ -309,6 +313,7 @@ export const defaultAppSettingsData: AppSettingsData = {
     },
     [AppSettingsGroup.FunctionFixedContent]: {
         zoomWithMouse: true,
+        autoOcr: true,
     },
     [AppSettingsGroup.FunctionOutput]: {
         manualSaveFileNameFormat: `SnowShot_{YYYY-MM-DD_HH-mm-ss}`,
@@ -604,10 +609,6 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
 
                 settings = {
                     controlNode,
-                    fixedBorderColor:
-                        typeof newSettings?.fixedBorderColor === 'string'
-                            ? newSettings.fixedBorderColor
-                            : (prevSettings?.fixedBorderColor ?? '#dbdbdb'),
                     disableAnimation:
                         typeof newSettings?.disableAnimation === 'boolean'
                             ? newSettings.disableAnimation
@@ -626,6 +627,19 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
                         typeof newSettings?.fullScreenAuxiliaryLineColor === 'string'
                             ? newSettings.fullScreenAuxiliaryLineColor
                             : (prevSettings?.fullScreenAuxiliaryLineColor ?? '#00000'),
+                };
+            } else if (group === AppSettingsGroup.FixedContent) {
+                newSettings = newSettings as AppSettingsData[typeof group];
+                const prevSettings = appSettingsRef.current[group] as
+                    | AppSettingsData[typeof group]
+                    | undefined;
+
+                settings = {
+                    borderColor:
+                        typeof newSettings?.borderColor === 'string'
+                            ? newSettings.borderColor
+                            : (prevSettings?.borderColor ??
+                              defaultAppSettingsData[group].borderColor),
                 };
             } else if (group === AppSettingsGroup.DrawToolbarKeyEvent) {
                 newSettings = newSettings as AppSettingsData[typeof group];
@@ -909,11 +923,6 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
 
                 settings = {
                     findChildrenElements,
-                    autoOcrAfterFixed:
-                        typeof newSettings?.autoOcrAfterFixed === 'boolean'
-                            ? newSettings.autoOcrAfterFixed
-                            : (prevSettings?.autoOcrAfterFixed ??
-                              defaultAppSettingsData[group].autoOcrAfterFixed),
                     shortcutCanleTip:
                         typeof newSettings?.shortcutCanleTip === 'boolean'
                             ? newSettings.shortcutCanleTip
@@ -1089,6 +1098,10 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
                         typeof newSettings?.zoomWithMouse === 'boolean'
                             ? newSettings.zoomWithMouse
                             : (prevSettings?.zoomWithMouse ?? false),
+                    autoOcr:
+                        typeof newSettings?.autoOcr === 'boolean'
+                            ? newSettings.autoOcr
+                            : (prevSettings?.autoOcr ?? defaultAppSettingsData[group].autoOcr),
                 };
             } else if (group === AppSettingsGroup.SystemScreenshot) {
                 newSettings = newSettings as AppSettingsData[typeof group];

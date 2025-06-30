@@ -7,7 +7,8 @@ export const settings = {
     'settings.controlNode.polyline': '多边形',
     'settings.screenshotSettings': '截图',
     'settings.disableAnimation': '禁用动画',
-    'settings.fixedBorderColor': '固定屏幕边框颜色',
+    'settings.fixedContentSettings': '固定到屏幕',
+    'settings.fixedContentSettings.borderColor': '边框颜色',
     'settings.fullScreenAuxiliaryLineColor': '全屏辅助线颜色',
     'settings.enableQrcodeScan': '启用二维码识别',
     'settings.findChildrenElements': '查找窗口子元素',
@@ -175,6 +176,7 @@ export const settings = {
     'settings.hotKeySettings.fixedContent.fixedContentCloseWindow': '关闭窗口',
     'settings.functionSettings.fixedContentSettings': '固定到屏幕',
     'settings.functionSettings.fixedContentSettings.zoomWithMouse': '以鼠标为中心缩放',
+    'settings.functionSettings.fixedContentSettings.autoOcr': '固定屏幕后自动 OCR',
     'settings.printScreen.tip':
         'Windows 下如无法唤起截图，请禁用系统的截图工具后再次尝试，如无响应可尝试重启',
     'settings.functionSettings.translationSettings.apiConfig': 'API 配置',
