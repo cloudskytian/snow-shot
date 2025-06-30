@@ -523,7 +523,7 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
         [getSelectRect, setSelectState, updateDragMode],
     );
     const onMouseMove = useCallback(
-        async (mousePosition: MousePosition) => {
+        async (mousePosition: MousePosition, ignoreAnimation: boolean = false) => {
             // 检测下鼠标移动的距离
             lastMouseMovePositionRef.current = mousePosition;
 
@@ -564,7 +564,7 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
                 } else {
                     setSelectRect(
                         currentSelectRect,
-                        getScreenshotType() === ScreenshotType.TopWindow,
+                        ignoreAnimation || getScreenshotType() === ScreenshotType.TopWindow,
                     );
                 }
             } else if (selectStateRef.current === SelectState.Manual) {
@@ -622,13 +622,16 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
 
     const onMouseMoveRenderCallback = useCallbackRender(onMouseMove);
     // 用上一次的鼠标移动事件触发 onMouseMove 来更新一些状态
-    const refreshMouseMove = useCallback(() => {
-        if (!lastMouseMovePositionRef.current) {
-            return;
-        }
+    const refreshMouseMove = useCallback(
+        (ignoreAnimation: boolean = false) => {
+            if (!lastMouseMovePositionRef.current) {
+                return;
+            }
 
-        onMouseMove(lastMouseMovePositionRef.current);
-    }, [onMouseMove]);
+            onMouseMove(lastMouseMovePositionRef.current, ignoreAnimation);
+        },
+        [onMouseMove],
+    );
     const onMouseWheel = useCallback(
         (e: WheelEvent) => {
             if (selectStateRef.current !== SelectState.Auto) {
@@ -652,7 +655,7 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
         await initSelectWindowElement();
 
         // 初始化可能晚于截图准备
-        refreshMouseMove();
+        refreshMouseMove(true);
     }, [initSelectWindowElement, refreshMouseMove]);
 
     useStateSubscriber(
@@ -771,7 +774,7 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
             onExecuteScreenshot,
             onMonitorInfoReady: async (monitorInfo) => {
                 await onMonitorInfoReady(monitorInfo);
-                refreshMouseMove();
+                refreshMouseMove(true);
             },
             getWindowId: () => selectedWindowIdRef.current,
             onCaptureFinish,
