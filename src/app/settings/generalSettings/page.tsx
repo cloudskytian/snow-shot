@@ -267,7 +267,6 @@ export default function GeneralSettings() {
                                     />
                                 }
                                 required={false}
-                                validateDebounce={1000}
                             >
                                 <ColorPicker showText placement="bottom" />
                             </ProForm.Item>
@@ -314,7 +313,7 @@ export default function GeneralSettings() {
                 <Spin spinning={appSettingsLoading}>
                     <Row gutter={token.margin}>
                         <Col span={12}>
-                            <Form.Item
+                            <ProForm.Item
                                 name="borderColor"
                                 label={
                                     <IconLabel
@@ -326,7 +325,7 @@ export default function GeneralSettings() {
                                 required={false}
                             >
                                 <ColorPicker showText placement="bottom" />
-                            </Form.Item>
+                            </ProForm.Item>
                         </Col>
                     </Row>
                 </Spin>
