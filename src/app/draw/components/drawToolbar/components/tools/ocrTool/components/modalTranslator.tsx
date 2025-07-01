@@ -129,6 +129,7 @@ export const ModalTranslator: React.FC<{
                             text_score: 1,
                         },
                     ],
+                    scale_factor: ocrResult.scale_factor,
                 },
                 true,
             );
