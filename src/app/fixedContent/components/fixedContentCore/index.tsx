@@ -337,7 +337,7 @@ export const FixedContentCore: React.FC<{
                 setTimeout(() => {
                     setDrawWindowStyle();
                     enableFreeDrag();
-                }, 128);
+                }, 512);
 
                 if ('htmlContent' in params) {
                     initHtml(params.htmlContent);

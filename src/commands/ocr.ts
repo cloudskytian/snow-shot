@@ -13,6 +13,7 @@ export interface OcrDetectResultTextBlock {
 
 export interface OcrDetectResult {
     text_blocks: OcrDetectResultTextBlock[];
+    scale_factor: number;
 }
 
 export const ocrDetect = async (
@@ -20,13 +21,12 @@ export const ocrDetect = async (
     scaleFactor: number,
     detectAngle: boolean,
 ): Promise<OcrDetectResult> => {
-    const result = await invoke<string>('ocr_detect', data, {
+    return await invoke<OcrDetectResult>('ocr_detect', data, {
         headers: {
             'x-scale-factor': scaleFactor.toFixed(3),
             'x-detect-angle': detectAngle ? 'true' : 'false',
         },
     });
-    return JSON.parse(result) as OcrDetectResult;
 };
 
 export enum OcrModel {

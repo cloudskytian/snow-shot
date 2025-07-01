@@ -102,7 +102,7 @@ export const OcrResult: React.FC<{
             const monitorScaleFactor = monitorScaleFactorRef.current;
             const selectRect = selectRectRef.current;
 
-            if (!monitorScaleFactor || !selectRect) {
+            if (!selectRect || !monitorScaleFactor) {
                 return;
             }
 
@@ -171,17 +171,23 @@ export const OcrResult: React.FC<{
                 textElement.style.display = 'inline-block';
 
                 const textWrapElement = document.createElement('div');
-                textWrapElement.style.position = 'absolute';
-                textWrapElement.style.width = `${width}px`;
-                textWrapElement.style.height = `${height}px`;
-                textWrapElement.style.transformOrigin = 'center';
-                textWrapElement.style.backdropFilter = 'blur(8px)';
+                const textBackgroundElement = document.createElement('div');
+                textBackgroundElement.style.position = textWrapElement.style.position = 'absolute';
+                textBackgroundElement.style.width = textWrapElement.style.width = `${width}px`;
+                textBackgroundElement.style.height = textWrapElement.style.height = `${height}px`;
+                textBackgroundElement.style.transformOrigin =
+                    textWrapElement.style.transformOrigin = 'center';
+
                 textWrapElement.style.display = 'flex';
                 textWrapElement.style.alignItems = 'center';
                 textWrapElement.style.justifyContent = 'center';
-                textWrapElement.style.backgroundColor = Color(token.colorBgContainer)
+                textWrapElement.style.backgroundColor = 'transparent';
+                textWrapElement.style.zIndex = '1';
+
+                textBackgroundElement.style.backgroundColor = Color(token.colorBgContainer)
                     .alpha(0.42)
                     .toString();
+                textBackgroundElement.style.backdropFilter = 'blur(3.6px)';
 
                 const isVertical = !ignoreScale && height > width * 1.5;
                 if (isVertical) {
@@ -199,15 +205,22 @@ export const OcrResult: React.FC<{
                 }
 
                 textWrapElement.appendChild(textElement);
+                textContainerElement.appendChild(textBackgroundElement);
                 textContainerElement.appendChild(textWrapElement);
 
                 setTimeout(() => {
-                    const textWidth = textElement.getBoundingClientRect().width;
-                    const textHeight = textElement.getBoundingClientRect().height;
+                    let textWidth = textElement.getBoundingClientRect().width;
+                    let textHeight = textElement.getBoundingClientRect().height;
+                    if (isVertical) {
+                        textWidth -= 3;
+                    } else {
+                        textHeight -= 3;
+                    }
 
                     const scale = Math.min(height / textHeight, width / textWidth);
                     textElement.style.transform = `scale(${scale})`;
-                    textWrapElement.style.transform = `translate(${centerX - width * 0.5}px, ${centerY - height * 0.5}px) rotate(${rotationDeg}deg)`;
+                    textBackgroundElement.style.transform =
+                        textWrapElement.style.transform = `translate(${centerX - width * 0.5}px, ${centerY - height * 0.5}px) rotate(${rotationDeg}deg)`;
                 }, 0);
             });
         },
@@ -226,10 +239,11 @@ export const OcrResult: React.FC<{
             const { selectRect, canvas, monitorInfo } = params;
 
             const imageBlob = await new Promise<Blob | null>((resolve) => {
-                canvas.toBlob(resolve, 'image/jpeg', 0.8);
+                canvas.toBlob(resolve, 'image/jpeg', 1);
             });
 
             if (imageBlob) {
+                monitorScaleFactorRef.current = monitorInfo.monitor_scale_factor;
                 const ocrResult = await ocrDetect(
                     await imageBlob.arrayBuffer(),
                     monitorInfo.monitor_scale_factor,
@@ -247,7 +261,6 @@ export const OcrResult: React.FC<{
                 }
 
                 selectRectRef.current = selectRect;
-                monitorScaleFactorRef.current = monitorInfo.monitor_scale_factor;
                 updateOcrTextElements(ocrResult);
                 onOcrDetect?.(ocrResult);
             }
@@ -270,7 +283,7 @@ export const OcrResult: React.FC<{
             tempCtx.drawImage(imageElement, 0, 0);
 
             const imageBlob = await new Promise<Blob | null>((resolve) => {
-                tempCanvas.toBlob(resolve, 'image/jpeg', 0.8);
+                tempCanvas.toBlob(resolve, 'image/jpeg', 1);
             });
 
             selectRectRef.current = {
@@ -284,7 +297,7 @@ export const OcrResult: React.FC<{
             if (imageBlob) {
                 const ocrResult = await ocrDetect(
                     await imageBlob.arrayBuffer(),
-                    monitorScaleFactorRef.current,
+                    0,
                     getAppSettings()[AppSettingsGroup.SystemScreenshot].ocrDetectAngle,
                 );
                 updateOcrTextElements(ocrResult);
