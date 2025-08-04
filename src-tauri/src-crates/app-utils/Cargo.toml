@@ -11,6 +11,8 @@ zune-core = { workspace = true }
 device_query = { workspace = true }
 image = { workspace = true }
 log = { workspace = true }
+rayon = { workspace = true }
+snow-shot-app-shared = { workspace = true }
 
 [target.'cfg(any(target_os = "macos"))'.dependencies]
 scap = { workspace = true }

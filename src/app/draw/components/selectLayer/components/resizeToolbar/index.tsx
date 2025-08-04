@@ -1,15 +1,7 @@
 import { MousePosition } from '@/utils/mousePosition';
-import { DrawContext } from '@/app/draw/types';
 import { zIndexs } from '@/utils/zIndex';
 import { Flex, theme } from 'antd';
-import React, {
-    useCallback,
-    useContext,
-    useImperativeHandle,
-    useMemo,
-    useRef,
-    useState,
-} from 'react';
+import React, { useCallback, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { updateElementPosition } from '../../../drawToolbar/components/dragButton/extra';
 import { ElementRect } from '@/commands';
 import { CaptureEvent, CaptureEventPublisher, ScreenshotTypePublisher } from '@/app/draw/extra';
@@ -29,7 +21,6 @@ export const ResizeToolbar: React.FC<{
     const { token } = theme.useToken();
 
     const resizeToolbarRef = useRef<HTMLDivElement>(null);
-    const { monitorInfoRef } = useContext(DrawContext);
 
     const [width, setWidth] = useState(0);
     const [height, setHeight] = useState(0);
@@ -41,19 +32,14 @@ export const ResizeToolbar: React.FC<{
                 return;
             }
 
-            const monitorInfo = monitorInfoRef.current;
-            if (!monitorInfo) {
-                return;
-            }
-
             const { isBeyond } = updateElementPosition(
                 resizeToolbar,
                 0,
                 0,
                 new MousePosition(0, resizeToolbar.clientHeight + token.marginXXS),
                 new MousePosition(
-                    selectedRect.min_x / monitorInfo.monitor_scale_factor,
-                    selectedRect.min_y / monitorInfo.monitor_scale_factor,
+                    selectedRect.min_x / window.devicePixelRatio,
+                    selectedRect.min_y / window.devicePixelRatio,
                 ),
                 undefined,
                 true,
@@ -64,20 +50,19 @@ export const ResizeToolbar: React.FC<{
                     0,
                     0,
                     new MousePosition(
-                        -(selectedRect.max_x - selectedRect.min_x) /
-                            monitorInfo.monitor_scale_factor -
+                        -(selectedRect.max_x - selectedRect.min_x) / window.devicePixelRatio -
                             token.marginXXS,
                         0,
                     ),
                     new MousePosition(
-                        selectedRect.min_x / monitorInfo.monitor_scale_factor,
-                        selectedRect.min_y / monitorInfo.monitor_scale_factor,
+                        selectedRect.min_x / window.devicePixelRatio,
+                        selectedRect.min_y / window.devicePixelRatio,
                     ),
                     undefined,
                 );
             }
         },
-        [monitorInfoRef, token.marginXXS],
+        [token.marginXXS],
     );
 
     const setEnable = useCallback((enable: boolean) => {

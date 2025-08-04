@@ -7,7 +7,7 @@ import * as clipboard from '@tauri-apps/plugin-clipboard-manager';
 import { showWindow } from '@/utils/window';
 import { getCurrentWindow, PhysicalPosition, PhysicalSize } from '@tauri-apps/api/window';
 import { setDrawWindowStyle } from '@/commands/screenshot';
-import { getCurrentMonitorInfo, readImageFromClipboard } from '@/commands/core';
+import { getCurrentMonitorInfo, MonitorInfo, readImageFromClipboard } from '@/commands/core';
 import { scrollScreenshotClear, scrollScreenshotGetImageData } from '@/commands/scrollScreenshot';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { AppSettingsFixedContentInitialPosition, AppSettingsGroup } from '../contextWrap';
@@ -109,14 +109,16 @@ export default function FixedContentPage() {
                   | null
                   | HTMLImageElement
                   | HTMLDivElement;
+              monitorInfo?: MonitorInfo;
           }
         | undefined
     >();
     const onHtmlTextImageLoad = useCallback(
         async (
             container: { width: number; height: number } | null | HTMLImageElement | HTMLDivElement,
+            monitorInfo?: MonitorInfo,
         ) => {
-            setLoadParams({ container });
+            setLoadParams({ container, monitorInfo });
         },
         [],
     );
@@ -135,27 +137,24 @@ export default function FixedContentPage() {
                 return;
             }
 
-            const monitorInfoPromise = getCurrentMonitorInfo();
+            const monitorInfo = loadParams.monitorInfo ?? (await getCurrentMonitorInfo());
 
             let width = 0;
             let height = 0;
-            if ('width' in container && 'height' in container) {
+            if (container instanceof HTMLImageElement) {
+                width = container.naturalWidth;
+                height = container.naturalHeight;
+            } else if ('width' in container && 'height' in container) {
                 width = container.width;
                 height = container.height;
             } else {
-                width = container.clientWidth;
-                height = container.clientHeight;
-            }
-
-            let scaleFactor = 1 / window.devicePixelRatio;
-            if (container instanceof HTMLImageElement) {
-                scaleFactor = container.naturalWidth / container.width;
+                width = container.clientWidth * window.devicePixelRatio;
+                height = container.clientHeight * window.devicePixelRatio;
             }
 
             if (width > 0 && height > 0) {
-                const windowWidth = Math.floor(width / scaleFactor);
-                const windowHeight = Math.floor(height / scaleFactor);
-                const monitorInfo = await monitorInfoPromise;
+                const windowWidth = Math.floor(width);
+                const windowHeight = Math.floor(height);
 
                 let targetX = monitorInfo.monitor_x + monitorInfo.mouse_x;
                 let targetY = monitorInfo.monitor_y + monitorInfo.mouse_y;

@@ -26,6 +26,7 @@ windows = { version = "0.61.1", features = [
     "Win32_System_Com",
     "Win32_System_WinRT",
 ] }
-uiautomation = "0.22.0"
+uiautomation = { workspace = true }
+snow-shot-app-utils = { workspace = true }
 
 [target.'cfg(any(target_os = "macos"))'.dependencies]

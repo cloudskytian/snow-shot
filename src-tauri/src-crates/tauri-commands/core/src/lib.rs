@@ -14,7 +14,7 @@ use snow_shot_app_services::{
     device_event_handler_service::DeviceEventHandlerService,
     free_drag_window_service::FreeDragWindowService,
 };
-use snow_shot_app_shared::EnigoManager;
+use snow_shot_app_shared::{ElementRect, EnigoManager};
 use snow_shot_app_utils::get_target_monitor;
 
 pub async fn exit_app(window: tauri::Window, handle: tauri::AppHandle) {
@@ -282,6 +282,22 @@ pub async fn get_current_monitor_info() -> Result<MonitorInfo, ()> {
         monitor_scale_factor: monitor_scale_factor,
     };
     Ok(monitor_info)
+}
+
+#[derive(Serialize, Clone)]
+pub struct MonitorsBoundingBox {
+    rect: ElementRect,
+    monitor_rect_list: Vec<ElementRect>,
+}
+
+pub async fn get_monitors_bounding_box() -> Result<MonitorsBoundingBox, ()> {
+    let monitors = snow_shot_app_utils::monitor_info::MonitorList::get();
+    let monitors_bounding_box = monitors.get_monitors_bounding_box();
+
+    Ok(MonitorsBoundingBox {
+        rect: monitors_bounding_box,
+        monitor_rect_list: monitors.monitor_rect_list(),
+    })
 }
 
 pub async fn send_new_version_notification(title: String, body: String) {

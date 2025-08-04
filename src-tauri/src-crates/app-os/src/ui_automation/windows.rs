@@ -6,6 +6,7 @@ use std::mem;
 use atree::Arena;
 use atree::Token;
 use rtree_rs::{RTree, Rect};
+use snow_shot_app_utils::monitor_info::MonitorList;
 use std::thread::sleep;
 use std::time::Duration;
 use uiautomation::UIAutomation;
@@ -41,7 +42,6 @@ pub struct UIElements {
     element_cache: RTree<2, i32, ElementLevel>,
     element_level_map: HashMap<ElementLevel, (UIElement, Token)>,
     element_rect_tree: Arena<uiautomation::types::Rect>,
-    monitor_rect: ElementRect,
     element_children_next_sibling_cache: HashMap<ElementLevel, ElementChildrenNextSiblingCacheItem>,
     window_rect_map: HashMap<ElementLevel, uiautomation::types::Rect>,
     window_focus_count_map: HashMap<i32, i32>,
@@ -63,12 +63,6 @@ impl UIElements {
             element_rect_tree: Arena::new(),
             element_cache: RTree::new(),
             element_level_map: HashMap::new(),
-            monitor_rect: ElementRect {
-                min_x: 0,
-                min_y: 0,
-                max_x: 0,
-                max_y: 0,
-            },
             element_children_next_sibling_cache: HashMap::new(),
             window_rect_map: HashMap::new(),
             window_focus_count_map: HashMap::new(),
@@ -158,11 +152,9 @@ impl UIElements {
      */
     pub fn init_cache(
         &mut self,
-        monitor_rect: ElementRect,
         try_get_element_by_focus: TryGetElementByFocus,
     ) -> Result<(), UIAutomationError> {
         self.try_get_element_by_focus = try_get_element_by_focus;
-        self.monitor_rect = monitor_rect;
 
         let root_element = self.root_element.clone().unwrap();
 
@@ -178,11 +170,12 @@ impl UIElements {
 
         // 桌面的窗口索引应该是最高，因为其优先级最低
         let mut current_level = ElementLevel::min();
+        let monitors_bounding_box = MonitorList::get().get_monitors_bounding_box();
         let root_element_rect = uiautomation::types::Rect::new(
-            monitor_rect.min_x - monitor_rect.min_x,
-            monitor_rect.min_y - monitor_rect.min_y,
-            monitor_rect.max_x - monitor_rect.min_x,
-            monitor_rect.max_y - monitor_rect.min_y,
+            monitors_bounding_box.min_x,
+            monitors_bounding_box.min_y,
+            monitors_bounding_box.max_x,
+            monitors_bounding_box.max_y,
         );
 
         let root_tree_token = self.element_rect_tree.new_node(root_element_rect);
@@ -345,10 +338,10 @@ impl UIElements {
         parent_tree_token: Token,
     ) -> (uiautomation::types::Rect, Token) {
         let element_rect = uiautomation::types::Rect::new(
-            element_rect.get_left() - self.monitor_rect.min_x,
-            element_rect.get_top() - self.monitor_rect.min_y,
-            element_rect.get_right() - self.monitor_rect.min_x,
-            element_rect.get_bottom() - self.monitor_rect.min_y,
+            element_rect.get_left(),
+            element_rect.get_top(),
+            element_rect.get_right(),
+            element_rect.get_bottom(),
         );
 
         let mut element_rect = Self::normalize_rect(element_rect);
@@ -466,20 +459,17 @@ impl UIElements {
         F: Fn(),
     {
         let automation_walker = self.automation_walker.clone().unwrap();
-        let (parent_element, mut parent_level, parent_rect, mut parent_tree_token) = match self
-            .get_element_from_cache(
-                mouse_x - self.monitor_rect.min_x,
-                mouse_y - self.monitor_rect.min_y,
-            ) {
-            Some(element) => element,
-            None => (
-                self.root_element.clone().unwrap(),
-                ElementLevel::min(),
-                uiautomation::types::Rect::new(0, 0, i32::MAX, i32::MAX),
-                self.element_rect_tree
-                    .new_node(uiautomation::types::Rect::new(0, 0, i32::MAX, i32::MAX)),
-            ),
-        };
+        let (parent_element, mut parent_level, parent_rect, mut parent_tree_token) =
+            match self.get_element_from_cache(mouse_x, mouse_y) {
+                Some(element) => element,
+                None => (
+                    self.root_element.clone().unwrap(),
+                    ElementLevel::min(),
+                    uiautomation::types::Rect::new(0, 0, i32::MAX, i32::MAX),
+                    self.element_rect_tree
+                        .new_node(uiautomation::types::Rect::new(0, 0, i32::MAX, i32::MAX)),
+                ),
+            };
 
         // 父元素必然命中了 mouse position，所以直接取第一个元素
         let mut current_level = ElementLevel::min();

@@ -6,6 +6,10 @@ import { BaseLayerEventActionType } from './components/baseLayer';
 import { ScreenshotType } from '@/functions/screenshot';
 import { OcrDetectResult } from '@/commands/ocr';
 import { MonitorInfo } from '@/commands/core';
+import { ElementRect } from '@/commands';
+import { MousePosition } from '@/utils/mousePosition';
+import Flatbush from 'flatbush';
+import { last } from 'es-toolkit';
 
 export const switchLayer = (
     layer: CanvasLayer | undefined,
@@ -94,3 +98,52 @@ export type DrawEventParams =
     | undefined;
 
 export const DrawEventPublisher = createPublisher<DrawEventParams>(undefined, true);
+
+export class CaptureBoundingBoxInfo {
+    rect: ElementRect;
+    width: number;
+    height: number;
+    mousePosition: MousePosition;
+    monitorRectList: ElementRect[];
+    monitorRTree: Flatbush;
+
+    constructor(rect: ElementRect, monitorRectList: ElementRect[], mousePosition: MousePosition) {
+        this.rect = rect;
+        this.width = rect.max_x - rect.min_x;
+        this.height = rect.max_y - rect.min_y;
+        // 将显示器的鼠标位置转为相对截图窗口的鼠标位置
+        this.mousePosition = new MousePosition(
+            mousePosition.mouseX - rect.min_x,
+            mousePosition.mouseY - rect.min_y,
+        );
+        this.monitorRectList = monitorRectList;
+        this.monitorRTree = new Flatbush(monitorRectList.length);
+        monitorRectList.forEach((rect) => {
+            this.monitorRTree.add(rect.min_x, rect.min_y, rect.max_x, rect.max_y);
+        });
+        this.monitorRTree.finish();
+    }
+
+    limitRect(rect: ElementRect, search: ElementRect) {
+        const monitorRectIndex = last(
+            this.monitorRTree.search(search.min_x, search.min_y, search.max_x, search.max_y),
+        );
+
+        const monitorRect =
+            monitorRectIndex !== undefined
+                ? this.monitorRectList[monitorRectIndex]
+                : {
+                      min_x: rect.min_x,
+                      min_y: rect.min_y,
+                      max_x: rect.max_x,
+                      max_y: rect.max_y,
+                  };
+
+        return {
+            min_x: Math.max(rect.min_x, monitorRect.min_x),
+            min_y: Math.max(rect.min_y, monitorRect.min_y),
+            max_x: Math.min(rect.max_x, monitorRect.max_x),
+            max_y: Math.min(rect.max_y, monitorRect.max_y),
+        };
+    }
+}

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useImperativeHandle, useRef } from 'react';
 import { ElementRect } from '@/commands';
 import { OcrDetectResult } from '@/commands/ocr';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
-import { DrawEvent, DrawEventPublisher } from '../../extra';
+import { CaptureBoundingBoxInfo, DrawEvent, DrawEventPublisher } from '../../extra';
 import { DrawState, DrawStatePublisher } from '@/app/fullScreenDraw/components/drawCore/extra';
 import { useIntl } from 'react-intl';
 import { getCurrentWindow } from '@tauri-apps/api/window';
@@ -14,13 +14,12 @@ import {
     OcrResultActionType,
 } from '@/app/fixedContent/components/ocrResult';
 import { zIndexs } from '@/utils/zIndex';
-import { MonitorInfo } from '@/commands/core';
 import { writeTextToClipboard } from '@/utils/clipboard';
 
 export type OcrBlocksActionType = {
     init: (
         selectRect: ElementRect,
-        monitorInfo: MonitorInfo,
+        captureBoundingBoxInfo: CaptureBoundingBoxInfo,
         canvas: HTMLCanvasElement,
         ocrResult: AppOcrResult | undefined,
     ) => Promise<void>;
@@ -50,13 +49,13 @@ export const OcrBlocks: React.FC<{
         () => ({
             init: async (
                 selectRect: ElementRect,
-                monitorInfo: MonitorInfo,
+                captureBoundingBoxInfo: CaptureBoundingBoxInfo,
                 canvas: HTMLCanvasElement,
                 ocrResult: AppOcrResult | undefined,
             ) => {
                 ocrResultActionRef.current?.init({
                     selectRect,
-                    monitorInfo,
+                    captureBoundingBoxInfo,
                     canvas,
                     ocrResult,
                 });

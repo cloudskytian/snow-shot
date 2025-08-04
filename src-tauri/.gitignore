@@ -6,6 +6,7 @@
 /lib/*
 /captuers
 /ffmpeg/*
+/test
 
 src-crates/*/target
 src-crates/tauri-commands/*/target

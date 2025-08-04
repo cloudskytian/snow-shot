@@ -2,7 +2,12 @@ import { useCallback, useContext, useRef } from 'react';
 import { DrawContext } from '@/app/draw/types';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
 import * as PIXI from 'pixi.js';
-import { CaptureEvent, CaptureEventParams, CaptureEventPublisher } from '@/app/draw/extra';
+import {
+    CaptureBoundingBoxInfo,
+    CaptureEvent,
+    CaptureEventParams,
+    CaptureEventPublisher,
+} from '@/app/draw/extra';
 import { useCallbackRender } from '@/hooks/useCallbackRender';
 import {
     ExcalidrawEventOnChangeParams,
@@ -11,7 +16,6 @@ import {
     ExcalidrawOnHandleEraserParams,
     ExcalidrawOnHandleEraserPublisher,
 } from '@/app/fullScreenDraw/components/drawCore/extra';
-import { MonitorInfo } from '@/commands/core';
 
 type BlurSpriteProps = {
     blur: number;
@@ -44,7 +48,7 @@ const isEqualBlurSpriteProps = (
 const BlurToolCore: React.FC = () => {
     const { drawLayerActionRef, drawCacheLayerActionRef } = useContext(DrawContext);
     const imageTextureRef = useRef<PIXI.Texture | undefined>(undefined);
-    const monitorInfoRef = useRef<MonitorInfo | undefined>(undefined);
+    const captureBoundingBoxInfoRef = useRef<CaptureBoundingBoxInfo | undefined>(undefined);
     const blurSpriteMapRef = useRef<
         Map<
             string,
@@ -58,11 +62,11 @@ const BlurToolCore: React.FC = () => {
     >(new Map());
     const clear = useCallback(() => {
         imageTextureRef.current = undefined;
-        monitorInfoRef.current = undefined;
+        captureBoundingBoxInfoRef.current = undefined;
         blurSpriteMapRef.current.clear();
     }, []);
     const init = useCallback(
-        (imageTexture: PIXI.Texture, monitorInfo: MonitorInfo) => {
+        (imageTexture: PIXI.Texture, captureBoundingBoxInfo: CaptureBoundingBoxInfo) => {
             if (!drawLayerActionRef.current) {
                 return;
             }
@@ -74,7 +78,7 @@ const BlurToolCore: React.FC = () => {
 
             drawLayerActionRef.current.addChildToTopContainer(blurContainer);
             imageTextureRef.current = imageTexture;
-            monitorInfoRef.current = monitorInfo;
+            captureBoundingBoxInfoRef.current = captureBoundingBoxInfo;
         },
         [drawLayerActionRef],
     );
@@ -108,7 +112,7 @@ const BlurToolCore: React.FC = () => {
             if (
                 !drawLayerActionRef.current ||
                 !blurContainer ||
-                !monitorInfoRef.current ||
+                !captureBoundingBoxInfoRef.current ||
                 !imageTextureRef.current
             ) {
                 return;
@@ -135,15 +139,13 @@ const BlurToolCore: React.FC = () => {
                 const blurProps = {
                     blur: element.blur,
                     x:
-                        Math.round(element.x * monitorInfoRef.current.monitor_scale_factor) +
-                        scrollX * monitorInfoRef.current.monitor_scale_factor,
+                        Math.round(element.x * window.devicePixelRatio) +
+                        scrollX * window.devicePixelRatio,
                     y:
-                        Math.round(element.y * monitorInfoRef.current.monitor_scale_factor) +
-                        scrollY * monitorInfoRef.current.monitor_scale_factor,
-                    width: Math.round(element.width * monitorInfoRef.current.monitor_scale_factor),
-                    height: Math.round(
-                        element.height * monitorInfoRef.current.monitor_scale_factor,
-                    ),
+                        Math.round(element.y * window.devicePixelRatio) +
+                        scrollY * window.devicePixelRatio,
+                    width: Math.round(element.width * window.devicePixelRatio),
+                    height: Math.round(element.height * window.devicePixelRatio),
                     angle: element.angle,
                     opacity: element.opacity,
                     zoom: zoom.value,

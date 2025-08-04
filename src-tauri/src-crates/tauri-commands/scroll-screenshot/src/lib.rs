@@ -68,37 +68,14 @@ pub async fn scroll_screenshot_capture(
 
         let min_x = min_x as f64 * rect_scale;
         let min_y = min_y as f64 * rect_scale;
-        let width = max_x as f64 * rect_scale - min_x;
-        let height = max_y as f64 * rect_scale - min_y;
+        let max_x = max_x as f64 * rect_scale;
+        let max_y = max_y as f64 * rect_scale;
 
-        let image: Option<image::DynamicImage>;
-
-        #[cfg(target_os = "macos")]
-        {
-            image = snow_shot_app_utils::capture_current_monitor_with_scap(
-                &window,
-                &monitor,
-                Some(scap::capturer::Area {
-                    origin: scap::capturer::Point { x: min_x, y: min_y },
-                    size: scap::capturer::Size { width, height },
-                }),
-            );
-        }
-
-        #[cfg(target_os = "windows")]
-        {
-            image = match monitor.capture_region(
-                min_x as u32,
-                min_y as u32,
-                width as u32,
-                height as u32,
-            ) {
-                Ok(image) => Some(image::DynamicImage::ImageRgba8(image)),
-                Err(_) => None,
-            };
-        }
-
-        match image {
+        match snow_shot_app_utils::capture_target_monitor(
+            &window,
+            &monitor,
+            Some((min_x, min_y, max_x, max_y)),
+        ) {
             Some(image) => image,
             None => {
                 return Err(format!(

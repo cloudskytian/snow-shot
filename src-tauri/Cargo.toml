@@ -32,9 +32,9 @@ tauri-build = { version = "^2", features = [] }
 
 [workspace.dependencies]
 serde = { version = "^1.0", features = ["derive"] }
-# xcap = { path = "../../xcap" }
+xcap = { path = "D:/my-workspace/xcap" }
 # xcap = { git = "https://github.com/mg-chao/xcap", branch = "custom/master" }
-xcap = { git = "https://github.com/mg-chao/xcap", branch = "20250710_fix_macos" }
+# xcap = { git = "https://github.com/mg-chao/xcap", branch = "20250710_fix_macos" }
 device_query = "4.0.1"
 log = "^0.4"
 image = { version = "^0.25", features = ["png", "webp"] }
@@ -49,6 +49,7 @@ zune-core = "^0.4"
 scap = { git = "https://github.com/mg-chao/scap", branch = "20250712_custom" }
 objc2 = "0.6.1"
 objc2-app-kit = { version = "0.3.1" }
+uiautomation = "0.22.0"
 
 # 项目内依赖
 snow-shot-app-services = { path = "src-crates/app-services" }

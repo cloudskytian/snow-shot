@@ -8,7 +8,7 @@ import { getCurrentWindow, LogicalPosition } from '@tauri-apps/api/window';
 import { Menu } from '@tauri-apps/api/menu';
 import { useHotkeysApp } from '@/hooks/useHotkeysApp';
 import { AntdContext } from '@/components/globalLayoutExtra';
-import { MonitorInfo } from '@/commands/core';
+import { CaptureBoundingBoxInfo } from '@/app/draw/extra';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
 import { AppSettingsGroup, AppSettingsPublisher } from '@/app/contextWrap';
 import { writeTextToClipboard } from '@/utils/clipboard';
@@ -25,7 +25,7 @@ export type AppOcrResult = {
 export type OcrResultInitDrawCanvasParams = {
     selectRect: ElementRect;
     canvas: HTMLCanvasElement;
-    monitorInfo: MonitorInfo;
+    captureBoundingBoxInfo: CaptureBoundingBoxInfo;
     /** 已有的 OCR 结果 */
     ocrResult: AppOcrResult | undefined;
 };
@@ -223,8 +223,8 @@ export const OcrResult: React.FC<{
                 textContainerElement.appendChild(textWrapElement);
 
                 setTimeout(() => {
-                    let textWidth = textElement.getBoundingClientRect().width;
-                    let textHeight = textElement.getBoundingClientRect().height;
+                    let textWidth = textElement.clientWidth;
+                    let textHeight = textElement.clientHeight;
                     if (isVertical) {
                         textWidth -= 3;
                     } else {
@@ -250,18 +250,18 @@ export const OcrResult: React.FC<{
 
     const initDrawCanvas = useCallback(
         async (params: OcrResultInitDrawCanvasParams) => {
-            const { selectRect, canvas, monitorInfo } = params;
+            const { selectRect, canvas } = params;
 
             const imageBlob = await new Promise<Blob | null>((resolve) => {
                 canvas.toBlob(resolve, 'image/jpeg', 1);
             });
 
             if (imageBlob) {
-                monitorScaleFactorRef.current = monitorInfo.monitor_scale_factor;
+                monitorScaleFactorRef.current = window.devicePixelRatio;
                 const ocrResult = params.ocrResult ?? {
                     result: await ocrDetect(
                         await imageBlob.arrayBuffer(),
-                        monitorInfo.monitor_scale_factor,
+                        window.devicePixelRatio,
                         getAppSettings()[AppSettingsGroup.SystemScreenshot].ocrDetectAngle,
                     ),
                     ignoreScale: false,

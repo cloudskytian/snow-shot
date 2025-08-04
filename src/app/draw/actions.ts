@@ -7,10 +7,10 @@ import { CaptureStep } from './types';
 import { FixedContentActionType } from '../fixedContent/components/fixedContentCore';
 import { OcrBlocksActionType } from './components/ocrBlocks';
 import { showImageDialog, ImageFormat, ImagePath } from '@/utils/file';
-import { MonitorInfo } from '@/commands/core';
 import { AppSettingsData } from '../contextWrap';
 import { writeImageToClipboard } from '@/utils/clipboard';
 import { AppOcrResult } from '../fixedContent/components/ocrResult';
+import { CaptureBoundingBoxInfo } from './extra';
 
 export const getCanvas = async (
     selectRect: ElementRect,
@@ -110,7 +110,7 @@ export const saveToFile = async (
 };
 
 export const fixedToScreen = async (
-    monitorInfo: MonitorInfo,
+    captureBoundingBoxInfo: CaptureBoundingBoxInfo,
     appWindow: AppWindow,
     layerContainerElement: HTMLDivElement,
     selectLayerAction: SelectLayerActionType,
@@ -142,8 +142,8 @@ export const fixedToScreen = async (
     await Promise.all([
         appWindow.setPosition(
             new PhysicalPosition(
-                selectRect.min_x + monitorInfo.monitor_x,
-                selectRect.min_y + monitorInfo.monitor_y,
+                selectRect.min_x + captureBoundingBoxInfo.rect.min_x,
+                selectRect.min_y + captureBoundingBoxInfo.rect.min_y,
             ),
         ),
         appWindow.setSize(
@@ -165,11 +165,11 @@ export const fixedToScreen = async (
     await Promise.all([
         appWindow.show(),
         appWindow.setAlwaysOnTop(true),
-        fixedContentAction.init({ canvas: imageCanvas, monitorInfo, ocrResult }),
+        fixedContentAction.init({ canvas: imageCanvas, captureBoundingBoxInfo, ocrResult }),
         appWindow.setPosition(
             new PhysicalPosition(
-                selectRect.min_x + monitorInfo.monitor_x,
-                selectRect.min_y + monitorInfo.monitor_y,
+                selectRect.min_x + captureBoundingBoxInfo.rect.min_x,
+                selectRect.min_y + captureBoundingBoxInfo.rect.min_y,
             ),
         ),
         appWindow.setSize(
@@ -229,7 +229,7 @@ export const copyToClipboard = async (
 };
 
 export const handleOcrDetect = async (
-    monitorInfo: MonitorInfo,
+    captureBoundingBoxInfo: CaptureBoundingBoxInfo,
     selectLayerAction: SelectLayerActionType,
     drawLayerAction: DrawLayerActionType,
     drawCacheLayerAction: DrawCacheLayerActionType,
@@ -245,5 +245,5 @@ export const handleOcrDetect = async (
         return;
     }
 
-    await ocrBlocksAction.init(selectRect, monitorInfo, imageCanvas, undefined);
+    await ocrBlocksAction.init(selectRect, captureBoundingBoxInfo, imageCanvas, undefined);
 };

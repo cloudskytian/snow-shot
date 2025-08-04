@@ -6208,11 +6208,12 @@ dependencies = [
  "rtree_rs",
  "serde",
  "snow-shot-app-shared",
+ "snow-shot-app-utils",
  "tauri",
  "thiserror 2.0.12",
  "uiautomation",
  "windows 0.61.3",
- "xcap",
+ "xcap 0.6.1 (git+https://github.com/mg-chao/xcap?branch=20250710_fix_macos)",
 ]
 
 [[package]]
@@ -6237,7 +6238,7 @@ dependencies = [
  "regex",
  "serde",
  "tauri",
- "xcap",
+ "xcap 0.6.1",
 ]
 
 [[package]]
@@ -6245,6 +6246,8 @@ name = "snow-shot-app-shared"
 version = "0.1.0"
 dependencies = [
  "enigo 0.5.0",
+ "serde",
+ "uiautomation",
 ]
 
 [[package]]
@@ -6256,9 +6259,11 @@ dependencies = [
  "image",
  "log",
  "objc2 0.6.1",
+ "rayon",
  "scap",
+ "snow-shot-app-shared",
  "tauri",
- "xcap",
+ "xcap 0.6.1",
  "zune-core",
  "zune-jpegxl",
 ]
@@ -6312,10 +6317,11 @@ dependencies = [
  "log",
  "serde",
  "snow-shot-app-os",
+ "snow-shot-app-shared",
  "snow-shot-app-utils",
  "tauri",
  "tokio",
- "xcap",
+ "xcap 0.6.1",
 ]
 
 [[package]]
@@ -6329,7 +6335,7 @@ dependencies = [
  "snow-shot-app-utils",
  "tauri",
  "tokio",
- "xcap",
+ "xcap 0.6.1",
 ]
 
 [[package]]
@@ -9040,6 +9046,36 @@ checksum = "af3a19837351dc82ba89f8a125e22a3c475f05aba604acc023d62b2739ae2909"
 dependencies = [
  "libc",
  "rustix 1.0.8",
+]
+
+[[package]]
+name = "xcap"
+version = "0.6.1"
+dependencies = [
+ "dispatch2",
+ "image",
+ "lazy_static",
+ "libwayshot-xcap",
+ "log",
+ "objc2 0.6.1",
+ "objc2-app-kit",
+ "objc2-av-foundation",
+ "objc2-core-foundation",
+ "objc2-core-graphics",
+ "objc2-core-media",
+ "objc2-core-video",
+ "objc2-foundation 0.3.1",
+ "percent-encoding",
+ "pipewire",
+ "rand 0.9.2",
+ "scopeguard",
+ "serde",
+ "thiserror 2.0.12",
+ "url",
+ "widestring",
+ "windows 0.61.3",
+ "xcb",
+ "zbus",
 ]
 
 [[package]]

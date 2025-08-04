@@ -8,7 +8,7 @@ import { DrawCacheLayerActionType } from './components/drawCacheLayer/extra';
 import { OcrBlocksActionType } from './components/ocrBlocks';
 import { ColorPickerActionType } from './components/colorPicker';
 import { FixedContentActionType } from '../fixedContent/components/fixedContentCore';
-import { MonitorInfo } from '@/commands/core';
+import { CaptureBoundingBoxInfo } from './extra';
 
 export enum CaptureStep {
     // 选择阶段
@@ -36,7 +36,7 @@ export type DrawContextType = {
     ocrBlocksActionRef: React.RefObject<OcrBlocksActionType | undefined>;
     fixedContentActionRef: React.RefObject<FixedContentActionType | undefined>;
     colorPickerActionRef: React.RefObject<ColorPickerActionType | undefined>;
-    monitorInfoRef: React.RefObject<MonitorInfo | undefined>;
+    captureBoundingBoxInfoRef: React.RefObject<CaptureBoundingBoxInfo | undefined>;
 };
 
 export const DrawContext = React.createContext<DrawContextType>({
@@ -51,5 +51,5 @@ export const DrawContext = React.createContext<DrawContextType>({
     ocrBlocksActionRef: { current: undefined },
     fixedContentActionRef: { current: undefined },
     colorPickerActionRef: { current: undefined },
-    monitorInfoRef: { current: undefined },
+    captureBoundingBoxInfoRef: { current: undefined },
 });

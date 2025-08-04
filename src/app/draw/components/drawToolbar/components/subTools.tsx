@@ -20,7 +20,7 @@ export const SubTools: React.FC<{
     const intl = useIntl();
     const { token } = theme.useToken();
 
-    const { monitorInfoRef, selectLayerActionRef } = useContext(DrawContext);
+    const { selectLayerActionRef } = useContext(DrawContext);
 
     const subToolsContainerRef = useRef<HTMLDivElement>(null);
     const subToolsRef = useRef<HTMLDivElement>(null);
@@ -58,21 +58,14 @@ export const SubTools: React.FC<{
             return;
         }
 
-        const monitorInfo = monitorInfoRef.current;
-        if (!monitorInfo) {
-            return;
-        }
-
         const selectedRect = selectLayerActionRef.current?.getSelectRect();
         if (!selectedRect) {
             return;
         }
 
         const baseOffsetX =
-            selectedRect.min_x / monitorInfo.monitor_scale_factor -
-            subTools.clientWidth -
-            token.marginXXS;
-        const baseOffsetY = selectedRect.min_y / monitorInfo.monitor_scale_factor;
+            selectedRect.min_x / window.devicePixelRatio - subTools.clientWidth - token.marginXXS;
+        const baseOffsetY = selectedRect.min_y / window.devicePixelRatio;
 
         const dragRes = updateElementPosition(
             subTools,
@@ -85,7 +78,7 @@ export const SubTools: React.FC<{
 
         toolbarCurrentRectRef.current = dragRes.rect;
         mouseOriginPositionRef.current = dragRes.originPosition;
-    }, [monitorInfoRef, selectLayerActionRef, token.marginXXS]);
+    }, [selectLayerActionRef, token.marginXXS]);
 
     const updateDrawToolbarStyleRender = useCallbackRender(updateDrawToolbarStyle);
 

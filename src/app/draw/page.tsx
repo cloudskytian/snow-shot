@@ -1,6 +1,6 @@
 'use client';
 
-import { captureCurrentMonitor, createDrawWindow, ImageBuffer, ImageEncoder } from '@/commands';
+import { createDrawWindow, ElementRect, getMousePosition, ImageBuffer } from '@/commands';
 import { EventListenerContext } from '@/components/eventListener';
 import React, { useMemo, useState } from 'react';
 import { useCallback, useContext, useEffect, useRef } from 'react';
@@ -18,6 +18,7 @@ import {
     CaptureEvent,
     ScreenshotTypePublisher,
     DrawEventPublisher,
+    CaptureBoundingBoxInfo,
 } from './extra';
 import {
     DrawToolbar,
@@ -47,7 +48,7 @@ import {
     ScreenshotType,
 } from '@/functions/screenshot';
 import { showWindow as showCurrentWindow } from '@/utils/window';
-import { setDrawWindowStyle, switchAlwaysOnTop } from '@/commands/screenshot';
+import { captureAllMonitors, setDrawWindowStyle, switchAlwaysOnTop } from '@/commands/screenshot';
 import { debounce } from 'es-toolkit';
 import { Webview } from '@tauri-apps/api/webview';
 import {
@@ -61,8 +62,7 @@ import { AppSettingsPublisher } from '../contextWrap';
 import { ExtraTool } from './components/drawToolbar/components/tools/extraTool';
 import {
     createFixedContentWindow,
-    getCurrentMonitorInfo,
-    MonitorInfo,
+    getMonitorsBoundingBox,
     setCurrentWindowAlwaysOnTop,
 } from '@/commands/core';
 import {
@@ -77,11 +77,10 @@ import {
 } from '../fullScreenDraw/components/drawCore/components/historyContext';
 import { covertOcrResultToText } from '../fixedContent/components/ocrResult';
 import { writeTextToClipboard } from '@/utils/clipboard';
-import * as tauriOs from '@tauri-apps/plugin-os';
-import { compare } from 'compare-versions';
 import { listenKeyStart, listenKeyStop } from '@/commands/listenKey';
 import { sendErrorMessage } from '@/functions/sendMessage';
 import { useIntl } from 'react-intl';
+import Flatbush from 'flatbush';
 
 const DrawCacheLayer = dynamic(
     async () => (await import('./components/drawCacheLayer')).DrawCacheLayer,
@@ -111,7 +110,7 @@ const DrawPageCore: React.FC = () => {
 
     // 截图原始数据
     const imageBufferRef = useRef<ImageBuffer | undefined>(undefined);
-    const monitorInfoRef = useRef<MonitorInfo | undefined>(undefined);
+    const captureBoundingBoxInfoRef = useRef<CaptureBoundingBoxInfo | undefined>(undefined);
     const imageBlobUrlRef = useRef<string | undefined>(undefined);
     const { addListener, removeListener } = useContext(EventListenerContext);
 
@@ -153,14 +152,22 @@ const DrawPageCore: React.FC = () => {
     const [, setCaptureLoading] = useStateSubscriber(CaptureLoadingPublisher, undefined);
     const [getCaptureEvent, setCaptureEvent] = useStateSubscriber(CaptureEventPublisher, undefined);
     const onCaptureLoad = useCallback<BaseLayerEventActionType['onCaptureLoad']>(
-        async (texture: PIXI.Texture, imageBuffer: ImageBuffer, monitorInfo: MonitorInfo) => {
+        async (
+            texture: PIXI.Texture,
+            imageBuffer: ImageBuffer,
+            captureBoundingBoxInfo: CaptureBoundingBoxInfo,
+        ) => {
             await Promise.all([
-                drawLayerActionRef.current?.onCaptureLoad(texture, imageBuffer, monitorInfo),
+                drawLayerActionRef.current?.onCaptureLoad(
+                    texture,
+                    imageBuffer,
+                    captureBoundingBoxInfo,
+                ),
             ]);
 
             setCaptureEvent({
                 event: CaptureEvent.onCaptureLoad,
-                params: [texture, imageBuffer, monitorInfo],
+                params: [texture, imageBuffer, captureBoundingBoxInfo],
             });
         },
         [setCaptureEvent],
@@ -219,7 +226,7 @@ const DrawPageCore: React.FC = () => {
 
     /** 截图准备 */
     const readyCapture = useCallback(
-        async (imageBuffer: ImageBuffer, monitorInfo: MonitorInfo) => {
+        async (imageBuffer: ImageBuffer, captureBoundingBoxInfo: CaptureBoundingBoxInfo) => {
             setCaptureLoading(true);
 
             if (imageBlobUrlRef.current) {
@@ -236,61 +243,42 @@ const DrawPageCore: React.FC = () => {
                 loadParser: 'loadTextures',
             });
             mousePositionRef.current = new MousePosition(
-                Math.floor(
-                    monitorInfoRef.current!.mouse_x / monitorInfoRef.current!.monitor_scale_factor,
-                ),
-                Math.floor(
-                    monitorInfoRef.current!.mouse_y / monitorInfoRef.current!.monitor_scale_factor,
-                ),
+                Math.floor(captureBoundingBoxInfo.mousePosition.mouseX / window.devicePixelRatio),
+                Math.floor(captureBoundingBoxInfo.mousePosition.mouseY / window.devicePixelRatio),
             );
 
             await Promise.all([
-                drawLayerActionRef.current?.onCaptureReady(imageTexture, imageBuffer, monitorInfo),
+                drawLayerActionRef.current?.onCaptureReady(
+                    imageTexture,
+                    imageBuffer,
+                    captureBoundingBoxInfo,
+                ),
                 drawCacheLayerActionRef.current?.onCaptureReady(),
             ]);
             setCaptureEvent({
                 event: CaptureEvent.onCaptureReady,
-                params: [imageTexture, imageBuffer, monitorInfo],
+                params: [imageTexture, imageBuffer, captureBoundingBoxInfo],
             });
             setCaptureLoading(false);
 
-            onCaptureLoad(imageTexture, imageBuffer, monitorInfo);
+            onCaptureLoad(imageTexture, imageBuffer, captureBoundingBoxInfo);
         },
         [onCaptureLoad, setCaptureLoading, setCaptureEvent],
     );
 
     /** 显示截图窗口 */
     const showWindow = useCallback(
-        async ({
-            monitor_x,
-            monitor_y,
-            monitor_width,
-            monitor_height,
-            monitor_scale_factor,
-        }: MonitorInfo) => {
+        async ({ min_x, min_y, max_x, max_y }: ElementRect) => {
             const appWindow = appWindowRef.current;
 
             await Promise.all([
                 appWindow.setAlwaysOnTop(true),
-                appWindow.setPosition(new PhysicalPosition(monitor_x, monitor_y)),
-                appWindow.setSize(new PhysicalSize(monitor_width, monitor_height)),
-                Webview.getCurrent().setSize(new PhysicalSize(monitor_width, monitor_height)),
+                appWindow.setPosition(new PhysicalPosition(min_x, min_y)),
+                appWindow.setSize(new PhysicalSize(max_x - min_x, max_y - min_y)),
+                Webview.getCurrent().setSize(new PhysicalSize(max_x - min_x, max_y - min_y)),
                 Webview.getCurrent().setZoom(1),
             ]);
 
-            const browserScaleFactor = monitor_width / window.screen.width;
-            monitorInfoRef.current!.monitor_scale_factor =
-                window.devicePixelRatio ??
-                (browserScaleFactor === 0 ? monitor_scale_factor : browserScaleFactor);
-
-            if (layerContainerRef.current) {
-                const documentWidth = monitor_width / monitorInfoRef.current!.monitor_scale_factor;
-                const documentHeight =
-                    monitor_height / monitorInfoRef.current!.monitor_scale_factor;
-
-                layerContainerRef.current.style.width = `${documentWidth}px`;
-                layerContainerRef.current.style.height = `${documentHeight}px`;
-            }
             await showCurrentWindow();
             if (
                 process.env.NODE_ENV === 'development' &&
@@ -374,23 +362,32 @@ const DrawPageCore: React.FC = () => {
         ],
     );
 
-    const initMonitorInfoAndShowWindow = useCallback(async () => {
-        const monitorInfo = await getCurrentMonitorInfo();
-        monitorInfoRef.current = monitorInfo;
+    const initCaptureBoundingBoxInfoAndShowWindow = useCallback(async () => {
+        const [captureBoundingBox, mousePosition] = await Promise.all([
+            getMonitorsBoundingBox(),
+            getMousePosition(),
+        ]);
+
+        const rTree = new Flatbush(captureBoundingBox.monitor_rect_list.length);
+        captureBoundingBox.monitor_rect_list.forEach((rect) => {
+            rTree.add(rect.min_x, rect.min_y, rect.max_x, rect.max_y);
+        });
+        rTree.finish();
+
+        captureBoundingBoxInfoRef.current = new CaptureBoundingBoxInfo(
+            captureBoundingBox.rect,
+            captureBoundingBox.monitor_rect_list,
+            new MousePosition(mousePosition[0], mousePosition[1]),
+        );
 
         await Promise.all([
-            (async () => {
-                // 在 macOS 上，有概率截取到窗口内容，延迟显示窗口（12.3.0 以下）
-                if (tauriOs.platform() === 'macos' && compare(tauriOs.version(), '12.3.0', '<=')) {
-                    await new Promise((resolve) => {
-                        setTimeout(resolve, 16);
-                    });
-                }
-
-                await showWindow(monitorInfo);
-            })(),
-            selectLayerActionRef.current?.onMonitorInfoReady(monitorInfo),
-            drawLayerActionRef.current?.onMonitorInfoReady(monitorInfo),
+            await showWindow(captureBoundingBoxInfoRef.current.rect),
+            selectLayerActionRef.current?.onCaptureBoundingBoxInfoReady(
+                captureBoundingBoxInfoRef.current!,
+            ),
+            drawLayerActionRef.current?.onCaptureBoundingBoxInfoReady(
+                captureBoundingBoxInfoRef.current!,
+            ),
         ]);
     }, [showWindow]);
 
@@ -400,7 +397,8 @@ const DrawPageCore: React.FC = () => {
             capturingRef.current = true;
             drawToolbarActionRef.current?.setEnable(false);
 
-            const captureCurrentMonitorPromise = captureCurrentMonitor(ImageEncoder.WebP);
+            const initCaptureBoundingBoxInfoPromise = initCaptureBoundingBoxInfoAndShowWindow();
+            const captureAllMonitorsPromise = captureAllMonitors();
 
             setScreenshotType(excuteScreenshotType);
             const layerOnExecuteScreenshotPromise = Promise.all([
@@ -411,16 +409,14 @@ const DrawPageCore: React.FC = () => {
                 event: CaptureEvent.onExecuteScreenshot,
             });
 
-            const initMonitorInfoPromise = initMonitorInfoAndShowWindow();
-
             let imageBuffer: ImageBuffer | undefined;
             try {
-                imageBuffer = await captureCurrentMonitorPromise;
+                imageBuffer = await captureAllMonitorsPromise;
             } catch {
                 imageBuffer = undefined;
             }
 
-            await initMonitorInfoPromise;
+            await initCaptureBoundingBoxInfoPromise;
 
             // 如果截图失败了，等窗口显示后，结束截图
             if (!imageBuffer) {
@@ -440,7 +436,7 @@ const DrawPageCore: React.FC = () => {
             try {
                 // 因为窗口是空的，所以窗口显示和图片显示先后顺序倒无所谓
                 await Promise.all([
-                    readyCapture(imageBufferRef.current, monitorInfoRef.current!),
+                    readyCapture(imageBufferRef.current, captureBoundingBoxInfoRef.current!),
                     layerOnExecuteScreenshotPromise,
                 ]);
             } catch (error) {
@@ -455,7 +451,7 @@ const DrawPageCore: React.FC = () => {
         [
             setScreenshotType,
             setCaptureEvent,
-            initMonitorInfoAndShowWindow,
+            initCaptureBoundingBoxInfoAndShowWindow,
             getCaptureEvent,
             intl,
             finishCapture,
@@ -563,7 +559,7 @@ const DrawPageCore: React.FC = () => {
         if (
             !layerContainerRef.current ||
             !selectLayerActionRef.current ||
-            !monitorInfoRef.current ||
+            !captureBoundingBoxInfoRef.current ||
             !drawLayerActionRef.current ||
             !drawCacheLayerActionRef.current ||
             !fixedContentActionRef.current ||
@@ -575,7 +571,7 @@ const DrawPageCore: React.FC = () => {
         saveCurrentSelectRect();
 
         await fixedToScreen(
-            monitorInfoRef.current,
+            captureBoundingBoxInfoRef.current,
             appWindowRef.current,
             layerContainerRef.current,
             selectLayerActionRef.current,
@@ -604,7 +600,7 @@ const DrawPageCore: React.FC = () => {
 
     const onOcrDetect = useCallback(async () => {
         if (
-            !monitorInfoRef.current ||
+            !captureBoundingBoxInfoRef.current ||
             !selectLayerActionRef.current ||
             !drawLayerActionRef.current ||
             !drawCacheLayerActionRef.current ||
@@ -614,7 +610,7 @@ const DrawPageCore: React.FC = () => {
         }
 
         handleOcrDetect(
-            monitorInfoRef.current,
+            captureBoundingBoxInfoRef.current,
             selectLayerActionRef.current,
             drawLayerActionRef.current,
             drawCacheLayerActionRef.current,
@@ -806,7 +802,7 @@ const DrawPageCore: React.FC = () => {
             ocrBlocksActionRef,
             fixedContentActionRef,
             colorPickerActionRef,
-            monitorInfoRef,
+            captureBoundingBoxInfoRef,
         };
     }, [finishCapture]);
 

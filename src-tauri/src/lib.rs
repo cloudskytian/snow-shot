@@ -132,6 +132,7 @@ pub fn run() {
         .manage(listen_key_service)
         .invoke_handler(tauri::generate_handler![
             screenshot::capture_current_monitor,
+            screenshot::capture_all_monitors,
             screenshot::capture_focused_window,
             screenshot::get_window_elements,
             screenshot::init_ui_elements,
@@ -142,10 +143,10 @@ pub fn run() {
             screenshot::switch_always_on_top,
             screenshot::set_draw_window_style,
             screenshot::recovery_window_z_order,
-            core::exit_app,
-            core::start_free_drag,
             file::save_file,
             file::create_dir,
+            core::exit_app,
+            core::start_free_drag,
             ocr::ocr_detect,
             ocr::ocr_init,
             ocr::ocr_release,
@@ -158,6 +159,7 @@ pub fn run() {
             core::read_image_from_clipboard,
             core::create_full_screen_draw_window,
             core::get_current_monitor_info,
+            core::get_monitors_bounding_box,
             core::send_new_version_notification,
             core::create_video_record_window,
             core::set_current_window_always_on_top,

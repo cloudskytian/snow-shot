@@ -1,4 +1,5 @@
 use snow_shot_app_shared::EnigoManager;
+use snow_shot_tauri_commands_core::MonitorsBoundingBox;
 use tauri::{Manager, command, ipc::Response};
 use tokio::sync::Mutex;
 
@@ -67,6 +68,11 @@ pub async fn create_full_screen_draw_window(app: tauri::AppHandle) {
 #[command]
 pub async fn get_current_monitor_info() -> Result<snow_shot_tauri_commands_core::MonitorInfo, ()> {
     snow_shot_tauri_commands_core::get_current_monitor_info().await
+}
+
+#[command]
+pub async fn get_monitors_bounding_box() -> Result<MonitorsBoundingBox, ()> {
+    snow_shot_tauri_commands_core::get_monitors_bounding_box().await
 }
 
 #[command]

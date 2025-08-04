@@ -2,12 +2,16 @@ use std::fs;
 use std::path::PathBuf;
 
 use device_query::{DeviceQuery, DeviceState, MouseState};
+use image::codecs::png::{CompressionType, FilterType, PngEncoder};
+use image::codecs::webp::WebPEncoder;
 use tauri::AppHandle;
 use xcap::Monitor;
 use zune_core::bit_depth::BitDepth;
 use zune_core::colorspace::ColorSpace;
 use zune_core::options::EncoderOptions;
 use zune_jpegxl::JxlSimpleEncoder;
+
+pub mod monitor_info;
 
 pub fn get_device_mouse_position() -> (i32, i32) {
     let device_state = DeviceState::new();
@@ -113,17 +117,28 @@ pub fn get_window_id_from_ns_handle(ns_handle: *mut std::ffi::c_void) -> u32 {
     }
 }
 
-pub fn capture_current_monitor_with_scap(
+pub fn capture_target_monitor(
     #[allow(unused_variables)] window: &tauri::Window,
-    #[allow(unused_variables)] monitor: &Monitor,
-    #[cfg(target_os = "macos")] crop_area: Option<scap::capturer::Area>,
-    #[allow(unused_variables)]
-    #[cfg(not(target_os = "macos"))]
-    crop_area: Option<()>,
+    monitor: &Monitor,
+    crop_area: Option<(f64, f64, f64, f64)>,
 ) -> Option<image::DynamicImage> {
     #[cfg(not(target_os = "macos"))]
     {
-        return None;
+        let image = if let Some((min_x, min_y, max_x, max_y)) = crop_area {
+            monitor.capture_region(
+                min_x as u32,
+                min_y as u32,
+                (max_x - min_x) as u32,
+                (max_y - min_y) as u32,
+            )
+        } else {
+            monitor.capture_image()
+        };
+
+        return match image {
+            Ok(image) => Some(image::DynamicImage::ImageRgba8(image)),
+            Err(_) => None,
+        };
     }
 
     #[cfg(target_os = "macos")]
@@ -175,16 +190,26 @@ pub fn capture_current_monitor_with_scap(
             })]),
             output_type: scap::frame::FrameType::BGRAFrame,
             output_resolution: scap::capturer::Resolution::Captured,
-            crop_area: crop_area.or(Some(scap::capturer::Area {
-                origin: scap::capturer::Point {
-                    x: monitor.x().unwrap_or(0) as f64,
-                    y: monitor.y().unwrap_or(0) as f64,
-                },
-                size: scap::capturer::Size {
-                    width: monitor.width().unwrap_or(0) as f64,
-                    height: monitor.height().unwrap_or(0) as f64,
-                },
-            })),
+            crop_area: if let Some((min_x, min_y, max_x, max_y)) = crop_area {
+                Some(scap::capturer::Area {
+                    origin: scap::capturer::Point { x: min_x, y: min_y },
+                    size: scap::capturer::Size {
+                        width: max_x - min_x,
+                        height: max_y - min_y,
+                    },
+                })
+            } else {
+                Some(scap::capturer::Area {
+                    origin: scap::capturer::Point {
+                        x: monitor.x().unwrap_or(0) as f64,
+                        y: monitor.y().unwrap_or(0) as f64,
+                    },
+                    size: scap::capturer::Size {
+                        width: monitor.width().unwrap_or(0) as f64,
+                        height: monitor.height().unwrap_or(0) as f64,
+                    },
+                })
+            },
             ..Default::default()
         };
 
@@ -256,4 +281,47 @@ fn bgra_to_rgb(bgra_data: &[u8]) -> Vec<u8> {
     }
 
     rgb_data
+}
+
+pub enum ImageEncoder {
+    Webp,
+    Png,
+}
+
+pub fn encode_image(image: &image::DynamicImage, encoder: ImageEncoder) -> Vec<u8> {
+    // 编码为指定格式
+    let mut buf = Vec::with_capacity(image.as_bytes().len() / 8);
+
+    match encoder {
+        ImageEncoder::Webp => {
+            image
+                .write_with_encoder(WebPEncoder::new_lossless(&mut buf))
+                .unwrap();
+        }
+        ImageEncoder::Png => {
+            image
+                .write_with_encoder(PngEncoder::new_with_quality(
+                    &mut buf,
+                    CompressionType::Fast,
+                    FilterType::Adaptive,
+                ))
+                .unwrap();
+        }
+    }
+
+    return buf;
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::monitor_info::MonitorList;
+
+    use super::*;
+
+    #[test]
+    fn test_encode_image() {
+        let image = MonitorList::get().capture();
+        let buf = encode_image(&image, ImageEncoder::Webp);
+        println!("buf.len: {}", buf.len());
+    }
 }

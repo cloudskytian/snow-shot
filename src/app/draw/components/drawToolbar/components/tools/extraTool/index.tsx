@@ -23,7 +23,7 @@ export const ExtraTool: React.FC<{
 }> = ({ finishCapture }) => {
     const intl = useIntl();
 
-    const { monitorInfoRef, selectLayerActionRef } = useContext(DrawContext);
+    const { captureBoundingBoxInfoRef, selectLayerActionRef } = useContext(DrawContext);
 
     const [activeTool, setActiveTool] = useState<ExtraToolList | undefined>(undefined);
     const [enabled, setEnabled] = useState(false);
@@ -67,9 +67,9 @@ export const ExtraTool: React.FC<{
                         type={getButtonTypeByState(activeTool === ExtraToolList.VideoRecord)}
                         key="videoRecord"
                         onClick={() => {
-                            const monitorInfo = monitorInfoRef.current;
+                            const captureBoundingBoxInfo = captureBoundingBoxInfoRef.current;
                             const selectRect = selectLayerActionRef.current?.getSelectRect();
-                            if (!monitorInfo || !selectRect) {
+                            if (!captureBoundingBoxInfo || !selectRect) {
                                 return;
                             }
 
@@ -84,11 +84,11 @@ export const ExtraTool: React.FC<{
                             }
 
                             createVideoRecordWindow(
-                                monitorInfo.monitor_x,
-                                monitorInfo.monitor_y,
-                                monitorInfo.monitor_width,
-                                monitorInfo.monitor_height,
-                                monitorInfo.monitor_scale_factor,
+                                captureBoundingBoxInfo.rect.min_x,
+                                captureBoundingBoxInfo.rect.min_y,
+                                captureBoundingBoxInfo.width,
+                                captureBoundingBoxInfo.height,
+                                window.devicePixelRatio,
                                 selectRect.min_x,
                                 selectRect.min_y,
                                 selectRect.min_x + rectWidth,

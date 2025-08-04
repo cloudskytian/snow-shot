@@ -3,8 +3,8 @@ use std::ffi::c_void;
 use windows::Win32::Foundation::HWND;
 use windows::Win32::UI::WindowsAndMessaging::GetForegroundWindow;
 use windows::Win32::UI::WindowsAndMessaging::{
-    GWL_EXSTYLE, GWL_STYLE, GetWindowLongPtrW, HWND_NOTOPMOST, HWND_TOPMOST, SWP_NOMOVE,
-    SWP_NOSIZE, SetWindowLongW, SetWindowPos, WS_EX_TOPMOST,
+    GWL_EXSTYLE, GetWindowLongPtrW, HWND_NOTOPMOST, HWND_TOPMOST, SWP_NOMOVE, SWP_NOSIZE,
+    SetWindowPos, WS_EX_TOPMOST,
 };
 
 pub fn switch_always_on_top(hwnd: *mut c_void) -> bool {
@@ -36,14 +36,16 @@ pub fn switch_always_on_top(hwnd: *mut c_void) -> bool {
     result.is_ok()
 }
 
-pub fn set_draw_window_style(window: tauri::Window) {
-    let window_hwnd = window.hwnd();
+pub fn set_draw_window_style(#[allow(unused_variables)] window: tauri::Window) {
+    // 暂时不处理，保留下函数占位
 
-    if let Ok(hwnd) = window_hwnd {
-        // 设置窗口样式为0x96000000
-        let new_style = -1778384896;
-        unsafe { SetWindowLongW(hwnd, GWL_STYLE, new_style) };
-    }
+    // let window_hwnd = window.hwnd();
+
+    // if let Ok(hwnd) = window_hwnd {
+    //     // 设置窗口样式为0x96000000
+    //     let new_style = -1778384896;
+    //     unsafe { SetWindowLongW(hwnd, GWL_STYLE, new_style) };
+    // }
 }
 
 pub fn get_focused_window() -> HWND {

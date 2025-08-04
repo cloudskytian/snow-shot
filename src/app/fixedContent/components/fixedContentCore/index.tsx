@@ -13,13 +13,17 @@ import { generateImageFileName, ImageFormat } from '@/utils/file';
 import { closeWindowComplete } from '@/utils/window';
 import { useCallbackRender } from '@/hooks/useCallbackRender';
 import { zIndexs } from '@/utils/zIndex';
-import Image from 'next/image';
 import { CloseOutlined } from '@ant-design/icons';
 import { AppOcrResult, OcrResult, OcrResultActionType } from '../ocrResult';
 import * as clipboard from '@tauri-apps/plugin-clipboard-manager';
 import { KeyEventKey, KeyEventValue } from '@/core/hotKeys';
 import { useHotkeys } from 'react-hotkeys-hook';
-import { MonitorInfo, setCurrentWindowAlwaysOnTop, startFreeDrag } from '@/commands/core';
+import {
+    getCurrentMonitorInfo,
+    MonitorInfo,
+    setCurrentWindowAlwaysOnTop,
+    startFreeDrag,
+} from '@/commands/core';
 import { setDrawWindowStyle } from '@/commands/screenshot';
 import * as htmlToImage from 'html-to-image';
 import { openUrl } from '@tauri-apps/plugin-opener';
@@ -31,9 +35,10 @@ import {
 import { TweenAnimation } from '@/utils/tweenAnimation';
 import * as TWEEN from '@tweenjs/tween.js';
 import { MousePosition } from '@/utils/mousePosition';
+import { CaptureBoundingBoxInfo } from '@/app/draw/extra';
 
 export type FixedContentInitDrawParams = {
-    monitorInfo: MonitorInfo;
+    captureBoundingBoxInfo: CaptureBoundingBoxInfo;
     canvas: HTMLCanvasElement;
     /** 已有的 OCR 结果 */
     ocrResult: AppOcrResult | undefined;
@@ -73,7 +78,7 @@ export const FixedContentCore: React.FC<{
     onDrawLoad?: () => void;
     onHtmlLoad?: ({ width, height }: { width: number; height: number }) => void;
     onTextLoad?: (container: HTMLDivElement | null) => void;
-    onImageLoad?: (image: HTMLImageElement | null) => void;
+    onImageLoad?: (image: HTMLImageElement | null, monitorInfo: MonitorInfo) => void;
     disabled?: boolean;
 }> = ({ actionRef, onDrawLoad, onHtmlLoad, onTextLoad, onImageLoad, disabled }) => {
     const intl = useIntl();
@@ -250,7 +255,7 @@ export const FixedContentCore: React.FC<{
                             height:
                                 textContentContainerRef.current.clientHeight *
                                 window.devicePixelRatio,
-                            scaleFactor: 1,
+                            scaleFactor: window.devicePixelRatio,
                         };
                     }
                 }, timeout);
@@ -262,7 +267,7 @@ export const FixedContentCore: React.FC<{
     const initOcrParams = useRef<{
         selectRect: ElementRect;
         canvas: HTMLCanvasElement;
-        monitorInfo: MonitorInfo;
+        captureBoundingBoxInfo: CaptureBoundingBoxInfo;
         ocrResult: undefined;
     }>(undefined);
 
@@ -285,7 +290,7 @@ export const FixedContentCore: React.FC<{
         async (params: FixedContentInitDrawParams) => {
             setFixedContentType(FixedContentType.DrawCanvas);
 
-            const { canvas, monitorInfo } = params;
+            const { canvas, captureBoundingBoxInfo } = params;
 
             const ocrRect = {
                 min_x: 0,
@@ -299,20 +304,21 @@ export const FixedContentCore: React.FC<{
             ) {
                 initOcrParams.current = {
                     selectRect: ocrRect,
-                    monitorInfo,
+                    captureBoundingBoxInfo,
                     canvas,
                     ocrResult: params.ocrResult,
                 };
             }
 
+            const scaleFactor = await getCurrentWindow().scaleFactor();
             setStyle({
-                width: `${canvas.width / monitorInfo.monitor_scale_factor}px`,
-                height: `${canvas.height / monitorInfo.monitor_scale_factor}px`,
+                width: `${canvas.width / scaleFactor}px`,
+                height: `${canvas.height / scaleFactor}px`,
             });
             canvasPropsRef.current = {
                 width: canvas.width,
                 height: canvas.height,
-                scaleFactor: monitorInfo.monitor_scale_factor,
+                scaleFactor: scaleFactor,
             };
             setCanvasImageUrl(
                 await new Promise<string | undefined>((resolve) => {
@@ -342,7 +348,7 @@ export const FixedContentCore: React.FC<{
                         max_x: canvas.width,
                         max_y: canvas.height,
                     },
-                    monitorInfo,
+                    captureBoundingBoxInfo,
                     canvas,
                     ocrResult: params.ocrResult,
                 });
@@ -650,7 +656,7 @@ export const FixedContentCore: React.FC<{
                               } else if (imageRef.current && !imageOcrSignRef.current) {
                                   ocrResultActionRef.current?.init({
                                       imageElement: imageRef.current,
-                                      monitorScaleFactor: canvasPropsRef.current.scaleFactor,
+                                      monitorScaleFactor: window.devicePixelRatio,
                                   });
                                   imageOcrSignRef.current = true;
                               }
@@ -749,8 +755,14 @@ export const FixedContentCore: React.FC<{
             setDrawWindowStyle();
 
             // 计算新的窗口尺寸
-            const newWidth = Math.round((canvasPropsRef.current.width * targetScale) / 100);
-            const newHeight = Math.round((canvasPropsRef.current.height * targetScale) / 100);
+            const newWidth = Math.round(
+                ((canvasPropsRef.current.width * targetScale) / 100) *
+                    (window.devicePixelRatio / canvasPropsRef.current.scaleFactor),
+            );
+            const newHeight = Math.round(
+                ((canvasPropsRef.current.height * targetScale) / 100) *
+                    (window.devicePixelRatio / canvasPropsRef.current.scaleFactor),
+            );
 
             if (zoomWithMouse) {
                 try {
@@ -822,17 +834,24 @@ export const FixedContentCore: React.FC<{
 
     useEffect(() => {
         const handleMessage = (event: MessageEvent) => {
-            const { type, x, y, deltaY, width, height, clientWidth, href } = event.data;
+            const { type, x, y, deltaY, width, height, href } = event.data;
 
-            if ((type === 'bodySize' || type === 'resize') && htmlContentContainerRef.current) {
-                if (clientWidth === 200 && type !== 'resize') {
-                    htmlContentContainerRef.current!.style.width = `${800 * window.devicePixelRatio}px`;
+            if (
+                (type === 'bodySize' || type === 'resize') &&
+                htmlContentContainerRef.current &&
+                canvasPropsRef.current.width == 0
+            ) {
+                if (width === 200 && type !== 'resize') {
+                    htmlContentContainerRef.current!.style.width = `${800}px`;
                     return;
                 }
 
                 htmlContentContainerRef.current!.style.width = `${width}px`;
                 htmlContentContainerRef.current!.style.height = `${height}px`;
-                onHtmlLoad?.({ width, height });
+                onHtmlLoad?.({
+                    width: width * window.devicePixelRatio,
+                    height: height * window.devicePixelRatio,
+                });
 
                 setStyle({
                     width: `${width}px`,
@@ -841,7 +860,7 @@ export const FixedContentCore: React.FC<{
                 canvasPropsRef.current = {
                     width: width * window.devicePixelRatio,
                     height: height * window.devicePixelRatio,
-                    scaleFactor: 1,
+                    scaleFactor: window.devicePixelRatio,
                 };
             } else if (type === 'contextMenu') {
                 // 处理来自iframe的右键菜单事件
@@ -932,57 +951,52 @@ export const FixedContentCore: React.FC<{
                 onContextMenu={handleContextMenu}
             />
 
-            {canvasImageUrl && (
-                <Image
-                    src={canvasImageUrl}
-                    objectFit="contain"
-                    fill
-                    alt="fixed-canvas-image"
-                    onLoad={async () => {
-                        onDrawLoad?.();
-                    }}
-                    style={{
-                        transformOrigin: 'top left',
-                        transform: `scale(${scale.x / 100}, ${scale.y / 100})`,
-                        userSelect: 'none',
-                    }}
-                />
-            )}
-
-            {imageUrl && (
-                <div
-                    style={{
-                        transformOrigin: 'top left',
-                        scale: 1 / window.devicePixelRatio,
-                        transform: `scale(${scale.x / 100}, ${scale.y / 100})`,
-                        userSelect: 'none',
-                    }}
-                >
+            {(canvasImageUrl || imageUrl) && (
+                <>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                        src={imageUrl}
-                        ref={imageRef}
-                        alt="fixed-image"
+                        src={canvasImageUrl || imageUrl || ''}
+                        ref={imageUrl ? imageRef : undefined}
+                        style={{
+                            objectFit: 'contain',
+                            width: '100vw',
+                            height: '100vh',
+                        }}
+                        alt="fixed-canvas-image"
                         onLoad={async (event) => {
-                            const image = event.target as HTMLImageElement;
-                            onImageLoad?.(image);
+                            if (imageUrl) {
+                                const image = event.target as HTMLImageElement;
+                                const monitorInfo = await getCurrentMonitorInfo();
+                                onImageLoad?.(image, monitorInfo);
 
-                            setStyle({
-                                width: `${image.clientWidth / window.devicePixelRatio}px`,
-                                height: `${image.clientHeight / window.devicePixelRatio}px`,
-                            });
-                            canvasPropsRef.current = {
-                                width: image.clientWidth,
-                                height: image.clientHeight,
-                                scaleFactor: window.devicePixelRatio,
-                            };
+                                const imageWidth =
+                                    image.naturalWidth / monitorInfo.monitor_scale_factor;
+                                const imageHeight =
+                                    image.naturalHeight / monitorInfo.monitor_scale_factor;
+
+                                setStyle({
+                                    width: `${imageWidth}px`,
+                                    height: `${imageHeight}px`,
+                                });
+                                canvasPropsRef.current = {
+                                    width: image.naturalWidth,
+                                    height: image.naturalHeight,
+                                    scaleFactor: monitorInfo.monitor_scale_factor,
+                                };
+                            } else {
+                                onDrawLoad?.();
+                            }
                         }}
                     />
-                </div>
+                </>
             )}
 
             {htmlBlobUrl && (
                 <iframe
+                    style={{
+                        transformOrigin: 'top left',
+                        transform: `scale(${scale.x / 100}, ${scale.y / 100})`,
+                    }}
                     ref={htmlContentContainerRef}
                     src={htmlBlobUrl}
                     className="fixed-html-content"
@@ -990,8 +1004,15 @@ export const FixedContentCore: React.FC<{
             )}
 
             {textContent && (
-                <div ref={textContentContainerRef} className="fixed-text-content">
-                    <div>{textContent}</div>
+                <div
+                    style={{
+                        transformOrigin: 'top left',
+                        transform: `scale(${scale.x / 100}, ${scale.y / 100})`,
+                    }}
+                >
+                    <div ref={textContentContainerRef} className="fixed-text-content">
+                        <div>{textContent}</div>
+                    </div>
                 </div>
             )}
 
@@ -1081,8 +1102,6 @@ export const FixedContentCore: React.FC<{
 
                 .fixed-html-content,
                 .fixed-text-content {
-                    transform-origin: top left;
-                    transform: scale(${scale.x / 100}, ${scale.y / 100});
                     z-index: ${enableSelectText ? 1 : 'unset'};
                     position: absolute;
                     top: 0;

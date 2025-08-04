@@ -13,8 +13,8 @@ import * as PIXI from 'pixi.js';
 import { ElementRect, ImageBuffer } from '@/commands';
 import styles from './index.module.css';
 import { last } from 'es-toolkit';
-import { MonitorInfo } from '@/commands/core';
 import { releaseDrawPage } from '@/functions/screenshot';
+import { CaptureBoundingBoxInfo } from '../../extra';
 
 export type BaseLayerContextType = {
     /** 调整画布大小 */
@@ -72,19 +72,21 @@ export type BaseLayerEventActionType = {
     onCaptureReady: (
         texture: PIXI.Texture,
         imageBuffer: ImageBuffer,
-        monitorInfo: MonitorInfo,
+        captureBoundingBoxInfo: CaptureBoundingBoxInfo,
     ) => Promise<void>;
     /**
      * 显示器信息准备
      */
-    onMonitorInfoReady: (monitorInfo: MonitorInfo) => Promise<void>;
+    onCaptureBoundingBoxInfoReady: (
+        captureBoundingBoxInfo: CaptureBoundingBoxInfo,
+    ) => Promise<void>;
     /**
      * 截图加载完成
      */
     onCaptureLoad: (
         texture: PIXI.Texture,
         imageBuffer: ImageBuffer,
-        monitorInfo: MonitorInfo,
+        captureBoundingBoxInfo: CaptureBoundingBoxInfo,
     ) => Promise<void>;
     /**
      * 截图完成
@@ -140,7 +142,7 @@ export const defaultBaseLayerActions: BaseLayerActionType = {
     onCaptureReady: () => Promise.resolve(),
     onCaptureLoad: () => Promise.resolve(),
     onCaptureFinish: () => Promise.resolve(),
-    onMonitorInfoReady: () => Promise.resolve(),
+    onCaptureBoundingBoxInfoReady: () => Promise.resolve(),
     setEnable: () => {},
     onExecuteScreenshot: () => Promise.resolve(),
     getCanvasApp: () => null,
@@ -237,7 +239,6 @@ export const BaseLayerCore: React.FC<
                 },
                 autoStart: false,
                 antialias,
-                
             });
             canvasApp.ticker.maxFPS = 60;
             canvasApp.ticker.minFPS = 0;
@@ -454,15 +455,15 @@ export function withBaseLayer<
             },
             [],
         );
-        const onMonitorInfoReady = useCallback(
-            async (...args: Parameters<BaseLayerActionType['onMonitorInfoReady']>) => {
-                const [monitorInfo] = args;
+        const onCaptureBoundingBoxInfoReady = useCallback(
+            async (...args: Parameters<BaseLayerActionType['onCaptureBoundingBoxInfoReady']>) => {
+                const [captureBoundingBoxInfo] = args;
 
                 // 将画布调整为截图大小
-                const { monitor_width, monitor_height } = monitorInfo;
+                const { width, height } = captureBoundingBoxInfo;
 
-                baseLayerCoreActionRef.current?.resizeCanvas(monitor_width, monitor_height);
-                await layerActionRef.current?.onMonitorInfoReady(...args);
+                baseLayerCoreActionRef.current?.resizeCanvas(width, height);
+                await layerActionRef.current?.onCaptureBoundingBoxInfoReady(...args);
             },
             [],
         );
@@ -530,7 +531,7 @@ export function withBaseLayer<
                 ...(layerActionRef.current as ActionType),
                 onCaptureReady,
                 onCaptureFinish,
-                onMonitorInfoReady,
+                onCaptureBoundingBoxInfoReady,
                 setEnable,
                 getCanvasApp,
                 getLayerContainerElement,
@@ -544,7 +545,7 @@ export function withBaseLayer<
             [
                 onCaptureReady,
                 onCaptureFinish,
-                onMonitorInfoReady,
+                onCaptureBoundingBoxInfoReady,
                 setEnable,
                 getCanvasApp,
                 getLayerContainerElement,
