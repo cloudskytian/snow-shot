@@ -120,21 +120,20 @@ const CaptureHistoryControllerCore: React.FC<{
             if (currentIndexRef.current === captureHistoryListRef.current.length) {
                 const switchCaptureHistoryPromise = Promise.all([
                     drawLayerActionRef.current?.switchCaptureHistory(undefined).then(() => {
-                        drawCacheLayerActionRef.current?.updateScene({
-                            elements: currentCaptureExcalidrawElementsRef.current ?? [],
-                            captureUpdate: 'NEVER',
-                        });
+                        // 恢复绘制的内容
+                        if (currentCaptureExcalidrawElementsRef.current) {
+                            drawCacheLayerActionRef.current?.updateScene({
+                                elements: currentCaptureExcalidrawElementsRef.current ?? [],
+                                captureUpdate: 'NEVER',
+                            });
+                            drawCacheLayerActionRef.current?.clearHistory();
+                            currentCaptureExcalidrawElementsRef.current = undefined;
+                        }
                     }),
                     colorPickerActionRef.current?.switchCaptureHistory(undefined),
                 ]);
 
-                selectLayerActionRef.current?.setSelectRect(undefined);
-
-                // 恢复绘制的内容
-                if (currentCaptureExcalidrawElementsRef.current) {
-                    drawCacheLayerActionRef.current?.clearHistory();
-                    currentCaptureExcalidrawElementsRef.current = undefined;
-                }
+                selectLayerActionRef.current?.switchCaptureHistory(undefined);
 
                 await switchCaptureHistoryPromise;
             } else {
@@ -167,8 +166,8 @@ const CaptureHistoryControllerCore: React.FC<{
                     ),
                 ]);
 
-                selectLayerActionRef.current?.setSelectRect(
-                    captureHistoryListRef.current[currentIndexRef.current].selected_rect,
+                selectLayerActionRef.current?.switchCaptureHistory(
+                    captureHistoryListRef.current[currentIndexRef.current],
                 );
 
                 drawCacheLayerActionRef.current?.clearHistory();

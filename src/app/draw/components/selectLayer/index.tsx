@@ -31,6 +31,7 @@ import { MousePosition } from '@/utils/mousePosition';
 import {
     CaptureBoundingBoxInfo,
     CaptureEvent,
+    CaptureEventParams,
     CaptureEventPublisher,
     DrawEvent,
     DrawEventParams,
@@ -49,10 +50,11 @@ import { DrawState, DrawStatePublisher } from '@/app/fullScreenDraw/components/d
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { getPlatform } from '@/utils';
 import { useMoveCursor } from '../colorPicker/extra';
+import { CaptureHistoryItem } from '@/utils/appStore';
 
 export type SelectLayerActionType = {
     getSelectRect: () => ElementRect | undefined;
-    setSelectRect: (selectRect: ElementRect | undefined) => void;
+    switchCaptureHistory: (captureHistory: CaptureHistoryItem | undefined) => void;
     getSelectState: () => SelectState;
     getWindowId: () => number | undefined;
     setEnable: (enable: boolean) => void;
@@ -136,7 +138,15 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
     const lastMouseMovePositionRef = useRef<MousePosition | undefined>(undefined); // 上一次鼠标移动事件触发的参数
     const drawSelectRectAnimationRef = useRef<TweenAnimation<ElementRect> | undefined>(undefined); // 绘制选取框的动画
     const selectStateRef = useRef(SelectState.Auto); // 当前的选择状态
-    const [getCaptureEvent] = useStateSubscriber(CaptureEventPublisher, undefined);
+    const [getCaptureEvent] = useStateSubscriber(
+        CaptureEventPublisher,
+        useCallback((event: CaptureEventParams | undefined) => {
+            if (event?.event === CaptureEvent.onCaptureFinish) {
+                // 清除一些可能保留的状态
+                mouseDownPositionRef.current = undefined;
+            }
+        }, []),
+    );
 
     const tryEnableToolbar = useCallback(() => {
         if (
@@ -420,6 +430,8 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
             lastMouseMovePositionRef.current = captureBoundingBoxInfo.mousePosition;
             // 初始化下选择状态
             setSelectState(SelectState.Auto);
+            // 清除 mouseDownPosition，避免拖动时提前退出，第二次唤醒时依旧保留了状态
+            mouseDownPositionRef.current = undefined;
 
             if (!selectLayerCanvasContextRef.current) {
                 selectLayerCanvasContextRef.current =
@@ -480,7 +492,7 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
                         newImageData = originalImageData;
                     } else {
                         newImageData = new ImageData(
-                            new Uint8ClampedArray(originalImageData.data),
+                            originalImageData.data,
                             originalImageData.width,
                             originalImageData.height,
                         );
@@ -1081,14 +1093,17 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
                 setIsEnable(enable);
             },
             getSelectState: () => selectStateRef.current,
-            setSelectRect: (selectRect: ElementRect | undefined) => {
-                if (!selectRect) {
+            switchCaptureHistory: (captureHistory: CaptureHistoryItem | undefined) => {
+                // 清除遮罩缓存
+                opacityImageDataRef.current = undefined;
+
+                if (!captureHistory) {
                     setSelectState(SelectState.Auto);
                     refreshMouseMove();
                     return;
                 }
 
-                setPrevSelectRect(selectRect);
+                setPrevSelectRect(captureHistory.selected_rect);
             },
         }),
         [
