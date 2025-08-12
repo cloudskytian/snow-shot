@@ -8,13 +8,7 @@ import React from 'react';
 import { DragButton, DragButtonActionType } from './components/dragButton';
 import { DrawToolbarContext } from './extra';
 import { KeyEventKey } from './components/keyEventWrap/extra';
-import {
-    AppstoreOutlined,
-    CloseOutlined,
-    CopyOutlined,
-    DragOutlined,
-    LockOutlined,
-} from '@ant-design/icons';
+import { CloseOutlined, CopyOutlined, DragOutlined, LockOutlined } from '@ant-design/icons';
 import {
     ArrowIcon,
     ArrowSelectIcon,

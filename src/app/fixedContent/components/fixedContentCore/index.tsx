@@ -532,7 +532,7 @@ export const FixedContentCore: React.FC<{
 
             setIsThumbnail(true);
         }
-    }, [scaleRef, setScale]);
+    }, [scaleRef, setIsThumbnail, setScale]);
 
     const menuRef = useRef<Menu>(undefined);
 
