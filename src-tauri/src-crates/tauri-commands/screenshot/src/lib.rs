@@ -70,7 +70,7 @@ where
                 log::warn!("[capture_focused_window] Failed to capture focused window");
                 // 改成捕获当前显示器
 
-                let (_, _, monitor) = snow_shot_app_utils::get_target_monitor();
+                let (_, _, monitor) = snow_shot_app_utils::get_target_monitor()?;
 
                 match monitor.capture_image() {
                     Ok(image) => image,
