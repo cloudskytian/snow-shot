@@ -139,7 +139,7 @@ impl MonitorList {
         &self,
         crop_region: Option<ElementRect>,
         exclude_window: Option<&tauri::Window>,
-    ) -> image::DynamicImage {
+    ) -> Result<image::DynamicImage, String> {
         let monitors = &self.0;
 
         // 特殊情况，只有一个显示器，直接返回
@@ -155,32 +155,33 @@ impl MonitorList {
                 exclude_window,
             );
 
+            // 有些捕获失败的显示器，返回一个空图像，这里需要特殊处理
+            if capture_image.is_some()
+                && capture_image.as_ref().unwrap().width() == 1
+                && capture_image.as_ref().unwrap().height() == 1
+            {
+                return Ok(image::DynamicImage::new_rgba8(
+                    (first_monitor.rect.max_x - first_monitor.rect.min_x) as u32,
+                    (first_monitor.rect.max_y - first_monitor.rect.min_y) as u32,
+                ));
+            }
+
             return match capture_image {
-                Some(capture_image) => capture_image,
+                Some(capture_image) => Ok(capture_image),
                 None => {
-                    return image::DynamicImage::new_rgba8(
-                        (first_monitor.rect.max_x - first_monitor.rect.min_x) as u32,
-                        (first_monitor.rect.max_y - first_monitor.rect.min_y) as u32,
-                    );
+                    return Err(format!(
+                        "[MonitorInfoList::capture] Failed to capture monitor image, monitor rect: {:?}",
+                        first_monitor.rect
+                    ));
                 }
             };
         }
 
-        // 获取能容纳所有显示器的最小矩形
-        let monitors_bounding_box = self.get_monitors_bounding_box();
-
-        // 声明该图像，分配内存
-        let mut capture_image = if let Some(crop_region) = crop_region {
-            image::DynamicImage::new_rgba8(
-                (crop_region.max_x - crop_region.min_x) as u32,
-                (crop_region.max_y - crop_region.min_y) as u32,
-            )
-        } else {
-            image::DynamicImage::new_rgba8(
-                (monitors_bounding_box.max_x - monitors_bounding_box.min_x) as u32,
-                (monitors_bounding_box.max_y - monitors_bounding_box.min_y) as u32,
-            )
-        };
+        if monitors.len() == 0 {
+            return Err(format!(
+                "[MonitorInfoList::capture] Failed to capture monitor image, monitors is empty"
+            ));
+        }
 
         // 将每个显示器截取的图像，绘制到该图像上
         let monitor_image_list = monitors
@@ -212,40 +213,58 @@ impl MonitorList {
                     }
                 }
             })
-            .collect::<Vec<Option<(image::DynamicImage, Option<ElementRect>)>>>();
+            .filter_map(|result| match result {
+                Some((image, monitor_crop_region)) => Some((image, monitor_crop_region)),
+                None => None,
+            })
+            .collect::<Vec<(image::DynamicImage, Option<ElementRect>)>>();
+
+        // 获取能容纳所有显示器的最小矩形
+        let monitors_bounding_box = self.get_monitors_bounding_box();
+
+        // 声明该图像，分配内存
+        let mut capture_image = if let Some(crop_region) = crop_region {
+            image::DynamicImage::new_rgba8(
+                (crop_region.max_x - crop_region.min_x) as u32,
+                (crop_region.max_y - crop_region.min_y) as u32,
+            )
+        } else {
+            image::DynamicImage::new_rgba8(
+                (monitors_bounding_box.max_x - monitors_bounding_box.min_x) as u32,
+                (monitors_bounding_box.max_y - monitors_bounding_box.min_y) as u32,
+            )
+        };
 
         // 将每个显示器的截图绘制到合并图像上
-        for (index, monitor_image) in monitor_image_list.iter().enumerate() {
-            if let Some((image, monitor_crop_region)) = monitor_image {
-                let monitor = &monitors[index];
+        for (index, (monitor_image, monitor_crop_region)) in monitor_image_list.iter().enumerate() {
+            let monitor = &monitors[index];
 
-                // 计算显示器在合并图像中的位置
-                let offset_x: i64;
-                let offset_y: i64;
+            // 计算显示器在合并图像中的位置
+            let offset_x: i64;
+            let offset_y: i64;
 
-                if let Some(monitor_crop_region) = monitor_crop_region {
-                    let crop_region = crop_region.unwrap();
+            if let Some(monitor_crop_region) = monitor_crop_region {
+                let crop_region = crop_region.unwrap();
 
-                    // 将单个显示器的坐标转为整个显示器的坐标
-                    // 得到图像相对整个显示器的坐标后，再减去裁剪区域的坐标，得到图像相对裁剪区域的坐标
-                    offset_x =
-                        (monitor_crop_region.min_x + monitor.rect.min_x - crop_region.min_x) as i64;
-                    offset_y =
-                        (monitor_crop_region.min_y + monitor.rect.min_y - crop_region.min_y) as i64;
-                } else {
-                    offset_x = (monitor.rect.min_x - monitors_bounding_box.min_x) as i64;
-                    offset_y = (monitor.rect.min_y - monitors_bounding_box.min_y) as i64;
-                }
-
-                // 将显示器图像绘制到合并图像上
-                image::imageops::overlay(&mut capture_image, image, offset_x, offset_y);
+                // 将单个显示器的坐标转为整个显示器的坐标
+                // 得到图像相对整个显示器的坐标后，再减去裁剪区域的坐标，得到图像相对裁剪区域的坐标
+                offset_x =
+                    (monitor_crop_region.min_x + monitor.rect.min_x - crop_region.min_x) as i64;
+                offset_y =
+                    (monitor_crop_region.min_y + monitor.rect.min_y - crop_region.min_y) as i64;
+            } else {
+                offset_x = (monitor.rect.min_x - monitors_bounding_box.min_x) as i64;
+                offset_y = (monitor.rect.min_y - monitors_bounding_box.min_y) as i64;
             }
+
+            // 将显示器图像绘制到合并图像上
+            image::imageops::overlay(&mut capture_image, monitor_image, offset_x, offset_y);
         }
 
-        capture_image
+        Ok(capture_image)
     }
 
-    pub fn capture(&self, exclude_window: Option<&tauri::Window>) -> image::DynamicImage {
+    pub fn capture(&self, exclude_window: Option<&tauri::Window>) -> Result<image::DynamicImage, String> {
         self.capture_core(None, exclude_window)
     }
 
@@ -253,7 +272,7 @@ impl MonitorList {
         &self,
         region: ElementRect,
         exclude_window: Option<&tauri::Window>,
-    ) -> image::DynamicImage {
+    ) -> Result<image::DynamicImage, String> {
         self.capture_core(Some(region), exclude_window)
     }
 
@@ -290,7 +309,7 @@ mod tests {
         };
 
         let monitors = MonitorList::get_by_region(crop_region);
-        let image = monitors.capture_region(crop_region, None);
+        let image = monitors.capture_region(crop_region, None).unwrap();
 
         println!("current_dir: {:?}", env::current_dir().unwrap());
 
@@ -316,7 +335,7 @@ mod tests {
         };
 
         let monitors = MonitorList::get_by_region(crop_region);
-        let image = monitors.capture_region(crop_region, None);
+        let image = monitors.capture_region(crop_region, None).unwrap();
 
         image
             .save(

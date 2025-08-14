@@ -6,8 +6,16 @@ import { LogicalPosition, PhysicalSize, PhysicalPosition } from '@tauri-apps/api
 import { Menu, MenuItemOptions } from '@tauri-apps/api/menu';
 import { getCurrentWindow, Window as AppWindow } from '@tauri-apps/api/window';
 import { Button, theme } from 'antd';
-import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
-import { useIntl } from 'react-intl';
+import {
+    useCallback,
+    useContext,
+    useEffect,
+    useImperativeHandle,
+    useMemo,
+    useRef,
+    useState,
+} from 'react';
+import { FormattedMessage, useIntl } from 'react-intl';
 import * as dialog from '@tauri-apps/plugin-dialog';
 import { generateImageFileName, ImageFormat } from '@/utils/file';
 import { closeWindowComplete } from '@/utils/window';
@@ -37,6 +45,7 @@ import * as TWEEN from '@tweenjs/tween.js';
 import { MousePosition } from '@/utils/mousePosition';
 import { CaptureBoundingBoxInfo } from '@/app/draw/extra';
 import { useTextScaleFactor } from '@/hooks/useTextScaleFactor';
+import { AntdContext } from '@/components/globalLayoutExtra';
 
 export type FixedContentInitDrawParams = {
     captureBoundingBoxInfo: CaptureBoundingBoxInfo;
@@ -84,7 +93,7 @@ export const FixedContentCore: React.FC<{
 }> = ({ actionRef, onDrawLoad, onHtmlLoad, onTextLoad, onImageLoad, disabled }) => {
     const intl = useIntl();
     const { token } = theme.useToken();
-
+    const { message } = useContext(AntdContext);
     const [hotkeys, setHotkeys] = useState<Record<KeyEventKey, KeyEventValue> | undefined>(
         undefined,
     );
@@ -951,7 +960,10 @@ export const FixedContentCore: React.FC<{
             // 缩略模式降低拖拽阈值
             if (distance > 6 || (isThumbnailRef.current && distance > 2)) {
                 dragRegionMouseDownMousePositionRef.current = undefined;
-                startFreeDrag();
+                startFreeDrag().catch((error) => {
+                    console.error('[FixedContentCore] startFreeDrag error', error);
+                    message.error(<FormattedMessage id="draw.captureAllMonitorsError" />);
+                });
             }
         },
         [isThumbnailRef],

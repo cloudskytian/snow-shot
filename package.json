@@ -58,7 +58,9 @@
         "react-truncate-markup": "^5.1.2",
         "remark-gfm": "^4.0.1",
         "tauri-plugin-clipboard-api": "^2.1.11",
-        "turbo-webp": "0.2.0"
+        "tauri-plugin-macos-permissions-api": "^2.3.0",
+        "turbo-webp": "0.2.0",
+        "use-interval": "^1.4.0"
     },
     "devDependencies": {
         "@eslint/eslintrc": "^3.3.1",

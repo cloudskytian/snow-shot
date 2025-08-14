@@ -1,4 +1,4 @@
-use device_query::{DeviceQuery, DeviceState, MouseButton, MousePosition};
+use device_query::{DeviceQuery, MouseButton, MousePosition};
 use std::sync::{Arc, Mutex};
 
 use crate::device_event_handler_service::DeviceEventHandlerService;
@@ -22,14 +22,14 @@ impl FreeDragWindowService {
     pub fn start_drag(
         &mut self,
         window: tauri::Window,
-        device_event_handler: &DeviceEventHandlerService,
+        device_event_handler: &mut DeviceEventHandlerService,
     ) -> Result<(), String> {
         self.stop_drag();
 
         // 计算当前鼠标相对窗口的位置
         // windows 下获取的是物理像素，macOS 下获取的是逻辑像素
         // 为了方便处理，计算时 windows 下用物理像素，macOS 下用逻辑像素
-        let (mouse_x, mouse_y) = DeviceState::new().get_mouse().coords;
+        let (mouse_x, mouse_y) = snow_shot_app_utils::get_device_state()?.get_mouse().coords;
         let (mouse_x, mouse_y) = (mouse_x as f64, mouse_y as f64);
 
         let window_position = match window.outer_position() {
@@ -100,7 +100,7 @@ impl FreeDragWindowService {
                         window_y as i32,
                     ));
                 }
-            }),
+            })?,
         ));
 
         // 监听鼠标按钮事件 - 抬起时结束拖动
@@ -122,7 +122,7 @@ impl FreeDragWindowService {
                         );
                     }
                 },
-            )));
+            )?));
 
         Ok(())
     }

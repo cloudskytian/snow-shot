@@ -13,16 +13,16 @@ use xcap::Window;
 pub async fn capture_current_monitor(
     #[allow(unused_variables)] window: tauri::Window,
     encoder: String,
-) -> Response {
+) -> Result<Response, String> {
     // 获取当前鼠标的位置
-    let (_, _, monitor) = snow_shot_app_utils::get_target_monitor();
+    let (_, _, monitor) = snow_shot_app_utils::get_target_monitor()?;
 
     let image_buffer =
         match snow_shot_app_utils::capture_target_monitor(&monitor, None, Some(&window)) {
             Some(image) => image,
             None => {
                 log::error!("Failed to capture current monitor");
-                return Response::new(Vec::new());
+                return Ok(Response::new(Vec::new()));
             }
         };
 
@@ -35,17 +35,17 @@ pub async fn capture_current_monitor(
         },
     );
 
-    Response::new(image_buffer)
+    Ok(Response::new(image_buffer))
 }
 
-pub async fn capture_all_monitors(window: tauri::Window) -> Response {
-    let image = snow_shot_app_utils::get_capture_monitor_list(&window.app_handle(), None)
-        .capture(Some(&window));
+pub async fn capture_all_monitors(window: tauri::Window) -> Result<Response, String> {
+    let image = snow_shot_app_utils::get_capture_monitor_list(&window.app_handle(), None)?
+        .capture(Some(&window))?;
 
     let image_buffer =
         snow_shot_app_utils::encode_image(&image, snow_shot_app_utils::ImageEncoder::Webp);
 
-    Response::new(image_buffer)
+    Ok(Response::new(image_buffer))
 }
 
 pub async fn capture_focused_window<F>(
@@ -122,7 +122,7 @@ where
                 log::warn!("[capture_focused_window] Failed to capture focused window");
                 // 改成捕获当前显示器
 
-                let (_, _, monitor) = snow_shot_app_utils::get_target_monitor();
+                let (_, _, monitor) = snow_shot_app_utils::get_target_monitor()?;
 
                 match monitor.capture_image() {
                     Ok(image) => image,
@@ -397,8 +397,8 @@ pub async fn get_element_from_position(
     Ok(element_rect_list)
 }
 
-pub async fn get_mouse_position(app: tauri::AppHandle) -> Result<(i32, i32), ()> {
-    Ok(snow_shot_app_utils::get_mouse_position(&app))
+pub async fn get_mouse_position(app: tauri::AppHandle) -> Result<(i32, i32), String> {
+    snow_shot_app_utils::get_mouse_position(&app)
 }
 
 pub async fn create_draw_window(app: tauri::AppHandle) {

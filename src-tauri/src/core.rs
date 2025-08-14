@@ -30,10 +30,10 @@ pub async fn set_enable_proxy(enable: bool, host: String) -> Result<(), ()> {
 #[command]
 pub async fn scroll_through(
     window: tauri::Window,
-    enigo: tauri::State<'_, Mutex<EnigoManager>>,
+    enigo_manager: tauri::State<'_, Mutex<EnigoManager>>,
     length: i32,
-) -> Result<(), ()> {
-    snow_shot_tauri_commands_core::scroll_through(window, enigo, length).await
+) -> Result<(), String> {
+    snow_shot_tauri_commands_core::scroll_through(window, enigo_manager, length).await
 }
 
 /// 鼠标滚轮穿透
@@ -44,7 +44,7 @@ pub async fn click_through(window: tauri::Window) -> Result<(), ()> {
 
 /// 创建内容固定到屏幕的窗口
 #[command]
-pub async fn create_fixed_content_window(app: tauri::AppHandle, scroll_screenshot: bool) {
+pub async fn create_fixed_content_window(app: tauri::AppHandle, scroll_screenshot: bool) -> Result<(), String> {
     snow_shot_tauri_commands_core::create_fixed_content_window(app, scroll_screenshot).await
 }
 
@@ -61,12 +61,12 @@ pub async fn read_image_from_clipboard(handle: tauri::AppHandle) -> Response {
 
 /// 创建全屏绘制窗口
 #[command]
-pub async fn create_full_screen_draw_window(app: tauri::AppHandle) {
+pub async fn create_full_screen_draw_window(app: tauri::AppHandle) -> Result<(), String> {
     snow_shot_tauri_commands_core::create_full_screen_draw_window(app).await
 }
 
 #[command]
-pub async fn get_current_monitor_info() -> Result<snow_shot_tauri_commands_core::MonitorInfo, ()> {
+pub async fn get_current_monitor_info() -> Result<snow_shot_tauri_commands_core::MonitorInfo, String> {
     snow_shot_tauri_commands_core::get_current_monitor_info().await
 }
 
@@ -74,7 +74,7 @@ pub async fn get_current_monitor_info() -> Result<snow_shot_tauri_commands_core:
 pub async fn get_monitors_bounding_box(
     app: tauri::AppHandle,
     region: Option<ElementRect>,
-) -> Result<MonitorsBoundingBox, ()> {
+) -> Result<MonitorsBoundingBox, String> {
     snow_shot_tauri_commands_core::get_monitors_bounding_box(&app, region).await
 }
 

@@ -146,9 +146,15 @@ importers:
       tauri-plugin-clipboard-api:
         specifier: ^2.1.11
         version: 2.1.11(typescript@5.8.3)
+      tauri-plugin-macos-permissions-api:
+        specifier: ^2.3.0
+        version: 2.3.0
       turbo-webp:
         specifier: 0.2.0
         version: 0.2.0
+      use-interval:
+        specifier: ^1.4.0
+        version: 1.4.0(react@19.1.1)
     devDependencies:
       '@eslint/eslintrc':
         specifier: ^3.3.1
@@ -4116,6 +4122,9 @@ packages:
   tauri-plugin-clipboard-api@2.1.11:
     resolution: {integrity: sha512-VNkGaVPPfRoHg7/rJBcWqsvLvn4/kNEOOlzqwyI9Qdf6g54B3mc31GLZdnq/HWtX0vZskw3J8b/EF9YkASDCBQ==}
 
+  tauri-plugin-macos-permissions-api@2.3.0:
+    resolution: {integrity: sha512-pZp0jmDySysBqrGueknd1a7Rr4XEO9aXpMv9TNrT2PDHP0MSH20njieOagsFYJ5MCVb8A+wcaK0cIkjUC2dOww==}
+
   tbox-nodejs-sdk@0.0.13:
     resolution: {integrity: sha512-WqOKY5HYqEeb2YgEp26UChC4JTpJqFdz9pWyD1uOMvQmUYXf7k2Vlozpr3MEEiCL+Mvqos0p0TGyT3CvljkABA==}
 
@@ -4251,6 +4260,12 @@ packages:
     peerDependenciesMeta:
       '@types/react':
         optional: true
+
+  use-interval@1.4.0:
+    resolution: {integrity: sha512-1betIJun2rXKLxa30AFOBZCeZhsBJoJ/3+gkCeYbJ63lAR//EnAb1NjNeFqzgqeM7zQfR76rrCUaA8DvfgoOpA==}
+    engines: {node: '>=8', npm: '>=5'}
+    peerDependencies:
+      react: '>=16.8.0 || ^17'
 
   use-merge-value@1.2.0:
     resolution: {integrity: sha512-DXgG0kkgJN45TcyoXL49vJnn55LehnrmoHc7MbKi+QDBvr8dsesqws8UlyIWGHMR+JXgxc1nvY+jDGMlycsUcw==}
@@ -9159,6 +9174,10 @@ snapshots:
     transitivePeerDependencies:
       - typescript
 
+  tauri-plugin-macos-permissions-api@2.3.0:
+    dependencies:
+      '@tauri-apps/api': 2.7.0
+
   tbox-nodejs-sdk@0.0.13(@types/node@20.19.9)(typescript@5.8.3):
     dependencies:
       axios: 1.11.0
@@ -9346,6 +9365,10 @@ snapshots:
       tslib: 2.8.1
     optionalDependencies:
       '@types/react': 19.1.9
+
+  use-interval@1.4.0(react@19.1.1):
+    dependencies:
+      react: 19.1.1
 
   use-merge-value@1.2.0(react@19.1.1):
     dependencies:

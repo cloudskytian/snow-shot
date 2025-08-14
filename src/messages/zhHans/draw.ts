@@ -91,6 +91,7 @@ export const draw = {
     'draw.scrollScreenshot.captureError': '滚动截图失败，请向开发者反馈 [2]',
     'draw.scrollScreenshot.captureMiss': '滚动过快，请滚动到已截取的边缘再次尝试',
     'draw.scrollScreenshot.changeDirection': '切换滚动方向',
+    'draw.scrollScreenshot.scrollError': '部分滚动失效，请检查应用权限',
     'draw.ocrDetect.translate': '翻译',
     'draw.ocrDetect.translate.autoReplace': '自动替换识别结果',
     'draw.ocrDetect.translate.keepLayout': '保留排版',
@@ -107,4 +108,6 @@ export const draw = {
     'draw.switchThumbnail': '切换缩略图',
     'draw.captureError': '截图失败，请检查是否开启“录屏与系统录音”权限',
     'draw.loadingCaptureHistory': '加载截图历史中',
+    'draw.getMousePositionError': '获取鼠标位置失败，请检查应用权限',
+    'draw.captureAllMonitorsError': '拖动窗口失败，请检查应用权限',
 };

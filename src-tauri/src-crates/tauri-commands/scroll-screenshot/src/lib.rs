@@ -80,7 +80,7 @@ pub async fn scroll_screenshot_capture(
 
         let monitor_list = monitor_list_service.get();
 
-        monitor_list.capture_region(crop_region, Some(&window))
+        monitor_list.capture_region(crop_region, Some(&window))?
     };
 
     scroll_screenshot_image_service

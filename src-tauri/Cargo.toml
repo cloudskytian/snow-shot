@@ -50,6 +50,7 @@ scap = { git = "https://github.com/mg-chao/scap", branch = "20250712_custom" }
 objc2 = "0.6.1"
 objc2-app-kit = { version = "0.3.1" }
 uiautomation = "0.22.0"
+macos-accessibility-client = "0.0.1"
 
 # 项目内依赖
 snow-shot-app-services = { path = "src-crates/app-services" }
@@ -98,6 +99,7 @@ tauri-plugin-clipboard = "^2"
 tauri-plugin-process = "^2"
 tauri-plugin-notification = "^2"
 tauri-plugin-os = "^2"
+tauri-plugin-macos-permissions = "2.3.0"
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-autostart = "2"

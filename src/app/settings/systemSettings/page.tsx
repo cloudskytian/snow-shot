@@ -35,6 +35,8 @@ import { relaunch } from '@tauri-apps/plugin-process';
 import { TryGetElementByFocus } from '@/commands';
 import { OcrModel } from '@/commands/ocr';
 import { CaptureHistory, HistoryValidDuration } from '@/utils/captureHistory';
+import { usePlatform } from '@/hooks/usePlatform';
+import { MacOSPermissionsSettings } from './components/macosPermissionsSettings';
 
 export default function SystemSettings() {
     const intl = useIntl();
@@ -202,6 +204,8 @@ export default function SystemSettings() {
         ];
     }, [intl]);
 
+    const [currentPlatform] = usePlatform();
+
     return (
         <ContentWrap>
             <GroupTitle
@@ -268,6 +272,14 @@ export default function SystemSettings() {
             </Spin>
 
             <Divider />
+
+            {currentPlatform === 'macos' && (
+                <>
+                    <MacOSPermissionsSettings />
+
+                    <Divider />
+                </>
+            )}
 
             <GroupTitle
                 id="screenshotSettings"

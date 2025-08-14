@@ -158,9 +158,13 @@ export const KeyButton: React.FC<{
 
     useEffect(() => {
         if (open) {
-            listenKeyStart();
+            listenKeyStart().catch((error) => {
+                console.error('[KeyButton] listenKeyStart error', error);
+            });
         } else {
-            listenKeyStop();
+            listenKeyStop().catch((error) => {
+                console.error('[KeyButton] listenKeyStop error', error);
+            });
         }
     }, [open]);
 

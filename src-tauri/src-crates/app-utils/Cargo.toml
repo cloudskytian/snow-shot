@@ -18,3 +18,4 @@ snow-shot-app-shared = { workspace = true }
 scap = { workspace = true }
 objc2 = { workspace = true }
 core-graphics-helmer-fork = "0.24.0"
+macos-accessibility-client = { workspace = true }

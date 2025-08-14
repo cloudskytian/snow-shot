@@ -53,6 +53,7 @@
         "clipboard-manager:allow-write-html",
         "notification:default",
         "notification:allow-register-listener",
+        "macos-permissions:default",
         {
             "identifier": "http:default",
             "allow": [

@@ -392,7 +392,9 @@ export const ScrollScreenshot: React.FC<{
                 pendingScrollThroughRef.current = true;
                 scrollThrough(event.deltaY > 0 ? 1 : -1)
                     .catch(() => {
-                        // 忽略报错
+                        message.warning(
+                            <FormattedMessage id="draw.scrollScreenshot.scrollError" />,
+                        );
                     })
                     .finally(() => {
                         pendingScrollThroughRef.current = false;

@@ -4,14 +4,28 @@ use serde::Deserialize;
 use serde::Serialize;
 
 pub struct EnigoManager {
-    pub enigo: Enigo,
+    pub enigo: Option<Enigo>,
 }
 
 impl EnigoManager {
     pub fn new() -> Self {
-        Self {
-            enigo: Enigo::new(&Settings::default()).unwrap(),
+        Self { enigo: None }
+    }
+
+    pub fn get_enigo(&mut self) -> Result<&mut Enigo, String> {
+        if self.enigo.is_some() {
+            return Ok(self.enigo.as_mut().unwrap());
         }
+
+        let enigo = match Enigo::new(&Settings::default()) {
+            Ok(enigo) => enigo,
+            Err(e) => {
+                return Err(format!("[EnigoManager] Could not get enigo: {}", e));
+            }
+        };
+
+        self.enigo = Some(enigo);
+        Ok(self.enigo.as_mut().unwrap())
     }
 }
 

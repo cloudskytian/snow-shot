@@ -18,15 +18,34 @@ use crate::monitor_info::MonitorList;
 
 pub mod monitor_info;
 
-pub fn get_device_mouse_position() -> (i32, i32) {
-    let device_state = DeviceState::new();
-    let mouse: MouseState = device_state.get_mouse();
+pub fn get_device_state() -> Result<DeviceState, String> {
+    #[cfg(target_os = "macos")]
+    {
+        if !macos_accessibility_client::accessibility::application_is_trusted() {
+            return Err(format!("[get_device_state] Accessibility is not enabled"));
+        }
+    }
 
-    mouse.coords
+    Ok(DeviceState::new())
 }
 
-pub fn get_target_monitor() -> (i32, i32, Monitor) {
-    let (mut mouse_x, mut mouse_y) = get_device_mouse_position();
+pub fn get_device_mouse_position() -> Result<(i32, i32), String> {
+    let device_state = get_device_state()?;
+    let mouse: MouseState = device_state.get_mouse();
+
+    Ok(mouse.coords)
+}
+
+pub fn get_target_monitor() -> Result<(i32, i32, Monitor), String> {
+    let (mut mouse_x, mut mouse_y) = match get_device_mouse_position() {
+        Ok((x, y)) => (x, y),
+        Err(e) => {
+            return Err(format!(
+                "[get_target_monitor] Failed to get device mouse position: {}",
+                e
+            ));
+        }
+    };
     let monitor = Monitor::from_point(mouse_x, mouse_y).unwrap_or_else(|_| {
         // 在 Wayland 中，获取不到鼠标位置，选用第一个显示器作为位置
 
@@ -43,7 +62,7 @@ pub fn get_target_monitor() -> (i32, i32, Monitor) {
         first_monitor.clone()
     });
 
-    (mouse_x, mouse_y, monitor)
+    Ok((mouse_x, mouse_y, monitor))
 }
 
 pub async fn save_image_to_file(
@@ -111,8 +130,10 @@ pub async fn save_image_to_file(
     return Ok(());
 }
 
-pub fn get_mouse_position(#[allow(unused_variables)] app: &AppHandle) -> (i32, i32) {
-    let device_state = DeviceState::new();
+pub fn get_mouse_position(
+    #[allow(unused_variables)] app: &AppHandle,
+) -> Result<(i32, i32), String> {
+    let device_state = get_device_state()?;
     let mouse: MouseState = device_state.get_mouse();
     let (mouse_x, mouse_y) = mouse.coords;
 
@@ -129,23 +150,23 @@ pub fn get_mouse_position(#[allow(unused_variables)] app: &AppHandle) -> (i32, i
         }
     }
 
-    (
+    Ok((
         (mouse_x as f64 * position_scale) as i32,
         (mouse_y as f64 * position_scale) as i32,
-    )
+    ))
 }
 
 pub fn get_capture_monitor_list(
     #[allow(unused_variables)] app: &AppHandle,
     region: Option<ElementRect>,
-) -> MonitorList {
+) -> Result<MonitorList, String> {
     if let Some(region) = region {
-        return MonitorList::get_by_region(region);
+        return Ok(MonitorList::get_by_region(region));
     }
 
     #[cfg(target_os = "windows")]
     {
-        MonitorList::all()
+        Ok(MonitorList::all())
     }
 
     #[cfg(target_os = "macos")]
@@ -155,15 +176,15 @@ pub fn get_capture_monitor_list(
 
         // 此时支持跨屏截图，如果 scale_factor 不一致，则需要根据鼠标位置获取单个显示器进行截图
         if all_same_scale {
-            MonitorList::all()
+            Ok(MonitorList::all())
         } else {
-            let (mouse_x, mouse_y) = get_mouse_position(app);
-            MonitorList::get_by_region(ElementRect {
+            let (mouse_x, mouse_y) = get_mouse_position(app)?;
+            Ok(MonitorList::get_by_region(ElementRect {
                 min_x: mouse_x,
                 min_y: mouse_y,
                 max_x: mouse_x + 1,
                 max_y: mouse_y + 1,
-            })
+            }))
         }
     }
 }
@@ -245,7 +266,7 @@ pub fn capture_target_monitor(
             .eq("DeskPad Display")
         {
             log::warn!("[capture_current_monitor_with_scap] skip DeskPad Display");
-            return None;
+            return Some(image::DynamicImage::ImageRgba8(image::RgbaImage::new(1, 1)));
         }
 
         let monitor_id = match monitor.id() {

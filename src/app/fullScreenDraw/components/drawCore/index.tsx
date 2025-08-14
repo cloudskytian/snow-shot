@@ -116,7 +116,6 @@ const DrawCoreComponent: React.FC<{
         enableRef.current = enable;
         if (enable) {
             drawCacheLayerElementRef.current.style.pointerEvents = 'auto';
-            drawCacheLayerElementRef.current.style.opacity = '1';
         } else {
             drawCacheLayerElementRef.current.style.pointerEvents = 'none';
         }
@@ -495,6 +494,7 @@ const DrawCoreComponent: React.FC<{
         (api) => {
             excalidrawAPI(api);
             onLoad?.();
+
             if (excalidrawAppStateStoreValue.current) {
                 // 未初始化 setstate 报错，未发现具体原因，延迟处理下
                 setTimeout(() => {

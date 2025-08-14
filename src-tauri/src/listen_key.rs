@@ -12,10 +12,10 @@ pub async fn listen_key_start(
     device_event_handler_service: tauri::State<'_, Mutex<DeviceEventHandlerService>>,
     listen_key_service: tauri::State<'_, Mutex<ListenKeyService>>,
 ) -> Result<(), String> {
-    let device_event_handler_service = device_event_handler_service.lock().await;
+    let mut device_event_handler_service = device_event_handler_service.lock().await;
     let mut listen_key_service = listen_key_service.lock().await;
 
-    listen_key_service.start(app_handle, window, &device_event_handler_service)?;
+    listen_key_service.start(app_handle, window, &mut device_event_handler_service)?;
 
     Ok(())
 }

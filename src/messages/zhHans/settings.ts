@@ -243,4 +243,17 @@ export const settings = {
     'settings.systemSettings.screenshotSettings.historyValidDuration.month': '30 天',
     'settings.systemSettings.screenshotSettings.historyValidDuration.forever': '永久保留',
     'settings.systemSettings.screenshotSettings.historyValidDuration.test': '测试（立即清除）',
+    'settings.systemSettings.macosPermissionsSettings': '应用权限',
+    'settings.systemSettings.macosPermissionsSettings.recordScreen': '录屏与系统录音',
+    'settings.systemSettings.macosPermissionsSettings.recordScreen.tip':
+        '截图功能将使用该权限用以获取屏幕画面',
+    'settings.systemSettings.macosPermissionsSettings.accessibility': '辅助功能',
+    'settings.systemSettings.macosPermissionsSettings.accessibility.tip':
+        '通过辅助功能以实现鼠标移动、录入按键等操作',
+    'settings.systemSettings.macosPermissionsSettings.microphone': '麦克风',
+    'settings.systemSettings.macosPermissionsSettings.microphone.tip':
+        '在视频录制时，将使用该权限用以录制麦克风声音',
+    'settings.systemSettings.macosPermissionsSettings.request': '开启权限',
+    'settings.systemSettings.macosPermissionsSettings.authorized': '已启用',
+    'settings.systemSettings.macosPermissionsSettings.reload': '刷新权限状态',
 };

@@ -9,12 +9,12 @@ use snow_shot_app_shared::ElementRect;
 use snow_shot_tauri_commands_screenshot::WindowElement;
 
 #[command]
-pub async fn capture_current_monitor(window: tauri::Window, encoder: String) -> Response {
+pub async fn capture_current_monitor(window: tauri::Window, encoder: String) -> Result<Response, String> {
     snow_shot_tauri_commands_screenshot::capture_current_monitor(window, encoder).await
 }
 
 #[command]
-pub async fn capture_all_monitors(window: tauri::Window) -> Response {
+pub async fn capture_all_monitors(window: tauri::Window) -> Result<Response, String> {
     snow_shot_tauri_commands_screenshot::capture_all_monitors(window).await
 }
 
@@ -25,18 +25,16 @@ pub async fn capture_focused_window(
     copy_to_clipboard: bool,
 ) -> Result<(), String> {
     snow_shot_tauri_commands_screenshot::capture_focused_window(
-        move |image| {
-            match app.clipboard().write_image(&tauri::image::Image::new(
-                image.as_bytes(),
-                image.width(),
-                image.height(),
-            )) {
-                Ok(_) => Ok(()),
-                Err(e) => Err(format!(
-                    "[capture_focused_window] Failed to write image to clipboard: {}",
-                    e
-                )),
-            }
+        move |image| match app.clipboard().write_image(&tauri::image::Image::new(
+            image.as_bytes(),
+            image.width(),
+            image.height(),
+        )) {
+            Ok(_) => Ok(()),
+            Err(e) => Err(format!(
+                "[capture_focused_window] Failed to write image to clipboard: {}",
+                e
+            )),
         },
         file_path,
         copy_to_clipboard,
@@ -95,7 +93,7 @@ pub async fn get_element_from_position(
 }
 
 #[command]
-pub async fn get_mouse_position(app: tauri::AppHandle) -> Result<(i32, i32), ()> {
+pub async fn get_mouse_position(app: tauri::AppHandle) -> Result<(i32, i32), String> {
     snow_shot_tauri_commands_screenshot::get_mouse_position(app).await
 }
 

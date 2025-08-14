@@ -77,10 +77,11 @@ import { covertOcrResultToText } from '../fixedContent/components/ocrResult';
 import { writeTextToClipboard } from '@/utils/clipboard';
 import { listenKeyStart, listenKeyStop } from '@/commands/listenKey';
 import { sendErrorMessage } from '@/functions/sendMessage';
-import { useIntl } from 'react-intl';
+import { FormattedMessage, useIntl } from 'react-intl';
 import Flatbush from 'flatbush';
 import { isOcrTool } from './components/drawToolbar/components/tools/ocrTool';
 import { CaptureHistoryActionType, CaptureHistoryController } from './components/captureHistory';
+import { AntdContext } from '@/components/globalLayoutExtra';
 
 const DrawCacheLayer = dynamic(
     async () => (await import('./components/drawCacheLayer')).DrawCacheLayer,
@@ -101,6 +102,7 @@ enum DrawPageState {
 }
 
 const DrawPageCore: React.FC = () => {
+    const { message } = useContext(AntdContext);
     const intl = useIntl();
 
     const appWindowRef = useRef<AppWindow>(undefined as unknown as AppWindow);
@@ -303,7 +305,9 @@ const DrawPageCore: React.FC = () => {
             setCurrentWindowAlwaysOnTop(false);
 
             // 监听键盘
-            listenKeyStart();
+            listenKeyStart().catch((error) => {
+                console.error('[DrawPageCore] listenKeyStart error', error);
+            });
 
             setDrawWindowStyle();
         },
@@ -332,7 +336,9 @@ const DrawPageCore: React.FC = () => {
     const finishCapture = useCallback<DrawContextType['finishCapture']>(
         async (clearScrollScreenshot: boolean = true) => {
             // 停止监听键盘
-            listenKeyStop();
+            listenKeyStop().catch((error) => {
+                console.error('[DrawPageCore] listenKeyStop error', error);
+            });
 
             drawPageStateRef.current = DrawPageState.WaitRelease;
             releasePage();
@@ -378,7 +384,11 @@ const DrawPageCore: React.FC = () => {
     const initCaptureBoundingBoxInfoAndShowWindow = useCallback(async () => {
         const [captureBoundingBox, mousePosition] = await Promise.all([
             getMonitorsBoundingBox(),
-            getMousePosition(),
+            getMousePosition().catch((error) => {
+                console.error('[DrawPageCore] getMousePosition error', error);
+                message.error(<FormattedMessage id="draw.getMousePositionError" />);
+                return [0, 0];
+            }),
         ]);
 
         const rTree = new Flatbush(captureBoundingBox.monitor_rect_list.length);
@@ -411,7 +421,10 @@ const DrawPageCore: React.FC = () => {
             drawToolbarActionRef.current?.setEnable(false);
 
             const initCaptureBoundingBoxInfoPromise = initCaptureBoundingBoxInfoAndShowWindow();
-            const captureAllMonitorsPromise = captureAllMonitors();
+            const captureAllMonitorsPromise = captureAllMonitors().catch((error) => {
+                console.error('[DrawPageCore] captureAllMonitors error', error);
+                return undefined;
+            });
 
             setScreenshotType(excuteScreenshotType);
             const layerOnExecuteScreenshotPromise = Promise.all([

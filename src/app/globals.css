@@ -37,7 +37,13 @@ body {
 }
 
 .draw-core-layer .excalidraw .Island.App-toolbar {
-    display: none;
+    opacity: 0;
+    display: none !important;
+}
+
+.draw-core-layer footer {
+    opacity: 0;
+    display: none !important;
 }
 
 .draw-core-layer .excalidraw .selected-shape-actions fieldset {

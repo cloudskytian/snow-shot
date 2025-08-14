@@ -48,6 +48,7 @@ import { withStatePublisher } from '@/hooks/useStatePublisher';
 import { CheckVersion } from '@/components/checkVersion';
 import { InitService } from '@/components/initService';
 import * as tauriOs from '@tauri-apps/plugin-os';
+import { getPlatformValue } from '@/utils';
 
 type MenuItem = ItemType<MenuItemType>;
 
@@ -589,6 +590,17 @@ const MenuLayoutCore: React.FC<{ children: React.ReactNode }> = ({ children }) =
                                 key: 'commonSettings',
                                 label: intl.formatMessage({ id: 'settings.commonSettings' }),
                             },
+                            ...getPlatformValue(
+                                [],
+                                [
+                                    {
+                                        key: 'macosPermissionsSettings',
+                                        label: intl.formatMessage({
+                                            id: 'settings.systemSettings.macosPermissionsSettings',
+                                        }),
+                                    },
+                                ],
+                            ),
                             {
                                 key: 'screenshotSettings',
                                 label: intl.formatMessage({

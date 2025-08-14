@@ -38,7 +38,7 @@ impl ListenKeyService {
         &mut self,
         app_handle: AppHandle,
         window: Window,
-        device_event_handler: &DeviceEventHandlerService,
+        device_event_handler: &mut DeviceEventHandlerService,
     ) -> Result<(), String> {
         let mut window_label_set_lock = match self.window_label_set.lock() {
             Ok(guard) => guard,
@@ -77,7 +77,7 @@ impl ListenKeyService {
                         }
                     };
                 },
-            )));
+            )?));
         }
 
         let mut key_up_guard_lock = match self._key_up_guard.lock() {
@@ -107,7 +107,7 @@ impl ListenKeyService {
                         }
                     };
                 },
-            )));
+            )?));
         }
 
         Ok(())

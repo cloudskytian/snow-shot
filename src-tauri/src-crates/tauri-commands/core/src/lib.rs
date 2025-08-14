@@ -61,13 +61,15 @@ pub async fn scroll_through(
     window: tauri::Window,
     enigo_manager: tauri::State<'_, Mutex<EnigoManager>>,
     length: i32,
-) -> Result<(), ()> {
+) -> Result<(), String> {
     let mut enigo = enigo_manager.lock().await;
-    let enigo = &mut enigo.enigo;
+    let enigo = enigo.get_enigo()?;
 
     let result = window.set_ignore_cursor_events(true);
     if result.is_err() {
-        return Ok(());
+        return Err(String::from(
+            "[scroll_through] Failed to set ignore cursor events",
+        ));
     }
 
     tokio::time::sleep(Duration::from_millis(1)).await;
@@ -104,8 +106,11 @@ pub async fn click_through(window: tauri::Window) -> Result<(), ()> {
 }
 
 /// 创建内容固定到屏幕的窗口
-pub async fn create_fixed_content_window(app: tauri::AppHandle, scroll_screenshot: bool) {
-    let (_, _, monitor) = get_target_monitor();
+pub async fn create_fixed_content_window(
+    app: tauri::AppHandle,
+    scroll_screenshot: bool,
+) -> Result<(), String> {
+    let (_, _, monitor) = get_target_monitor()?;
 
     let monitor_x = monitor.x().unwrap() as f64;
     let monitor_y = monitor.y().unwrap() as f64;
@@ -156,10 +161,12 @@ pub async fn create_fixed_content_window(app: tauri::AppHandle, scroll_screensho
 
     window.hide().unwrap();
     window.center().unwrap();
+
+    Ok(())
 }
 
 /// 创建全屏绘制窗口
-pub async fn create_full_screen_draw_window(app: tauri::AppHandle) {
+pub async fn create_full_screen_draw_window(app: tauri::AppHandle) -> Result<(), String> {
     let window_label = "full-screen-draw";
 
     // 首先先查询是否存在窗口
@@ -171,10 +178,10 @@ pub async fn create_full_screen_draw_window(app: tauri::AppHandle) {
             .emit("full-screen-draw-change-mouse-through", ())
             .unwrap();
 
-        return;
+        return Ok(());
     }
 
-    let (_, _, monitor) = get_target_monitor();
+    let (_, _, monitor) = get_target_monitor()?;
 
     let monitor_x = monitor.x().unwrap() as f64;
     let monitor_y = monitor.y().unwrap() as f64;
@@ -246,6 +253,8 @@ pub async fn create_full_screen_draw_window(app: tauri::AppHandle) {
             .set_size(tauri::PhysicalSize::new(monitor_width, monitor_height))
             .unwrap();
     }
+
+    Ok(())
 }
 
 #[derive(Serialize, Clone, Copy)]
@@ -259,11 +268,11 @@ pub struct MonitorInfo {
     monitor_scale_factor: f32,
 }
 
-pub async fn get_current_monitor_info() -> Result<MonitorInfo, ()> {
+pub async fn get_current_monitor_info() -> Result<MonitorInfo, String> {
     #[cfg(target_os = "macos")]
-    let (mut mouse_x, mut mouse_y, monitor) = get_target_monitor();
+    let (mut mouse_x, mut mouse_y, monitor) = get_target_monitor()?;
     #[cfg(not(target_os = "macos"))]
-    let (mouse_x, mouse_y, monitor) = get_target_monitor();
+    let (mouse_x, mouse_y, monitor) = get_target_monitor()?;
 
     let monitor_x = monitor.x().unwrap();
     let monitor_y = monitor.y().unwrap();
@@ -311,8 +320,8 @@ pub struct MonitorsBoundingBox {
 pub async fn get_monitors_bounding_box(
     app: &tauri::AppHandle,
     region: Option<ElementRect>,
-) -> Result<MonitorsBoundingBox, ()> {
-    let monitors = snow_shot_app_utils::get_capture_monitor_list(app, region);
+) -> Result<MonitorsBoundingBox, String> {
+    let monitors = snow_shot_app_utils::get_capture_monitor_list(app, region)?;
 
     let monitors_bounding_box = monitors.get_monitors_bounding_box();
 
@@ -431,9 +440,9 @@ pub async fn start_free_drag(
     free_drag_window_service: tauri::State<'_, Mutex<FreeDragWindowService>>,
 ) -> Result<(), String> {
     let mut free_drag_window_service = free_drag_window_service.lock().await;
-    let device_event_handler_service = device_event_handler_service.lock().await;
+    let mut device_event_handler_service = device_event_handler_service.lock().await;
 
-    free_drag_window_service.start_drag(window, &device_event_handler_service)?;
+    free_drag_window_service.start_drag(window, &mut device_event_handler_service)?;
 
     Ok(())
 }

@@ -64,6 +64,7 @@ import { TrayIconStatePublisher } from './trayIcon';
 import { createFixedContentWindow, createFullScreenDrawWindow } from '@/commands/core';
 import { IconLabel } from '@/components/iconLable';
 import { usePlatform } from '@/hooks/usePlatform';
+import { CheckPermissions } from '@/components/checkPermissions';
 
 export default function Home() {
     const { token } = theme.useToken();
@@ -384,6 +385,8 @@ export default function Home() {
 
     return (
         <ContentWrap className="home-wrap">
+            <CheckPermissions />
+
             {Object.keys(defaultAppFunctionComponentGroupConfigs).map((group) => {
                 const configs = defaultAppFunctionComponentGroupConfigs[group as AppFunctionGroup];
 

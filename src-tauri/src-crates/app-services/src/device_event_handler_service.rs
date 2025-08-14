@@ -8,50 +8,70 @@ const DEVICE_EVENT_HANDLER_FPS: u64 = 100;
 
 pub struct DeviceEventHandlerService {
     /* 设备事件处理 */
-    device_event_handler: DeviceEventsHandler,
+    device_event_handler: Option<DeviceEventsHandler>,
 }
 
 impl DeviceEventHandlerService {
     pub fn new() -> Self {
+        Self {
+            device_event_handler: None,
+        }
+    }
+
+    pub fn get_device_event_handler(&mut self) -> Result<&DeviceEventsHandler, String> {
+        if self.device_event_handler.is_some() {
+            return Ok(&self.device_event_handler.as_ref().unwrap());
+        }
+
+        #[cfg(target_os = "macos")]
+        {
+            if !macos_accessibility_client::accessibility::application_is_trusted() {
+                return Err(format!(
+                    "[DeviceEventHandlerService] Accessibility is not enabled"
+                ));
+            }
+        }
+
         let handler = match DeviceEventsHandler::new(Duration::from_millis(
             1000 / DEVICE_EVENT_HANDLER_FPS,
         )) {
             Some(handler) => handler,
             None => {
-                panic!("[DeviceEventHandlerService] Could not get device event handler");
+                return Err(format!(
+                    "[DeviceEventHandlerService] Could not get device event handler"
+                ));
             }
         };
 
-        Self {
-            device_event_handler: handler,
-        }
+        self.device_event_handler = Some(handler);
+        Ok(&self.device_event_handler.as_ref().unwrap())
     }
 
     pub fn on_mouse_move<Callback: Fn(&MousePosition) + Sync + Send + 'static>(
-        &self,
+        &mut self,
         callback: Callback,
-    ) -> CallbackGuard<Callback> {
-        self.device_event_handler.on_mouse_move(callback)
+    ) -> Result<CallbackGuard<Callback>, String> {
+        Ok(self.get_device_event_handler()?.on_mouse_move(callback))
     }
 
     pub fn on_mouse_up<Callback: Fn(&MouseButton) + Sync + Send + 'static>(
-        &self,
+        &mut self,
         callback: Callback,
-    ) -> CallbackGuard<Callback> {
-        self.device_event_handler.on_mouse_up(callback)
+    ) -> Result<CallbackGuard<Callback>, String> {
+        Ok(self.get_device_event_handler()?.on_mouse_up(callback))
     }
 
     pub fn on_key_down<Callback: Fn(&Keycode) + Sync + Send + 'static>(
-        &self,
+        &mut self,
         callback: Callback,
-    ) -> CallbackGuard<Callback> {
-        self.device_event_handler.on_key_down(callback)
+    ) -> Result<CallbackGuard<Callback>, String> {
+        Ok(self.get_device_event_handler()?.on_key_down(callback))
     }
 
     pub fn on_key_up<Callback: Fn(&Keycode) + Sync + Send + 'static>(
-        &self,
+        &mut self,
         callback: Callback,
-    ) -> CallbackGuard<Callback> {
-        self.device_event_handler.on_key_up(callback)
+    ) -> Result<CallbackGuard<Callback>, String> {
+        Ok(self.get_device_event_handler()?.on_key_up(callback))
     }
 }

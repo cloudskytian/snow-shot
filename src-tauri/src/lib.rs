@@ -59,6 +59,7 @@ pub fn run() {
     }
 
     app_builder
+        .plugin(tauri_plugin_macos_permissions::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_clipboard::init())
         .plugin(tauri_plugin_clipboard_manager::init())
