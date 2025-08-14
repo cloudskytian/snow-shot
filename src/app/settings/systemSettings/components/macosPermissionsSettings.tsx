@@ -1,7 +1,8 @@
 import { GroupTitle } from '@/components/groupTitle';
 import { ResetIcon } from '@/components/icons';
 import { useStateRef } from '@/hooks/useStateRef';
-import { Button, List } from 'antd';
+import { openUrl } from '@tauri-apps/plugin-opener';
+import { Alert, Button, List } from 'antd';
 import { useCallback, useEffect, useState } from 'react';
 import { FormattedMessage } from 'react-intl';
 import {
@@ -76,7 +77,7 @@ export const MacOSPermissionsSettings: React.FC = () => {
         ]);
 
         setPermissionsState({ enableRecordScreen, enableAccessibility, enableMicrophone });
-    }, []);
+    }, [setPermissionsState]);
 
     useEffect(() => {
         reloadPermissionsState();
@@ -121,6 +122,30 @@ export const MacOSPermissionsSettings: React.FC = () => {
             >
                 <FormattedMessage id="settings.systemSettings.macosPermissionsSettings" />
             </GroupTitle>
+
+            <Alert
+                message={
+                    <FormattedMessage
+                        id="settings.systemSettings.macosPermissionsSettings.request.tip"
+                        values={{
+                            link: (
+                                <Button
+                                    type="link"
+                                    onClick={() => {
+                                        openUrl(
+                                            'https://github.com/mg-chao/snow-shot/blob/main/docs/macos-permissions.md',
+                                        );
+                                    }}
+                                >
+                                    <FormattedMessage id="settings.systemSettings.macosPermissionsSettings.request.tip.link" />
+                                </Button>
+                            ),
+                        }}
+                    />
+                }
+                type="info"
+                showIcon
+            />
 
             <List itemLayout="horizontal">
                 <PermissionListItem
