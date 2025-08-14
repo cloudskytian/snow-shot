@@ -401,7 +401,7 @@ export const ScrollScreenshot: React.FC<{
                     });
             }
         },
-        [captureImage, enableCursorEventsDebounce, scrollDirectionRef],
+        [captureImage, enableCursorEventsDebounce, message, scrollDirectionRef],
     );
 
     const enableIgnoreCursorEventsRef = useRef(false);

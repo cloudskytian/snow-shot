@@ -412,7 +412,7 @@ const DrawPageCore: React.FC = () => {
                 captureBoundingBoxInfoRef.current!,
             ),
         ]);
-    }, [showWindow]);
+    }, [message, showWindow]);
 
     /** 执行截图 */
     const excuteScreenshot = useCallback(

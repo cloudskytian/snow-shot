@@ -966,7 +966,7 @@ export const FixedContentCore: React.FC<{
                 });
             }
         },
-        [isThumbnailRef],
+        [isThumbnailRef, message],
     );
     const onDragRegionMouseUp = useCallback(() => {
         dragRegionMouseDownMousePositionRef.current = undefined;

@@ -259,6 +259,6 @@ export const settings = {
     'settings.systemSettings.macosPermissionsSettings.authorized': '已启用',
     'settings.systemSettings.macosPermissionsSettings.reload': '刷新权限状态',
     'settings.systemSettings.macosPermissionsSettings.request.tip':
-        '当重装应用后，需要在操作系统的设置里删除应用授权记录后再重新启用权限，参加 {link}',
+        '当重装应用后，需要在 MacOS 的系统设置里删除应用授权记录后再重新启用权限，参见 {link}',
     'settings.systemSettings.macosPermissionsSettings.request.tip.link': '删除授权记录',
 };
