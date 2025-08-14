@@ -156,14 +156,14 @@ impl MonitorList {
             );
 
             // 有些捕获失败的显示器，返回一个空图像，这里需要特殊处理
-            if capture_image.is_some()
-                && capture_image.as_ref().unwrap().width() == 1
-                && capture_image.as_ref().unwrap().height() == 1
-            {
-                return Ok(image::DynamicImage::new_rgba8(
-                    (first_monitor.rect.max_x - first_monitor.rect.min_x) as u32,
-                    (first_monitor.rect.max_y - first_monitor.rect.min_y) as u32,
-                ));
+            if capture_image.is_some() {
+                let capture_image = capture_image.as_ref().unwrap();
+                if capture_image.width() == 1 && capture_image.height() == 1 {
+                    return Ok(image::DynamicImage::new_rgba8(
+                        (first_monitor.rect.max_x - first_monitor.rect.min_x) as u32,
+                        (first_monitor.rect.max_y - first_monitor.rect.min_y) as u32,
+                    ));
+                }
             }
 
             return match capture_image {
@@ -175,12 +175,6 @@ impl MonitorList {
                     ));
                 }
             };
-        }
-
-        if monitors.len() == 0 {
-            return Err(format!(
-                "[MonitorInfoList::capture] Failed to capture monitor image, monitors is empty"
-            ));
         }
 
         // 将每个显示器截取的图像，绘制到该图像上
@@ -218,6 +212,13 @@ impl MonitorList {
                 None => None,
             })
             .collect::<Vec<(image::DynamicImage, Option<ElementRect>)>>();
+
+        if monitor_image_list.is_empty() {
+            return Err(format!(
+                "[MonitorInfoList::capture] Failed to capture monitor image, monitor_image_list is empty, crop_region: {:?}",
+                crop_region
+            ));
+        }
 
         // 获取能容纳所有显示器的最小矩形
         let monitors_bounding_box = self.get_monitors_bounding_box();
@@ -264,7 +265,10 @@ impl MonitorList {
         Ok(capture_image)
     }
 
-    pub fn capture(&self, exclude_window: Option<&tauri::Window>) -> Result<image::DynamicImage, String> {
+    pub fn capture(
+        &self,
+        exclude_window: Option<&tauri::Window>,
+    ) -> Result<image::DynamicImage, String> {
         self.capture_core(None, exclude_window)
     }
 
