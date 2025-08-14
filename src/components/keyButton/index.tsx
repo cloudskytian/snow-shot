@@ -26,7 +26,7 @@ const convertKeyConfigToString = (keys: Set<string>, spicalRecordKeys?: Record<s
         text = keysArray.join('+');
     } else {
         // 创建结果数组，初始为普通按键
-        const result = [...keysArray, ...Object.keys(spicalRecordKeys)];
+        const result = [...keysArray];
 
         // 将特殊按键按照位置从大到小排序，这样插入时不会影响前面的位置
         const sortedSpecialKeys = Object.entries(spicalRecordKeys).sort(
@@ -171,6 +171,7 @@ export const KeyButton: React.FC<{
     const formatKeyText = useMemo(() => {
         return formatKey(keyValue);
     }, [keyValue]);
+
     return (
         <>
             <Modal
