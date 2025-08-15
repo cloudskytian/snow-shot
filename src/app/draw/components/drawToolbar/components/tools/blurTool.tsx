@@ -222,6 +222,8 @@ const BlurToolCore: React.FC = () => {
                 needRender = true;
             }
 
+            console.log(blurSpriteMapRef.current.size);
+
             if (needRender) {
                 drawLayerActionRef.current.getCanvasApp()!.render();
             }
