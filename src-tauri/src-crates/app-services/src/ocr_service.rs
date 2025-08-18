@@ -77,13 +77,6 @@ impl OcrService {
             ),
         };
 
-        println!("det_model_path: {:?}", det_model_path);
-        println!("det_model_path: {:?}", det_model_path.display().to_string());
-        println!("cls_model_path: {:?}", cls_model_path);
-        println!("cls_model_path: {:?}", cls_model_path.display().to_string());
-        println!("rec_model_path: {:?}", rec_model_path);
-        println!("rec_model_path: {:?}", rec_model_path.display().to_string());
-
         self.det_model =
             Some(std::fs::read(det_model_path).map_err(|e| {
                 format!("[OcrService::init_models] Failed to read det model: {}", e)
