@@ -1,6 +1,6 @@
-import { useCallback, useContext, useEffect, useImperativeHandle, useRef } from 'react';
+import { useCallback, useContext, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
 import { ElementRect } from '@/commands';
-import { ocrDetect, OcrDetectResult } from '@/commands/ocr';
+import { ocrDetect, OcrDetectResult, ocrRelease } from '@/commands/ocr';
 import { FormattedMessage, useIntl } from 'react-intl';
 import { theme } from 'antd';
 import Color from 'color';
@@ -13,6 +13,7 @@ import { useStateSubscriber } from '@/hooks/useStateSubscriber';
 import { AppSettingsGroup, AppSettingsPublisher } from '@/app/contextWrap';
 import { writeTextToClipboard } from '@/utils/clipboard';
 import { getPlatformValue } from '@/utils';
+import { debounce } from 'es-toolkit';
 
 // 定义角度阈值常量（以度为单位）
 const ROTATION_THRESHOLD = 3; // 小于3度的旋转被视为误差，不进行旋转
@@ -251,6 +252,12 @@ export const OcrResult: React.FC<{
         textContainerElementRef.current.style.transform = `scale(${scale / 100})`;
     }, []);
 
+    const releaseOcrSession = useMemo(() => {
+        return debounce(async () => {
+            await ocrRelease();
+        }, 8 * 1000);
+    }, []);
+
     const initDrawCanvas = useCallback(
         async (params: OcrResultInitDrawCanvasParams) => {
             const { selectRect, canvas } = params;
@@ -261,12 +268,15 @@ export const OcrResult: React.FC<{
 
             if (imageBlob) {
                 monitorScaleFactorRef.current = window.devicePixelRatio;
+                const detectResult = await ocrDetect(
+                    await imageBlob.arrayBuffer(),
+                    window.devicePixelRatio,
+                    getAppSettings()[AppSettingsGroup.SystemScreenshot].ocrDetectAngle,
+                );
+                releaseOcrSession();
+
                 const ocrResult = params.ocrResult ?? {
-                    result: await ocrDetect(
-                        await imageBlob.arrayBuffer(),
-                        window.devicePixelRatio,
-                        getAppSettings()[AppSettingsGroup.SystemScreenshot].ocrDetectAngle,
-                    ),
+                    result: detectResult,
                     ignoreScale: false,
                 };
 
@@ -290,7 +300,14 @@ export const OcrResult: React.FC<{
                 }
             }
         },
-        [finishCapture, getAppSettings, onOcrDetect, setEnable, updateOcrTextElements],
+        [
+            finishCapture,
+            getAppSettings,
+            onOcrDetect,
+            releaseOcrSession,
+            setEnable,
+            updateOcrTextElements,
+        ],
     );
 
     const initImage = useCallback(
@@ -325,11 +342,13 @@ export const OcrResult: React.FC<{
                     0,
                     getAppSettings()[AppSettingsGroup.SystemScreenshot].ocrDetectAngle,
                 );
+                releaseOcrSession();
+
                 updateOcrTextElements(ocrResult);
                 onOcrDetect?.(ocrResult);
             }
         },
-        [getAppSettings, onOcrDetect, updateOcrTextElements],
+        [getAppSettings, onOcrDetect, releaseOcrSession, updateOcrTextElements],
     );
 
     useImperativeHandle(
