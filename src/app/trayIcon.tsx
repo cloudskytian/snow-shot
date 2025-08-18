@@ -2,7 +2,7 @@
 
 import { defaultWindowIcon } from '@tauri-apps/api/app';
 import { TrayIcon, TrayIconOptions } from '@tauri-apps/api/tray';
-import { useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { useCallback, useContext, useEffect, useState } from 'react';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import React from 'react';
 import { Menu } from '@tauri-apps/api/menu';
