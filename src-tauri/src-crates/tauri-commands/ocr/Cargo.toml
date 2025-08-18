@@ -9,6 +9,6 @@ tokio = { workspace = true }
 serde = { workspace = true }
 image = { workspace = true }
 
+snow-shot-app-services = { workspace = true }
+
 paddle-ocr-rs = "0.6.0"
-# paddle-ocr-rs = { git = "https://github.com/mg-chao/paddle-ocr-rs.git", branch = "main" }
-num_cpus = "^1.16"

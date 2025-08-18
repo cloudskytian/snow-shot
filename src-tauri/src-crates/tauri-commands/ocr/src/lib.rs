@@ -1,87 +1,18 @@
-use num_cpus;
-use paddle_ocr_rs::ocr_lite::OcrLite;
 use paddle_ocr_rs::ocr_result::TextBlock;
 use serde::Deserialize;
 use serde::Serialize;
+use snow_shot_app_services::ocr_service::{OcrModel, OcrService};
 use std::io::Cursor;
-use tauri::{Manager, path::BaseDirectory};
 use tokio::sync::Mutex;
-
-pub struct OcrLiteWrap {
-    ocr_instance: Option<OcrLite>,
-}
-
-impl OcrLiteWrap {
-    pub fn new() -> Self {
-        Self {
-            ocr_instance: Some(OcrLite::new()),
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Copy, PartialOrd, Serialize, Deserialize)]
-pub enum OcrModel {
-    RapidOcrV4,
-    RapidOcrV5,
-}
 
 pub async fn ocr_init(
     app: tauri::AppHandle,
-    ocr_instance: tauri::State<'_, Mutex<OcrLiteWrap>>,
+    ocr_service: tauri::State<'_, Mutex<OcrService>>,
     model: OcrModel,
-) -> Result<(), ()> {
-    let mut ocr_wrap_instance = ocr_instance.lock().await;
+) -> Result<(), String> {
+    let mut ocr_service = ocr_service.lock().await;
 
-    let resource_path = match app.path().resolve("models", BaseDirectory::Resource) {
-        Ok(resource_path) => resource_path,
-        Err(_) => return Err(()),
-    };
-
-    let ocr_instance = match &mut ocr_wrap_instance.ocr_instance {
-        Some(ocr_lite_instance) => ocr_lite_instance,
-        None => return Err(()),
-    };
-
-    match model {
-        OcrModel::RapidOcrV4 => {
-            ocr_instance
-                .init_models(
-                    &resource_path
-                        .join("paddle_ocr/ch_PP-OCRv4_det_infer.onnx")
-                        .display()
-                        .to_string(),
-                    &resource_path
-                        .join("paddle_ocr/ch_ppocr_mobile_v2.0_cls_infer.onnx")
-                        .display()
-                        .to_string(),
-                    &resource_path
-                        .join("paddle_ocr/ch_PP-OCRv4_rec_infer.onnx")
-                        .display()
-                        .to_string(),
-                    num_cpus::get_physical(),
-                )
-                .unwrap();
-        }
-        OcrModel::RapidOcrV5 => {
-            ocr_instance
-                .init_models(
-                    &resource_path
-                        .join("paddle_ocr/ch_PP-OCRv4_det_infer.onnx")
-                        .display()
-                        .to_string(),
-                    &resource_path
-                        .join("paddle_ocr/ch_ppocr_mobile_v2.0_cls_infer.onnx")
-                        .display()
-                        .to_string(),
-                    &resource_path
-                        .join("paddle_ocr/ch_PP-OCRv5_rec_mobile_infer.onnx")
-                        .display()
-                        .to_string(),
-                    num_cpus::get_physical(),
-                )
-                .unwrap();
-        }
-    }
+    ocr_service.init_models(app, model)?;
 
     Ok(())
 }
@@ -93,32 +24,27 @@ pub struct OcrDetectResult {
 }
 
 pub async fn ocr_detect(
-    ocr_instance: tauri::State<'_, Mutex<OcrLiteWrap>>,
+    ocr_service: tauri::State<'_, Mutex<OcrService>>,
     request: tauri::ipc::Request<'_>,
-) -> Result<OcrDetectResult, ()> {
-    let mut ocr_wrap_instance = ocr_instance.lock().await;
-
-    let ocr_instance = match &mut ocr_wrap_instance.ocr_instance {
-        Some(ocr_lite_instance) => ocr_lite_instance,
-        None => return Err(()),
-    };
+) -> Result<OcrDetectResult, String> {
+    let mut ocr_service = ocr_service.lock().await;
 
     let image_data = match request.body() {
         tauri::ipc::InvokeBody::Raw(data) => data,
-        _ => return Err(()),
+        _ => return Err("[ocr_detect] Invalid request body".to_string()),
     };
 
     let mut image = match image::load(Cursor::new(image_data), image::ImageFormat::Jpeg) {
         Ok(image) => image,
-        Err(_) => return Err(()),
+        Err(_) => return Err("[ocr_detect] Invalid image".to_string()),
     };
 
     let mut scale_factor: f32 = match request.headers().get("x-scale-factor") {
         Some(header) => match header.to_str() {
             Ok(scale_factor) => scale_factor.parse::<f32>().unwrap(),
-            Err(_) => return Err(()),
+            Err(_) => return Err("[ocr_detect] Invalid scale factor".to_string()),
         },
-        None => return Err(()),
+        None => return Err("[ocr_detect] Missing scale factor".to_string()),
     };
 
     // 分辨率过小的图片识别可能有问题，当 scale_factor 低于 1.5 时，放大图片使有效缩放达到 1.5
@@ -136,13 +62,13 @@ pub async fn ocr_detect(
     let detect_angle = match request.headers().get("x-detect-angle") {
         Some(header) => match header.to_str() {
             Ok(detect_angle) => detect_angle.parse::<bool>().unwrap(),
-            Err(_) => return Err(()),
+            Err(_) => return Err("[ocr_detect] Invalid detect angle".to_string()),
         },
-        None => return Err(()),
+        None => return Err("[ocr_detect] Missing detect angle".to_string()),
     };
 
     let image_buffer = image.to_rgb8();
-    let ocr_result = ocr_instance.detect_angle_rollback(
+    let ocr_result = ocr_service.get_session().detect_angle_rollback(
         &image_buffer,
         50,
         image.height().max(image.width()),
@@ -159,14 +85,14 @@ pub async fn ocr_detect(
             text_blocks: ocr_result.text_blocks,
             scale_factor,
         }),
-        Err(_) => return Err(()),
+        Err(e) => return Err(format!("[ocr_detect] Failed to detect text: {}", e)),
     }
 }
 
-pub async fn ocr_release(ocr_instance: tauri::State<'_, Mutex<OcrLiteWrap>>) -> Result<(), ()> {
-    let mut ocr_instance = ocr_instance.lock().await;
+pub async fn ocr_release(ocr_service: tauri::State<'_, Mutex<OcrService>>) -> Result<(), String> {
+    let mut ocr_service = ocr_service.lock().await;
 
-    ocr_instance.ocr_instance.take();
+    ocr_service.release_session()?;
 
     Ok(())
 }

@@ -6153,6 +6153,9 @@ dependencies = [
  "ffmpeg-sidecar",
  "log",
  "macos-accessibility-client",
+ "num_cpus",
+ "ort",
+ "paddle-ocr-rs",
  "regex",
  "serde",
  "snow-shot-app-shared",
@@ -6224,9 +6227,9 @@ name = "snow-shot-tauri-commands-ocr"
 version = "0.1.0"
 dependencies = [
  "image",
- "num_cpus",
  "paddle-ocr-rs",
  "serde",
+ "snow-shot-app-services",
  "tauri",
  "tokio",
 ]

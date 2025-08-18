@@ -18,12 +18,13 @@ use snow_shot_app_scroll_screenshot_service::scroll_screenshot_image_service;
 use snow_shot_app_scroll_screenshot_service::scroll_screenshot_service;
 use snow_shot_app_services::free_drag_window_service;
 use snow_shot_app_services::listen_key_service;
+use snow_shot_app_services::ocr_service::OcrService;
 use snow_shot_app_services::video_record_service;
 use snow_shot_app_shared::EnigoManager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let ocr_instance = Mutex::new(snow_shot_tauri_commands_ocr::OcrLiteWrap::new());
+    let ocr_instance = Mutex::new(OcrService::new());
     let video_record_service = Mutex::new(video_record_service::VideoRecordService::new());
 
     let enigo_instance = Mutex::new(EnigoManager::new());
