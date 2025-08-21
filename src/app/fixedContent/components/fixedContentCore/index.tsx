@@ -556,6 +556,10 @@ export const FixedContentCore: React.FC<{
     }, [scaleRef, setIsThumbnail, setScale]);
 
     const initMenu = useCallback(async () => {
+        if (disabled) {
+            return;
+        }
+
         const appWindow = appWindowRef.current;
         if (!appWindow) {
             return;

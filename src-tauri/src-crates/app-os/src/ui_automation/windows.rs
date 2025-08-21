@@ -60,10 +60,6 @@ impl UIElements {
     }
 
     pub fn init(&mut self) -> Result<(), UIAutomationError> {
-        if self.automation.is_some() && self.automation_walker.is_some() {
-            return Ok(());
-        }
-
         let automation = UIAutomation::new()?;
         let automation_walker = automation.get_content_view_walker()?;
         let root_element = automation.get_root_element()?;
@@ -139,7 +135,7 @@ impl UIElements {
      * 初始化窗口元素缓存
      */
     pub fn init_cache(&mut self) -> Result<(), UIAutomationError> {
-        let root_element = self.root_element.clone().unwrap();
+        let root_element = self.root_element.as_ref().unwrap();
 
         self.element_cache = RTree::new();
         self.element_level_map.clear();
