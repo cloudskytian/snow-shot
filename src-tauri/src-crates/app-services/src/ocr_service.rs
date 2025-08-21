@@ -5,9 +5,9 @@ use tauri::{Manager, path::BaseDirectory};
 
 pub struct OcrService {
     ocr_core: OcrLite,
-    det_model: Option<Vec<u8>>,
-    rec_model: Option<Vec<u8>>,
-    cls_model: Option<Vec<u8>>,
+    det_model_path: Option<String>,
+    rec_model_path: Option<String>,
+    cls_model_path: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Copy, PartialOrd, Serialize, Deserialize)]
@@ -20,22 +20,22 @@ impl OcrService {
     pub fn new() -> Self {
         Self {
             ocr_core: OcrLite::new(),
-            det_model: None,
-            rec_model: None,
-            cls_model: None,
+            det_model_path: None,
+            rec_model_path: None,
+            cls_model_path: None,
         }
     }
 
     pub fn init_session(&mut self) -> Result<(), String> {
         self.ocr_core
-            .init_models_from_memory_custom(
-                self.det_model
+            .init_models_custom(
+                self.det_model_path
                     .as_ref()
                     .expect("[OcrService::init_ocr_core] Det model is not loaded"),
-                self.cls_model
+                self.cls_model_path
                     .as_ref()
                     .expect("[OcrService::init_ocr_core] Cls model is not loaded"),
-                self.rec_model
+                self.rec_model_path
                     .as_ref()
                     .expect("[OcrService::init_ocr_core] Rec model is not loaded"),
                 |builder| {
@@ -77,18 +77,9 @@ impl OcrService {
             ),
         };
 
-        self.det_model =
-            Some(std::fs::read(det_model_path).map_err(|e| {
-                format!("[OcrService::init_models] Failed to read det model: {}", e)
-            })?);
-        self.cls_model =
-            Some(std::fs::read(cls_model_path).map_err(|e| {
-                format!("[OcrService::init_models] Failed to read cls model: {}", e)
-            })?);
-        self.rec_model =
-            Some(std::fs::read(rec_model_path).map_err(|e| {
-                format!("[OcrService::init_models] Failed to read rec model: {}", e)
-            })?);
+        self.det_model_path = Some(det_model_path.to_string_lossy().to_string());
+        self.cls_model_path = Some(cls_model_path.to_string_lossy().to_string());
+        self.rec_model_path = Some(rec_model_path.to_string_lossy().to_string());
 
         // 初始化 onnx session
         self.init_session()?;
