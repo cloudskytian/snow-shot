@@ -727,7 +727,15 @@ export const FixedContentCore: React.FC<{
             ].filter((item) => item !== undefined) as MenuItemOptions[],
         });
         rightClickMenu = menu;
-    }, [intl, fixedContentType, hotkeys, textContentRef, getAppSettings, switchThumbnail]);
+    }, [
+        disabled,
+        intl,
+        fixedContentType,
+        hotkeys,
+        textContentRef,
+        getAppSettings,
+        switchThumbnail,
+    ]);
 
     useEffect(() => {
         initMenu();
