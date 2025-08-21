@@ -5,6 +5,7 @@
     "version": "0.2.0-beta-20250820",
     "identifier": "com.chao.snowshot",
     "build": {
+        "removeUnusedCommands": true,
         "frontendDist": "../out",
         "devUrl": "http://localhost:8301",
         "beforeDevCommand": "pnpm dev",
