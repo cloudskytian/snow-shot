@@ -1,4 +1,3 @@
-use image::codecs::jpeg::JpegEncoder;
 use image::codecs::png::{self, CompressionType, PngEncoder};
 use image::imageops::FilterType;
 use serde::Serialize;
@@ -115,7 +114,7 @@ pub async fn scroll_screenshot_handle_image(
         }
     };
 
-    let (handle_result, is_origin) =
+    let (handle_result, is_origin, result_scroll_image_list) =
         scroll_screenshot_service.handle_image(scroll_image.image, scroll_image.direction);
 
     if is_origin {
@@ -145,27 +144,34 @@ pub async fn scroll_screenshot_handle_image(
 
     let mut buf = Vec::new();
 
-    let image_width = crop_image.width();
-    let image_height = crop_image.height();
+    let image_width = crop_image.image.width();
+    let image_height = crop_image.image.height();
     let scale = if scroll_screenshot_service.current_direction == ScrollDirection::Vertical {
         thumbnail_size as f32 / image_width as f32
     } else {
         thumbnail_size as f32 / image_height as f32
     };
 
-    let thumbnail = crop_image.resize(
+    let thumbnail = crop_image.image.resize(
         ((image_width as f32 * scale) as u32).max(1), // 防止图片某一边为 0
         ((image_height as f32 * scale) as u32).max(1),
-        FilterType::Nearest,
+        FilterType::Triangle,
     );
 
     thumbnail
-        .to_rgb8()
-        .write_with_encoder(JpegEncoder::new_with_quality(&mut buf, 83))
+        .write_with_encoder(PngEncoder::new_with_quality(
+            &mut buf,
+            CompressionType::Fast,
+            png::FilterType::Paeth,
+        ))
         .unwrap();
 
     // 添加边缘位置信息到缓冲区末尾
     buf.extend_from_slice(&handle_result.0.to_le_bytes());
+    buf.extend_from_slice(&((crop_image.overlay_size as f32 * scale) as i32).to_le_bytes());
+    buf.extend_from_slice(&scroll_screenshot_service.top_image_size.to_le_bytes());
+    buf.extend_from_slice(&scroll_screenshot_service.bottom_image_size.to_le_bytes());
+    buf.extend_from_slice(&(result_scroll_image_list as i32).to_le_bytes());
 
     Ok(Response::new(buf))
 }

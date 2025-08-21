@@ -79,11 +79,16 @@ impl ScrollIndex {
     }
 }
 
+pub struct ScrollImage {
+    pub image: image::DynamicImage,
+    pub overlay_size: i32,
+}
+
 pub struct ScrollScreenshotService {
     /// 滚动截图列表（上或左）
-    pub top_image_list: Vec<image::DynamicImage>,
+    pub top_image_list: Vec<ScrollImage>,
     /// 滚动截图列表（下或右）
-    pub bottom_image_list: Vec<image::DynamicImage>,
+    pub bottom_image_list: Vec<ScrollImage>,
     /// 当前方向
     pub current_direction: ScrollDirection,
     /// 图片宽度
@@ -462,7 +467,7 @@ impl ScrollScreenshotService {
         image_corners: Vec<ScrollOffset>,
         edge_position: i32,
         delta_size: i32,
-    ) -> (image::DynamicImage, i32) {
+    ) -> (ScrollImage, i32) {
         let mut index_delta_size = 0;
 
         let image_scroll_side_size = self.image_scroll_side_size;
@@ -483,9 +488,26 @@ impl ScrollScreenshotService {
             );
         }
 
-        let region = self.get_crop_region(delta_size);
+        // 一半的区域在拼接时允许
+        let image_overlay_size = (image_scroll_side_size / 2 - delta_size.abs()).max(0);
+        let image_overlay_size = if delta_size > 0 {
+            image_overlay_size
+        } else {
+            -image_overlay_size
+        };
+
+        let crop_region = self.get_crop_region(delta_size + image_overlay_size);
+
         (
-            image.crop_imm(region.x, region.y, region.width, region.height),
+            ScrollImage {
+                image: image.crop_imm(
+                    crop_region.x,
+                    crop_region.y,
+                    crop_region.width,
+                    crop_region.height,
+                ),
+                overlay_size: image_overlay_size,
+            },
             index_delta_size,
         )
     }
@@ -611,7 +633,6 @@ impl ScrollScreenshotService {
                     dx
                 };
 
-                // 保留 0 的偏移防止，出现画面不变，记录意料外的截图
                 if min_diff < 0 && min_diff < diff {
                     min_diff_count.fetch_add(1, Ordering::Relaxed);
                     return None;
@@ -630,7 +651,7 @@ impl ScrollScreenshotService {
             })
             .collect();
 
-        if min_diff_count.load(Ordering::Relaxed) > (image_corners.len() as f32 * 0.5) as usize {
+        if min_diff_count.load(Ordering::Relaxed) > (image_corners.len() as f32 * 0.72) as usize {
             return (None, true);
         }
 
@@ -706,7 +727,11 @@ impl ScrollScreenshotService {
         &mut self,
         image: DynamicImage,
         scroll_image_list: ScrollImageList,
-    ) -> (Option<(i32, Option<ScrollImageList>)>, bool) {
+    ) -> (
+        Option<(i32, Option<ScrollImageList>)>,
+        bool,
+        ScrollImageList,
+    ) {
         let image_width = image.width();
         let image_height = image.height();
 
@@ -715,7 +740,7 @@ impl ScrollScreenshotService {
             // 因为在 macOS 下，截图使用的是逻辑像素，和物理像素不一样
             self.init_image_size(image_width, image_height);
         } else if image_width != self.image_width || image_height != self.image_height {
-            return (None, false);
+            return (None, false, scroll_image_list);
         }
 
         let gray_image = self.get_gray_image(&image);
@@ -724,7 +749,7 @@ impl ScrollScreenshotService {
         let image_corners = self.get_corners(&gray_image);
 
         if image_corners.is_empty() {
-            return (None, false);
+            return (None, false, scroll_image_list);
         }
 
         let image_descriptors = self.get_descriptors(&gray_image, &image_corners);
@@ -760,13 +785,18 @@ impl ScrollScreenshotService {
 
             self.top_image_ann_index = new_top_image_ann_index;
 
-            return (Some(bottom_image), false);
+            return (Some(bottom_image), false, ScrollImageList::Bottom);
         }
 
         // 优先从指定方向遍历，如果没有则再从另一个方向遍历
+        let mut result_scroll_image_list;
         let first_index = if scroll_image_list == ScrollImageList::Top {
+            result_scroll_image_list = ScrollImageList::Top;
+
             &self.top_image_ann_index
         } else {
+            result_scroll_image_list = ScrollImageList::Bottom;
+
             &self.bottom_image_ann_index
         };
 
@@ -780,7 +810,7 @@ impl ScrollScreenshotService {
         );
 
         if is_origin {
-            return (None, true);
+            return (None, true, result_scroll_image_list);
         }
 
         offsets = first_offsets;
@@ -807,20 +837,22 @@ impl ScrollScreenshotService {
             );
 
             if is_origin {
-                return (None, true);
+                return (None, true, result_scroll_image_list);
             }
+
+            result_scroll_image_list = second_scroll_image_list;
 
             offsets = second_offsets;
         }
 
         if offsets.is_none() {
-            return (None, false);
+            return (None, false, result_scroll_image_list);
         }
 
         let (dominant_scroll_index, dominant_origin_position_index, dominant_new_position_index) =
             match offsets {
                 Some(offsets) => offsets,
-                None => return (None, false),
+                None => return (None, false, scroll_image_list),
             };
 
         let origin_position = dominant_scroll_index.corners[dominant_origin_position_index];
@@ -837,6 +869,7 @@ impl ScrollScreenshotService {
                 new_position,
             )),
             false,
+            result_scroll_image_list,
         )
     }
 
@@ -868,19 +901,22 @@ impl ScrollScreenshotService {
         };
 
         // 当前位置偏移量
-        let mut offset_x: usize = 0;
-        let mut offset_y: usize = 0;
+        let mut offset_x: i32 = 0;
+        let mut offset_y: i32 = 0;
 
-        // 先处理top_image_list（从尾部开始，即倒序）
+        // top 会覆盖 bottom，优先从 bottom 开始
         if self.current_direction == ScrollDirection::Vertical {
             // 垂直方向，从顶部开始
-            offset_y = 0;
+            offset_y = self.top_image_size as i32;
         } else {
             // 水平方向，从左侧开始
-            offset_x = 0;
+            offset_x = self.top_image_size as i32;
         }
 
-        for img in self.top_image_list.iter().rev() {
+        for scroll_image in self.bottom_image_list.iter() {
+            let img = &scroll_image.image;
+            let overlay_size = scroll_image.overlay_size;
+
             if self.current_direction == ScrollDirection::Vertical {
                 // 垂直拼接
                 snow_shot_app_utils::overlay_image(
@@ -888,48 +924,63 @@ impl ScrollScreenshotService {
                     total_width,
                     img,
                     0,
-                    offset_y,
+                    (offset_y - overlay_size) as usize,
                     RGB_CHANNEL_COUNT,
                 );
-                offset_y += img.height() as usize;
+
+                offset_y += (img.height() as i32 - overlay_size) as i32;
             } else {
                 // 水平拼接
                 snow_shot_app_utils::overlay_image(
                     &mut final_image,
                     total_width,
                     img,
-                    offset_x,
+                    (offset_x - overlay_size) as usize,
                     0,
                     RGB_CHANNEL_COUNT,
                 );
-                offset_x += img.width() as usize;
+                offset_x += (img.width() as i32 - overlay_size) as i32;
             }
         }
 
-        // 再处理bottom_image_list（从头部开始，即正序）
-        for img in &self.bottom_image_list {
+        // 最先推入的图片优先级最低，所以从尾部开始
+        if self.current_direction == ScrollDirection::Vertical {
+            offset_y = self.top_image_size as i32;
+        } else {
+            offset_x = self.top_image_size as i32;
+        }
+
+        for scroll_image in self.top_image_list.iter() {
+            let img = &scroll_image.image;
+            let overlay_size = scroll_image.overlay_size;
+
             if self.current_direction == ScrollDirection::Vertical {
                 // 垂直拼接
+                let actual_height = img.height() as i32 + overlay_size;
+
                 snow_shot_app_utils::overlay_image(
                     &mut final_image,
                     total_width,
                     img,
                     0,
-                    offset_y,
+                    (offset_y - actual_height) as usize,
                     RGB_CHANNEL_COUNT,
                 );
-                offset_y += img.height() as usize;
+
+                offset_y -= actual_height;
             } else {
+                let actual_width = img.width() as i32 + overlay_size;
+
                 // 水平拼接
                 snow_shot_app_utils::overlay_image(
                     &mut final_image,
                     total_width,
                     img,
-                    offset_x,
+                    (offset_x - actual_width) as usize,
                     0,
                     RGB_CHANNEL_COUNT,
                 );
-                offset_x += img.width() as usize;
+                offset_x -= actual_width;
             }
         }
 

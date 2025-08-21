@@ -46,9 +46,13 @@ export type ScrollScreenshotCaptureResult = {
     type: 'no_data' | 'no_change' | 'success' | 'no_image';
     thumbnail_buffer: ArrayBuffer | undefined;
     edge_position: number | undefined;
+    overlay_size: number | undefined;
+    top_image_size?: number | undefined;
+    bottom_image_size?: number | undefined;
+    current_direction?: ScrollImageList | undefined;
 };
 
-export const SCROLL_SCREENSHOT_CAPTURE_RESULT_EXTRA_DATA_SIZE = 4;
+export const SCROLL_SCREENSHOT_CAPTURE_RESULT_EXTRA_DATA_SIZE = 4 + 4 + 4 + 4 + 4;
 
 export const scrollScreenshotCapture = async (
     scrollImageList: ScrollImageList,
@@ -89,6 +93,7 @@ export const scrollScreenshotHandleImage = async (
             type: 'no_data',
             thumbnail_buffer: result,
             edge_position: undefined,
+            overlay_size: undefined,
         };
     }
 
@@ -99,18 +104,21 @@ export const scrollScreenshotHandleImage = async (
                 type: 'no_change',
                 thumbnail_buffer: undefined,
                 edge_position: 0,
+                overlay_size: undefined,
             };
         } else if (array[0] === 2) {
             return {
                 type: 'no_image',
                 thumbnail_buffer: undefined,
                 edge_position: 0,
+                overlay_size: undefined,
             };
         } else {
             return {
                 type: 'no_data',
                 thumbnail_buffer: new ArrayBuffer(),
                 edge_position: undefined,
+                overlay_size: undefined,
             };
         }
     }
@@ -125,11 +133,20 @@ export const scrollScreenshotHandleImage = async (
         SCROLL_SCREENSHOT_CAPTURE_RESULT_EXTRA_DATA_SIZE,
     );
     const edgePosition = screenInfoView.getInt32(0, true); // i32
+    const overlaySize = screenInfoView.getInt32(4, true); // i32
+    const topImageSize = screenInfoView.getInt32(8, true); // i32
+    const bottomImageSize = screenInfoView.getInt32(12, true); // i32
+    const currentDirection =
+        screenInfoView.getInt32(16, true) === 0 ? ScrollImageList.Top : ScrollImageList.Bottom; // i32
 
     return {
         type: 'success',
         thumbnail_buffer: result,
         edge_position: edgePosition,
+        overlay_size: overlaySize,
+        top_image_size: topImageSize,
+        bottom_image_size: bottomImageSize,
+        current_direction: currentDirection,
     };
 };
 

@@ -46,7 +46,7 @@ import { MousePosition } from '@/utils/mousePosition';
 import { CaptureBoundingBoxInfo } from '@/app/draw/extra';
 import { useTextScaleFactor } from '@/hooks/useTextScaleFactor';
 import { AntdContext } from '@/components/globalLayoutExtra';
-import { appError } from '@/utils/log';
+import { appError, appWarn } from '@/utils/log';
 
 export type FixedContentInitDrawParams = {
     captureBoundingBoxInfo: CaptureBoundingBoxInfo;
@@ -83,6 +83,16 @@ export enum FixedContentType {
     Text = 'text',
     Image = 'image',
 }
+
+let rightClickMenu: Menu | undefined;
+const closeRightClickMenu = async () => {
+    try {
+        await rightClickMenu?.close();
+        rightClickMenu = undefined;
+    } catch (error) {
+        appWarn('[closeRightClickMenu] failed to close menu', error);
+    }
+};
 
 export const FixedContentCore: React.FC<{
     actionRef: React.RefObject<FixedContentActionType | undefined>;
@@ -545,15 +555,17 @@ export const FixedContentCore: React.FC<{
         }
     }, [scaleRef, setIsThumbnail, setScale]);
 
-    const menuRef = useRef<Menu>(undefined);
-
     const initMenu = useCallback(async () => {
         const appWindow = appWindowRef.current;
         if (!appWindow) {
             return;
         }
 
+        const menuId = `${appWindow.label}-rightClickMenu`;
+
+        await closeRightClickMenu();
         const menu = await Menu.new({
+            id: menuId,
             items: [
                 {
                     id: `${appWindow.label}-copyTool`,
@@ -710,15 +722,14 @@ export const FixedContentCore: React.FC<{
                 },
             ].filter((item) => item !== undefined) as MenuItemOptions[],
         });
-        menuRef.current = menu;
+        rightClickMenu = menu;
     }, [intl, fixedContentType, hotkeys, textContentRef, getAppSettings, switchThumbnail]);
 
     useEffect(() => {
         initMenu();
 
         return () => {
-            menuRef.current?.close();
-            menuRef.current = undefined;
+            closeRightClickMenu();
         };
     }, [initMenu]);
 
@@ -861,10 +872,10 @@ export const FixedContentCore: React.FC<{
         [scaleWindowRender],
     );
 
-    const handleContextMenu = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const handleContextMenu = useCallback(async (e: React.MouseEvent<HTMLDivElement>) => {
         e.preventDefault();
 
-        menuRef.current?.popup(new LogicalPosition(e.clientX, e.clientY));
+        await rightClickMenu?.popup(new LogicalPosition(e.clientX, e.clientY));
     }, []);
 
     useEffect(() => {
@@ -919,19 +930,33 @@ export const FixedContentCore: React.FC<{
         };
     }, [onHtmlLoad, setWindowSize, handleContextMenu, onWheel]);
 
-    useHotkeys(hotkeys?.[KeyEventKey.FixedContentSwitchThumbnail]?.hotKey ?? '', switchThumbnail, {
-        keyup: false,
-        keydown: true,
-        enabled: !disabled,
-        preventDefault: true,
-    });
+    useHotkeys(
+        hotkeys?.[KeyEventKey.FixedContentSwitchThumbnail]?.hotKey ?? '',
+        switchThumbnail,
+        useMemo(
+            () => ({
+                keyup: false,
+                keydown: true,
+                enabled: !disabled,
+                preventDefault: true,
+            }),
+            [disabled],
+        ),
+    );
 
-    useHotkeys(hotkeys?.[KeyEventKey.FixedContentCloseWindow]?.hotKey ?? '', closeWindowComplete, {
-        keyup: false,
-        keydown: true,
-        enabled: !disabled,
-        preventDefault: true,
-    });
+    useHotkeys(
+        hotkeys?.[KeyEventKey.FixedContentCloseWindow]?.hotKey ?? '',
+        closeWindowComplete,
+        useMemo(
+            () => ({
+                keyup: false,
+                keydown: true,
+                enabled: !disabled,
+                preventDefault: true,
+            }),
+            [disabled],
+        ),
+    );
 
     const onDoubleClick = useCallback(
         (e: React.MouseEvent<HTMLDivElement>) => {

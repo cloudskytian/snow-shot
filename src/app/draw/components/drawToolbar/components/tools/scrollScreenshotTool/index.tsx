@@ -8,9 +8,7 @@ import {
     ScrollDirection,
     scrollScreenshotCapture,
     ScrollScreenshotCaptureResult,
-    ScrollScreenshotCaptureSize,
     scrollScreenshotClear,
-    scrollScreenshotGetSize,
     scrollScreenshotHandleImage,
     scrollScreenshotInit,
 } from '@/commands/scrollScreenshot';
@@ -46,6 +44,11 @@ export type ScrollScreenshotActionType = {
     getScrollScreenshotSubToolContainer: () => HTMLDivElement | null | undefined;
 };
 
+type ImageUrl = {
+    url: string;
+    overlaySize: number;
+};
+
 export const ScrollScreenshot: React.FC<{
     actionRef: React.RefObject<ScrollScreenshotActionType | undefined>;
 }> = ({ actionRef }) => {
@@ -65,21 +68,17 @@ export const ScrollScreenshot: React.FC<{
     const enableScrollThroughRef = useRef(false);
     const scrollRef = useRef<HTMLDivElement>(null);
 
-    const prevScrollSizeRef = useRef<ScrollScreenshotCaptureSize>({
-        top_image_size: 0,
-        bottom_image_size: 0,
-    });
-    const [topImageUrlList, setTopImageUrlList, topImageUrlListRef] = useStateRef<string[]>([]);
+    const [topImageUrlList, setTopImageUrlList, topImageUrlListRef] = useStateRef<ImageUrl[]>([]);
     const [bottomImageUrlList, setBottomImageUrlList, bottomImageUrlListRef] = useStateRef<
-        string[]
+        ImageUrl[]
     >([]);
 
     const releaseImageUrlList = useCallback(() => {
-        topImageUrlListRef.current.forEach((url) => {
-            URL.revokeObjectURL(url);
+        topImageUrlListRef.current.forEach((imageUrl) => {
+            URL.revokeObjectURL(imageUrl.url);
         });
-        bottomImageUrlListRef.current.forEach((url) => {
-            URL.revokeObjectURL(url);
+        bottomImageUrlListRef.current.forEach((imageUrl) => {
+            URL.revokeObjectURL(imageUrl.url);
         });
         setTopImageUrlList([]);
         setBottomImageUrlList([]);
@@ -111,12 +110,15 @@ export const ScrollScreenshot: React.FC<{
     }, [scrollDirectionRef]);
 
     const updateImageUrlList = useCallback(
-        async (captureResult: ScrollScreenshotCaptureResult) => {
+        (captureResult: ScrollScreenshotCaptureResult) => {
             if (captureResult.thumbnail_buffer === undefined) {
                 return;
             }
 
-            const currentScrollSize = await scrollScreenshotGetSize();
+            const currentScrollSize = {
+                top_image_size: captureResult.top_image_size!,
+                bottom_image_size: captureResult.bottom_image_size!,
+            };
 
             const edgePosition = captureResult.edge_position!;
 
@@ -156,17 +158,16 @@ export const ScrollScreenshot: React.FC<{
                 return;
             }
 
-            const prevScrollSize = prevScrollSizeRef.current;
-
             const blobUrl = URL.createObjectURL(new Blob([captureResult.thumbnail_buffer]));
 
-            if (prevScrollSize.top_image_size < currentScrollSize.top_image_size) {
-                setTopImageUrlList((prev) => [blobUrl, ...prev]);
+            const overlaySize = captureResult.overlay_size!;
+            if (captureResult.current_direction === ScrollImageList.Top) {
+                setTopImageUrlList((prev) => [{ url: blobUrl, overlaySize }, ...prev]);
                 setTimeout(() => {
                     scrollTo(0);
                 }, 100);
             } else {
-                setBottomImageUrlList((prev) => [...prev, blobUrl]);
+                setBottomImageUrlList((prev) => [...prev, { url: blobUrl, overlaySize }]);
                 setTimeout(() => {
                     scrollTo(
                         scrollDirectionRef.current === ScrollDirection.Horizontal
@@ -175,7 +176,6 @@ export const ScrollScreenshot: React.FC<{
                     );
                 }, 100);
             }
-            prevScrollSizeRef.current = currentScrollSize;
         },
         [positionRectRef, scrollDirectionRef, scrollTo, setBottomImageUrlList, setTopImageUrlList],
     );
@@ -420,10 +420,6 @@ export const ScrollScreenshot: React.FC<{
         setCaptuerEdgePosition(undefined);
         enableScrollThroughRef.current = false;
         releaseImageUrlList();
-        prevScrollSizeRef.current = {
-            top_image_size: 0,
-            bottom_image_size: 0,
-        };
         setPositionRect(undefined);
 
         const selectRect = selectLayerActionRef.current?.getSelectRect();
@@ -557,7 +553,13 @@ export const ScrollScreenshot: React.FC<{
                 >
                     <div className="thumbnail-list-content-scroll-area">
                         {captuerEdgePosition !== undefined && (
-                            <div className="captuer-edge-mask">
+                            <div
+                                className="captuer-edge-mask"
+                                style={{
+                                    position: 'absolute',
+                                    zIndex: bottomImageUrlList.length + topImageUrlList.length + 1,
+                                }}
+                            >
                                 <div
                                     className="captuer-edge-mask-top"
                                     style={
@@ -588,13 +590,52 @@ export const ScrollScreenshot: React.FC<{
                                 <div className="captuer-edge-mask-bottom" />
                             </div>
                         )}
-                        {topImageUrlList.map((url) => (
+                        {topImageUrlList.map((imageUrl, index) => (
                             // eslint-disable-next-line @next/next/no-img-element
-                            <img className="thumbnail" key={url} src={url} alt="top" />
+                            <img
+                                className="thumbnail"
+                                key={imageUrl.url}
+                                src={imageUrl.url}
+                                // 越前的图片，层级越高，并且 topImageUrlList 大于 bottomImageUrlList
+                                style={{
+                                    position: 'relative',
+                                    zIndex:
+                                        bottomImageUrlList.length + topImageUrlList.length - index,
+                                    ...(scrollDirection === ScrollDirection.Vertical
+                                        ? {
+                                              marginBottom:
+                                                  imageUrl.overlaySize / window.devicePixelRatio,
+                                          }
+                                        : {
+                                              marginRight:
+                                                  imageUrl.overlaySize / window.devicePixelRatio,
+                                          }),
+                                }}
+                                alt="top"
+                            />
                         ))}
-                        {bottomImageUrlList.map((url) => (
+                        {bottomImageUrlList.map((imageUrl, index) => (
                             // eslint-disable-next-line @next/next/no-img-element
-                            <img className="thumbnail" key={url} src={url} alt="bottom" />
+                            <img
+                                className="thumbnail"
+                                key={imageUrl.url}
+                                src={imageUrl.url}
+                                // 越后的图片，层级越高
+                                style={{
+                                    position: 'relative',
+                                    zIndex: index,
+                                    ...(scrollDirection === ScrollDirection.Vertical
+                                        ? {
+                                              marginTop:
+                                                  -imageUrl.overlaySize / window.devicePixelRatio,
+                                          }
+                                        : {
+                                              marginLeft:
+                                                  -imageUrl.overlaySize / window.devicePixelRatio,
+                                          }),
+                                }}
+                                alt="bottom"
+                            />
                         ))}
                     </div>
                 </div>
