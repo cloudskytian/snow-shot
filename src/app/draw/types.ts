@@ -35,7 +35,6 @@ export type DrawContextType = {
     circleCursorRef: React.RefObject<HTMLDivElement | null>;
     drawCacheLayerActionRef: React.RefObject<DrawCacheLayerActionType | undefined>;
     ocrBlocksActionRef: React.RefObject<OcrBlocksActionType | undefined>;
-    fixedContentActionRef: React.RefObject<FixedContentActionType | undefined>;
     colorPickerActionRef: React.RefObject<ColorPickerActionType | undefined>;
     captureBoundingBoxInfoRef: React.RefObject<CaptureBoundingBoxInfo | undefined>;
     captureHistoryActionRef: React.RefObject<CaptureHistoryActionType | undefined>;
@@ -51,7 +50,6 @@ export const DrawContext = React.createContext<DrawContextType>({
     circleCursorRef: { current: null },
     drawCacheLayerActionRef: { current: undefined },
     ocrBlocksActionRef: { current: undefined },
-    fixedContentActionRef: { current: undefined },
     colorPickerActionRef: { current: undefined },
     captureBoundingBoxInfoRef: { current: undefined },
     captureHistoryActionRef: { current: undefined },

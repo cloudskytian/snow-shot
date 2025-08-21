@@ -36,8 +36,8 @@ import dynamic from 'next/dynamic';
 import { DrawCacheLayerActionType } from './components/drawCacheLayer/extra';
 import { copyToClipboard, fixedToScreen, handleOcrDetect, saveToFile } from './actions';
 import {
-    FixedContentCore,
     FixedContentActionType,
+    FixedContentCore,
 } from '../fixedContent/components/fixedContentCore';
 import { OcrBlocks, OcrBlocksActionType } from './components/ocrBlocks';
 import {
@@ -101,7 +101,9 @@ enum DrawPageState {
     Release = 'release',
 }
 
-const DrawPageCore: React.FC = () => {
+const DrawPageCore: React.FC<{
+    getFixedContentAction: () => FixedContentActionType | undefined;
+}> = ({ getFixedContentAction }) => {
     const { message } = useContext(AntdContext);
     const intl = useIntl();
 
@@ -125,8 +127,6 @@ const DrawPageCore: React.FC = () => {
     const drawToolbarActionRef = useRef<DrawToolbarActionType | undefined>(undefined);
     const colorPickerActionRef = useRef<ColorPickerActionType | undefined>(undefined);
     const captureHistoryActionRef = useRef<CaptureHistoryActionType | undefined>(undefined);
-    const [isFixed, setIsFixed] = useState(false);
-    const fixedContentActionRef = useRef<FixedContentActionType | undefined>(undefined);
     const ocrBlocksActionRef = useRef<OcrBlocksActionType | undefined>(undefined);
 
     // 状态
@@ -313,6 +313,10 @@ const DrawPageCore: React.FC = () => {
 
     const hideWindow = useCallback(async () => {
         await appWindowRef.current.hide();
+        // await Promise.all([
+        //     appWindowRef.current.show(),
+        //     appWindowRef.current.setSize(new PhysicalSize(100, 100)),
+        // ]);
     }, []);
 
     const releasePage = useMemo(() => {
@@ -582,13 +586,15 @@ const DrawPageCore: React.FC = () => {
             return;
         }
 
+        const fixedContentAction = getFixedContentAction();
+
         if (
             !layerContainerRef.current ||
             !selectLayerActionRef.current ||
             !captureBoundingBoxInfoRef.current ||
             !drawLayerActionRef.current ||
             !drawCacheLayerActionRef.current ||
-            !fixedContentActionRef.current ||
+            !fixedContentAction ||
             !ocrBlocksActionRef.current
         ) {
             return;
@@ -604,7 +610,7 @@ const DrawPageCore: React.FC = () => {
             selectLayerActionRef.current,
             drawLayerActionRef.current,
             drawCacheLayerActionRef.current,
-            fixedContentActionRef.current,
+            fixedContentAction,
             setCaptureStep,
             // 如果当前是 OCR 识别状态，则使用已有的 OCR 结果
             isOcrTool(getDrawState())
@@ -615,7 +621,7 @@ const DrawPageCore: React.FC = () => {
         switchLayer(undefined, drawLayerActionRef.current, selectLayerActionRef.current);
 
         imageBufferRef.current = undefined;
-    }, [finishCapture, getDrawState, saveCaptureHistory, setCaptureStep]);
+    }, [finishCapture, getDrawState, getFixedContentAction, saveCaptureHistory, setCaptureStep]);
 
     const onTopWindow = useCallback(async () => {
         const windowId = selectLayerActionRef.current?.getWindowId();
@@ -728,10 +734,6 @@ const DrawPageCore: React.FC = () => {
     >(undefined);
 
     useEffect(() => {
-        if (isFixed) {
-            return;
-        }
-
         // 监听截图命令
         const listenerId = addListener('execute-screenshot', (args) => {
             const payload = (args as { payload: { type: ScreenshotType } }).payload;
@@ -787,7 +789,7 @@ const DrawPageCore: React.FC = () => {
             removeListener(finishListenerId);
             removeListener(releaseListenerId);
         };
-    }, [addListener, excuteScreenshot, removeListener, isFixed, finishCapture]);
+    }, [addListener, excuteScreenshot, removeListener, finishCapture]);
 
     // 默认隐藏
     useEffect(() => {
@@ -805,7 +807,6 @@ const DrawPageCore: React.FC = () => {
             circleCursorRef,
             drawCacheLayerActionRef,
             ocrBlocksActionRef,
-            fixedContentActionRef,
             colorPickerActionRef,
             captureBoundingBoxInfoRef,
             captureHistoryActionRef,
@@ -813,10 +814,6 @@ const DrawPageCore: React.FC = () => {
     }, [finishCapture]);
 
     useEffect(() => {
-        if (isFixed) {
-            return;
-        }
-
         const handleMouseMove = (e: MouseEvent) => {
             mousePositionRef.current = new MousePosition(e.clientX, e.clientY);
         };
@@ -826,7 +823,7 @@ const DrawPageCore: React.FC = () => {
         return () => {
             document.removeEventListener('mousemove', handleMouseMove);
         };
-    }, [isFixed, onCopyToClipboard]);
+    }, [onCopyToClipboard]);
 
     useEffect(() => {
         document.oncopy = function () {
@@ -904,57 +901,45 @@ const DrawPageCore: React.FC = () => {
                 onDoubleClick={onDoubleClick}
                 onClick={onDoubleClickFirstClick}
             >
-                <FixedContentCore
-                    actionRef={fixedContentActionRef}
-                    onDrawLoad={() => {
-                        setIsFixed(true);
-                    }}
-                    disabled={!isFixed}
+                <CaptureHistoryController actionRef={captureHistoryActionRef} />
+
+                <ExtraTool finishCapture={finishCapture} />
+
+                <OcrBlocks actionRef={ocrBlocksActionRef} finishCapture={finishCapture} />
+
+                <div className={styles.drawLayerWrap} ref={drawLayerWrapRef}>
+                    <DrawLayer actionRef={drawLayerActionRef} />
+                    <DrawCacheLayer actionRef={drawCacheLayerActionRef} />
+                </div>
+                <SelectLayer actionRef={selectLayerActionRef} />
+                <DrawToolbar
+                    actionRef={drawToolbarActionRef}
+                    onCancel={finishCapture}
+                    onSave={onSave}
+                    onFixed={onFixed}
+                    onCopyToClipboard={onCopyToClipboard}
+                    onOcrDetect={onOcrDetect}
+                    onTopWindow={onTopWindow}
                 />
+                <ColorPicker
+                    onCopyColor={() => {
+                        finishCapture();
+                    }}
+                    actionRef={colorPickerActionRef}
+                />
+                <StatusBar />
 
-                {!isFixed && (
-                    <>
-                        <CaptureHistoryController actionRef={captureHistoryActionRef} />
-
-                        <ExtraTool finishCapture={finishCapture} />
-
-                        <OcrBlocks actionRef={ocrBlocksActionRef} finishCapture={finishCapture} />
-
-                        <div className={styles.drawLayerWrap} ref={drawLayerWrapRef}>
-                            <DrawLayer actionRef={drawLayerActionRef} />
-                            <DrawCacheLayer actionRef={drawCacheLayerActionRef} />
-                        </div>
-                        <SelectLayer actionRef={selectLayerActionRef} />
-                        <DrawToolbar
-                            actionRef={drawToolbarActionRef}
-                            onCancel={finishCapture}
-                            onSave={onSave}
-                            onFixed={onFixed}
-                            onCopyToClipboard={onCopyToClipboard}
-                            onOcrDetect={onOcrDetect}
-                            onTopWindow={onTopWindow}
-                        />
-                        <ColorPicker
-                            onCopyColor={() => {
-                                finishCapture();
-                            }}
-                            actionRef={colorPickerActionRef}
-                        />
-                        <StatusBar />
-
-                        <div
-                            ref={circleCursorRef}
-                            className={styles.drawToolbarCursor}
-                            style={{ zIndex: zIndexs.Draw_Cursor }}
-                        />
-                    </>
-                )}
+                <div
+                    ref={circleCursorRef}
+                    className={styles.drawToolbarCursor}
+                    style={{ zIndex: zIndexs.Draw_Cursor }}
+                />
             </div>
         </DrawContext.Provider>
     );
 };
 
-export default React.memo(
+const DrawPageContent = React.memo(
     withCanvasHistory(
         withStatePublisher(
             DrawPageCore,
@@ -971,3 +956,29 @@ export default React.memo(
         ),
     ),
 );
+
+const DrawPage = () => {
+    const [isFixed, setIsFixed] = useState(false);
+    const fixedContentActionRef = useRef<FixedContentActionType | undefined>(undefined);
+
+    const getFixedContentAction = useCallback(() => {
+        return fixedContentActionRef.current;
+    }, []);
+
+    return (
+        <>
+            {!isFixed && <DrawPageContent getFixedContentAction={getFixedContentAction} />}
+            <div>
+                <FixedContentCore
+                    actionRef={fixedContentActionRef}
+                    onDrawLoad={() => {
+                        setIsFixed(true);
+                    }}
+                    disabled={!isFixed}
+                />
+            </div>
+        </>
+    );
+};
+
+export default DrawPage;

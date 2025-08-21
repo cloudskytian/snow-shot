@@ -1,5 +1,5 @@
 import { RefType } from '../baseLayer/baseLayerRenderActions';
-import { getPixels } from './workers/getPixels';
+import { getPixels, getPixelsWorker } from './workers/getPixels';
 
 export const COLOR_PICKER_PREVIEW_SCALE = 12;
 export const COLOR_PICKER_PREVIEW_PICKER_SIZE = 10 + 1;
@@ -118,4 +118,8 @@ export function renderSwitchCaptureHistoryAction(
         captureHistoryImageDataRef.current = pixels.data;
         resolve(undefined);
     });
+}
+
+export function renderPixelsWorkerTerminateAction() {
+    getPixelsWorker().terminate();
 }

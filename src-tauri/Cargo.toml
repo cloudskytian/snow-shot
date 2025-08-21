@@ -84,7 +84,6 @@ tauri = { workspace = true, features = [
     "protocol-asset",
     "macos-private-api",
     "tray-icon",
-    "devtools",
     "image-ico",
     "image-png",
 ] }
@@ -147,5 +146,5 @@ codegen-units = 1
 # debug = 1
 
 [features]
-dhat-heap = []    # if you are doing heap profiling
-dhat-ad-hoc = []  # if you are doing ad hoc profiling
+dhat-heap = []   # if you are doing heap profiling
+dhat-ad-hoc = [] # if you are doing ad hoc profiling

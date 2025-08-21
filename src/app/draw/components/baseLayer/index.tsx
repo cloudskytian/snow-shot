@@ -277,6 +277,11 @@ export const BaseLayerCore: React.FC<
         }
         return undefined;
     }, []);
+    useEffect(() => {
+        return () => {
+            rendererWorker?.terminate();
+        };
+    }, [rendererWorker]);
 
     /** 创建一个新的画布容器 */
     const createNewCanvasContainer = useCallback(

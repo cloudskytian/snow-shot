@@ -56,6 +56,7 @@ import {
     initPreviewCanvasAction,
     putImageDataAction,
     switchCaptureHistoryAction,
+    terminateWorkerAction,
 } from './actions';
 import { writeTextToClipboard } from '@/utils/clipboard';
 import { convertFileSrc } from '@tauri-apps/api/core';
@@ -240,6 +241,12 @@ const ColorPickerCore: React.FC<{
 
         return undefined;
     }, []);
+    useEffect(() => {
+        return () => {
+            terminateWorkerAction();
+            renderWorker?.terminate();
+        };
+    }, [renderWorker]);
 
     const enableRef = useRef(false);
     const onEnableChange = useCallback(

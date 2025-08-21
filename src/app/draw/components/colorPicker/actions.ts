@@ -15,6 +15,7 @@ import {
     renderGetPreviewImageDataAction,
     renderInitImageDataAction,
     renderInitPreviewCanvasAction,
+    renderPixelsWorkerTerminateAction,
     renderPutImageDataAction,
     renderSwitchCaptureHistoryAction,
 } from './renderActions';
@@ -225,4 +226,8 @@ export const switchCaptureHistoryAction = async (
             resolve(undefined);
         }
     });
+};
+
+export const terminateWorkerAction = async () => {
+    renderPixelsWorkerTerminateAction();
 };

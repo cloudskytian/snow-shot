@@ -1,4 +1,5 @@
 import { RefType } from '../../baseLayer/baseLayerRenderActions';
+import { terminateWorkerAction } from '../actions';
 import {
     renderGetPreviewImageDataAction,
     renderInitImageDataAction,
@@ -122,4 +123,8 @@ self.onmessage = async ({ data }: MessageEvent<ColorPickerRenderData>) => {
     }
 
     self.postMessage(message);
+};
+
+self.onabort = () => {
+    terminateWorkerAction();
 };

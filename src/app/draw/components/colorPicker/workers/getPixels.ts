@@ -25,3 +25,7 @@ export async function getPixels(
         decodeWorker.postMessage({ imageBuffer, wasmModuleArrayBuffer });
     });
 }
+
+export function getPixelsWorker() {
+    return decodeWorker;
+}
