@@ -482,6 +482,8 @@ const DrawPageCore: React.FC = () => {
     );
 
     const saveCaptureHistory = useCallback(async () => {
+        const imageBuffer = imageBufferRef.current;
+
         updateAppSettings(
             AppSettingsGroup.Cache,
             {
@@ -494,9 +496,7 @@ const DrawPageCore: React.FC = () => {
             false,
         );
 
-        await captureHistoryActionRef.current?.saveCurrentCapture();
-
-        imageBufferRef.current = undefined;
+        await captureHistoryActionRef.current?.saveCurrentCapture(imageBuffer);
     }, [updateAppSettings]);
 
     const onSave = useCallback(
@@ -594,6 +594,7 @@ const DrawPageCore: React.FC = () => {
             return;
         }
 
+        // 非滚动截图时保存截屏历史
         saveCaptureHistory();
 
         await fixedToScreen(
@@ -612,6 +613,8 @@ const DrawPageCore: React.FC = () => {
         );
 
         switchLayer(undefined, drawLayerActionRef.current, selectLayerActionRef.current);
+
+        imageBufferRef.current = undefined;
     }, [finishCapture, getDrawState, saveCaptureHistory, setCaptureStep]);
 
     const onTopWindow = useCallback(async () => {

@@ -17,9 +17,10 @@ import { NonDeletedExcalidrawElement } from '@mg-chao/excalidraw/element/types';
 import { AntdContext } from '@/components/globalLayoutExtra';
 import { FormattedMessage } from 'react-intl';
 import { appError } from '@/utils/log';
+import { ImageBuffer } from '@/commands';
 
 export type CaptureHistoryActionType = {
-    saveCurrentCapture: () => Promise<void>;
+    saveCurrentCapture: (imageBuffer: ImageBuffer | undefined) => Promise<void>;
 };
 
 const CaptureHistoryControllerCore: React.FC<{
@@ -31,7 +32,6 @@ const CaptureHistoryControllerCore: React.FC<{
     const isImageLoadingRef = useRef<boolean>(false);
     const [, setEnableKeyEvent] = useStateSubscriber(EnableKeyEventPublisher, undefined);
     const {
-        imageBufferRef,
         selectLayerActionRef,
         drawLayerActionRef,
         drawCacheLayerActionRef,
@@ -192,37 +192,40 @@ const CaptureHistoryControllerCore: React.FC<{
         ],
     );
 
-    const saveCurrentCapture = useCallback(async () => {
-        if (!imageBufferRef.current || !captureHistoryRef.current) {
-            appError('[CaptureHistoryController] saveCurrentCapture error, invalid state', {
-                imageBufferRef: imageBufferRef.current,
-                captureHistoryRef: captureHistoryRef.current,
-            });
-            return;
-        }
+    const saveCurrentCapture = useCallback(
+        async (imageBuffer: ImageBuffer | undefined) => {
+            if (!captureHistoryRef.current || !imageBuffer) {
+                appError('[CaptureHistoryController] saveCurrentCapture error, invalid state', {
+                    captureHistoryRef: captureHistoryRef.current,
+                    imageBuffer: imageBuffer,
+                });
+                return;
+            }
 
-        const selectRect = selectLayerActionRef.current?.getSelectRect();
-        if (!selectRect) {
-            appError(
-                '[CaptureHistoryController] saveCurrentCapture error, invalid selectRect',
-                {
-                    selectRect: selectRect,
-                },
+            const selectRect = selectLayerActionRef.current?.getSelectRect();
+            if (!selectRect) {
+                appError(
+                    '[CaptureHistoryController] saveCurrentCapture error, invalid selectRect',
+                    {
+                        selectRect: selectRect,
+                    },
+                );
+                return;
+            }
+
+            const excalidrawApi = drawCacheLayerActionRef.current?.getExcalidrawAPI();
+
+            const captureHistoryItem = await captureHistoryRef.current.save(
+                captureHistoryListRef.current[currentIndexRef.current] ?? imageBuffer,
+                excalidrawApi?.getSceneElements(),
+                excalidrawApi?.getAppState(),
+                selectRect,
             );
-            return;
-        }
-
-        const excalidrawApi = drawCacheLayerActionRef.current?.getExcalidrawAPI();
-
-        const captureHistoryItem = await captureHistoryRef.current.save(
-            captureHistoryListRef.current[currentIndexRef.current] ?? imageBufferRef.current,
-            excalidrawApi?.getSceneElements(),
-            excalidrawApi?.getAppState(),
-            selectRect,
-        );
-        captureHistoryListRef.current.push(captureHistoryItem);
-        resetCurrentIndex();
-    }, [drawCacheLayerActionRef, imageBufferRef, resetCurrentIndex, selectLayerActionRef]);
+            captureHistoryListRef.current.push(captureHistoryItem);
+            resetCurrentIndex();
+        },
+        [drawCacheLayerActionRef, resetCurrentIndex, selectLayerActionRef],
+    );
 
     useImperativeHandle(actionRef, () => {
         return {
