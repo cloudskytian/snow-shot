@@ -327,7 +327,7 @@ const DrawPageCore: React.FC = () => {
             setTimeout(() => {
                 appWindowRef.current.close();
             }, 1000 * 8);
-        }, 1000 * 24);
+        }, 1000 * 16);
     }, []);
 
     const finishCapture = useCallback<DrawContextType['finishCapture']>(

@@ -24,6 +24,10 @@ use snow_shot_app_services::ocr_service::OcrService;
 use snow_shot_app_services::video_record_service;
 use snow_shot_app_shared::EnigoManager;
 
+#[cfg(feature = "dhat-heap")]
+pub static PROFILER: std::sync::LazyLock<Mutex<Option<dhat::Profiler>>> =
+    std::sync::LazyLock::new(|| Mutex::new(None));
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let ocr_instance = Mutex::new(OcrService::new());

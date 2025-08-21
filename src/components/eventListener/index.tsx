@@ -1,6 +1,6 @@
 'use client';
 
-import { EventCallback, listen, UnlistenFn } from '@tauri-apps/api/event';
+import { EventCallback, UnlistenFn } from '@tauri-apps/api/event';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef } from 'react';
 import { attachConsole } from '@tauri-apps/plugin-log';
 import { appLog, LogMessageEvent } from '@/utils/appLog';
@@ -21,6 +21,8 @@ import {
 import { showWindow } from '@/utils/window';
 import { AntdContext } from '../globalLayoutExtra';
 import { appError } from '@/utils/log';
+import { debounce } from 'es-toolkit';
+import { ocrRelease } from '@/commands/ocr';
 
 type Listener = {
     event: string;
@@ -113,6 +115,12 @@ const EventListenerCore: React.FC<{ children: React.ReactNode }> = ({ children }
             isVideoRecordToolbarPage,
         };
     }, [pathname]);
+
+    const releaseOcrSessionAction = useMemo(() => {
+        return debounce(async () => {
+            await ocrRelease();
+        }, 8 * 1000);
+    }, []);
     useEffect(() => {
         if (inited.current) {
             return;
@@ -199,6 +207,12 @@ const EventListenerCore: React.FC<{ children: React.ReactNode }> = ({ children }
         });
 
         if (mainWindow) {
+            defaultListener.push({
+                event: 'release-ocr-session',
+                callback: async () => {
+                    releaseOcrSessionAction();
+                },
+            });
             defaultListener.push({
                 event: 'log-message',
                 callback: ({ payload }: { payload: LogMessageEvent }) => {
@@ -308,7 +322,7 @@ const EventListenerCore: React.FC<{ children: React.ReactNode }> = ({ children }
                 return res;
             })
             .forEach((listener) => {
-                listen(listener.event, listener.callback).then((unlisten) => {
+                appWindowRef.current!.listen(listener.event, listener.callback).then((unlisten) => {
                     unlistenList.push(unlisten);
                 });
             });
@@ -319,7 +333,11 @@ const EventListenerCore: React.FC<{ children: React.ReactNode }> = ({ children }
             detach?.();
 
             unlistenList.forEach((unlisten) => {
-                unlisten();
+                try {
+                    unlisten();
+                } catch (error) {
+                    appError('[EventListenerCore] clear unlisten error', error);
+                }
             });
 
             inited.current = false;
@@ -342,6 +360,7 @@ const EventListenerCore: React.FC<{ children: React.ReactNode }> = ({ children }
         isVideoRecordPage,
         isVideoRecordToolbarPage,
         message,
+        releaseOcrSessionAction,
     ]);
 
     const eventListenerContextValue = useMemo(() => {

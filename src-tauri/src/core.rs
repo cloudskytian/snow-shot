@@ -5,6 +5,9 @@ use tokio::sync::Mutex;
 
 #[command]
 pub async fn exit_app(window: tauri::Window, handle: tauri::AppHandle) {
+    #[cfg(feature = "dhat-heap")]
+    drop(crate::PROFILER.lock().await.take());
+
     snow_shot_tauri_commands_core::exit_app(window, handle).await;
 }
 
