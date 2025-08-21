@@ -686,6 +686,7 @@ export const ScrollScreenshot: React.FC<{
                     width: 100%;
                     transform: translateY(-100%);
                     opacity: 0.83;
+                    pointer-events: none;
                 }
 
                 .thumbnail-list {
