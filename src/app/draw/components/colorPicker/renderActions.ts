@@ -59,6 +59,7 @@ export function renderPutImageDataAction(
     x: number,
     y: number,
     baseIndex: number,
+    centerAuxiliaryLineColor: string | undefined,
 ): { color: [red: number, green: number, blue: number] } {
     const ctx = previewCanvasCtxRef.current;
     const imageData = captureHistoryImageDataRef.current ?? previewImageDataRef.current;
@@ -79,6 +80,42 @@ export function renderPutImageDataAction(
         COLOR_PICKER_PREVIEW_PICKER_SIZE,
         COLOR_PICKER_PREVIEW_PICKER_SIZE,
     );
+
+    if (centerAuxiliaryLineColor) {
+        const centerX = Math.floor(COLOR_PICKER_PREVIEW_PICKER_SIZE / 2) + 0.5;
+        const centerY = Math.floor(COLOR_PICKER_PREVIEW_PICKER_SIZE / 2) + 0.5;
+
+        ctx.save();
+        ctx.strokeStyle = centerAuxiliaryLineColor;
+        ctx.lineWidth = 1;
+
+        // 绘制4条线，避免中心点被覆盖
+        // 左半部分垂直线
+        ctx.beginPath();
+        ctx.moveTo(centerX, 0);
+        ctx.lineTo(centerX, centerY - 0.5);
+        ctx.stroke();
+
+        // 右半部分垂直线
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY + 0.5);
+        ctx.lineTo(centerX, COLOR_PICKER_PREVIEW_PICKER_SIZE);
+        ctx.stroke();
+
+        // 上半部分水平线
+        ctx.beginPath();
+        ctx.moveTo(0, centerY);
+        ctx.lineTo(centerX - 0.5, centerY);
+        ctx.stroke();
+
+        // 下半部分水平线
+        ctx.beginPath();
+        ctx.moveTo(centerX + 0.5, centerY);
+        ctx.lineTo(COLOR_PICKER_PREVIEW_PICKER_SIZE, centerY);
+        ctx.stroke();
+
+        ctx.restore();
+    }
 
     const color: [red: number, green: number, blue: number] = [
         imageData.data[baseIndex] ?? 0,

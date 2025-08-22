@@ -56,7 +56,7 @@ const handleInitImageData = async (data: ColorPickerRenderInitImageDataData) => 
 };
 
 const handlePutImageData = async (data: ColorPickerRenderPutImageDataData) => {
-    const { x, y, baseIndex } = data.payload;
+    const { x, y, baseIndex, centerAuxiliaryLineColor } = data.payload;
     return renderPutImageDataAction(
         previewCanvasCtxRef,
         previewImageDataRef,
@@ -64,6 +64,7 @@ const handlePutImageData = async (data: ColorPickerRenderPutImageDataData) => {
         x,
         y,
         baseIndex,
+        centerAuxiliaryLineColor,
     );
 };
 

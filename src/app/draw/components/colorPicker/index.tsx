@@ -380,11 +380,12 @@ const ColorPickerCore: React.FC<{
                 x,
                 y,
                 baseIndex,
+                getAppSettings()[AppSettingsGroup.Screenshot].colorPickerCenterAuxiliaryLineColor,
             );
             // 更新颜色
             updateColor(color.color[0], color.color[1], color.color[2]);
         },
-        [renderWorker, updateColor],
+        [getAppSettings, renderWorker, updateColor],
     );
     const updateImageDataPutImageRender = useCallbackRender(updateImageDataPutImage);
     const updateImageData = useCallback(

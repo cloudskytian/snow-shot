@@ -378,6 +378,12 @@ export default function GeneralSettings() {
                         ).toHexString();
                     }
 
+                    if (typeof values.colorPickerCenterAuxiliaryLineColor === 'object') {
+                        values.colorPickerCenterAuxiliaryLineColor = (
+                            values.colorPickerCenterAuxiliaryLineColor as AggregationColor
+                        ).toHexString();
+                    }
+
                     updateAppSettings(
                         AppSettingsGroup.Screenshot,
                         values,
@@ -517,6 +523,22 @@ export default function GeneralSettings() {
                                     <IconLabel
                                         label={
                                             <FormattedMessage id="settings.monitorCenterAuxiliaryLineColor" />
+                                        }
+                                    />
+                                }
+                                required={false}
+                            >
+                                <ColorPicker showText placement="bottom" />
+                            </ProForm.Item>
+                        </Col>
+
+                        <Col span={12}>
+                            <ProForm.Item
+                                name="colorPickerCenterAuxiliaryLineColor"
+                                label={
+                                    <IconLabel
+                                        label={
+                                            <FormattedMessage id="settings.colorPickerCenterAuxiliaryLineColor" />
                                         }
                                     />
                                 }

@@ -117,6 +117,7 @@ export const putImageDataAction = async (
     x: number,
     y: number,
     baseIndex: number,
+    centerAuxiliaryLineColor: string | undefined,
 ): Promise<{ color: [red: number, green: number, blue: number] }> => {
     return new Promise((resolve) => {
         if (renderWorker) {
@@ -126,6 +127,7 @@ export const putImageDataAction = async (
                     x,
                     y,
                     baseIndex,
+                    centerAuxiliaryLineColor,
                 },
             };
 
@@ -148,6 +150,7 @@ export const putImageDataAction = async (
                 x,
                 y,
                 baseIndex,
+                centerAuxiliaryLineColor,
             );
             resolve(color);
         }

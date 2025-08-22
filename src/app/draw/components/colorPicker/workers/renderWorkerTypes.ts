@@ -27,6 +27,7 @@ export type ColorPickerRenderPutImageDataData = {
         x: number;
         y: number;
         baseIndex: number;
+        centerAuxiliaryLineColor: string | undefined;
     };
 };
 
