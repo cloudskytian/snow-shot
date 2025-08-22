@@ -372,6 +372,12 @@ export default function GeneralSettings() {
                         ).toHexString();
                     }
 
+                    if (typeof values.monitorCenterAuxiliaryLineColor === 'object') {
+                        values.monitorCenterAuxiliaryLineColor = (
+                            values.monitorCenterAuxiliaryLineColor as AggregationColor
+                        ).toHexString();
+                    }
+
                     updateAppSettings(
                         AppSettingsGroup.Screenshot,
                         values,
@@ -485,7 +491,9 @@ export default function GeneralSettings() {
                                 }}
                             />
                         </Col>
+                    </Row>
 
+                    <Row gutter={token.margin}>
                         <Col span={12}>
                             <ProForm.Item
                                 name="fullScreenAuxiliaryLineColor"
@@ -493,6 +501,22 @@ export default function GeneralSettings() {
                                     <IconLabel
                                         label={
                                             <FormattedMessage id="settings.fullScreenAuxiliaryLineColor" />
+                                        }
+                                    />
+                                }
+                                required={false}
+                            >
+                                <ColorPicker showText placement="bottom" />
+                            </ProForm.Item>
+                        </Col>
+
+                        <Col span={12}>
+                            <ProForm.Item
+                                name="monitorCenterAuxiliaryLineColor"
+                                label={
+                                    <IconLabel
+                                        label={
+                                            <FormattedMessage id="settings.monitorCenterAuxiliaryLineColor" />
                                         }
                                     />
                                 }

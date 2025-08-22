@@ -81,6 +81,10 @@ export const drawSelectRect = (
         mousePosition: MousePosition;
         color: string;
     },
+    monitorCenterAuxiliaryLine?: {
+        activeMonitorRect: ElementRect;
+        color: string;
+    },
 ) => {
     const { min_x: rectMinX, min_y: rectMinY, max_x: rectMaxX, max_y: rectMaxY } = selectRect;
     const rectWidth = rectMaxX - rectMinX;
@@ -125,6 +129,30 @@ export const drawSelectRect = (
         // 绘制水平线
         canvasContext.moveTo(0, mouseY);
         canvasContext.lineTo(monitorWidth, mouseY);
+        canvasContext.stroke();
+
+        canvasContext.restore();
+    }
+
+    if (monitorCenterAuxiliaryLine) {
+        const { activeMonitorRect, color } = monitorCenterAuxiliaryLine;
+        const centerX =
+            activeMonitorRect.min_x + (activeMonitorRect.max_x - activeMonitorRect.min_x) / 2;
+        const centerY =
+            activeMonitorRect.min_y + (activeMonitorRect.max_y - activeMonitorRect.min_y) / 2;
+
+        canvasContext.save();
+        canvasContext.strokeStyle = color;
+        canvasContext.lineWidth = AUXILIARY_LINE_WIDTH * scaleFactor;
+        canvasContext.setLineDash(AUXILIARY_LINE_DASH.map((dash) => dash * scaleFactor));
+
+        canvasContext.beginPath();
+        // 绘制垂直线
+        canvasContext.moveTo(centerX, 0);
+        canvasContext.lineTo(centerX, monitorHeight);
+        // 绘制水平线
+        canvasContext.moveTo(0, centerY);
+        canvasContext.lineTo(monitorWidth, centerY);
         canvasContext.stroke();
 
         canvasContext.restore();

@@ -119,6 +119,8 @@ export type AppSettingsData = {
         hotKeyTipOpacity: number;
         /** 全屏辅助线颜色 */
         fullScreenAuxiliaryLineColor: string;
+        /** 显示器中心辅助线颜色 */
+        monitorCenterAuxiliaryLineColor: string;
         /** 禁用动画 */
         disableAnimation: boolean;
         /** 自定义工具栏工具 */
@@ -289,6 +291,7 @@ export const defaultAppSettingsData: AppSettingsData = {
         colorPickerShowMode: ColorPickerShowMode.BeyondSelectRect,
         beyondSelectRectElementOpacity: 100,
         fullScreenAuxiliaryLineColor: '#00000000',
+        monitorCenterAuxiliaryLineColor: '#00000000',
         hotKeyTipOpacity: 100,
         customToolbarToolList: [
             DrawState.Select,
@@ -697,7 +700,11 @@ const ContextWrapCore: React.FC<{ children: React.ReactNode }> = ({ children }) 
                     fullScreenAuxiliaryLineColor:
                         typeof newSettings?.fullScreenAuxiliaryLineColor === 'string'
                             ? newSettings.fullScreenAuxiliaryLineColor
-                            : (prevSettings?.fullScreenAuxiliaryLineColor ?? '#00000'),
+                            : (prevSettings?.fullScreenAuxiliaryLineColor ?? '#00000000'),
+                    monitorCenterAuxiliaryLineColor:
+                        typeof newSettings?.monitorCenterAuxiliaryLineColor === 'string'
+                            ? newSettings.monitorCenterAuxiliaryLineColor
+                            : (prevSettings?.monitorCenterAuxiliaryLineColor ?? '#00000000'),
                     customToolbarToolList:
                         typeof newSettings?.customToolbarToolList === 'object'
                             ? newSettings.customToolbarToolList
