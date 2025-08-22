@@ -12,12 +12,17 @@ import { writeImageToClipboard } from '@/utils/clipboard';
 import { AppOcrResult } from '../fixedContent/components/ocrResult';
 import { CaptureBoundingBoxInfo } from './extra';
 import { setWindowRect } from '@/utils/window';
+import { appError } from '@/utils/log';
 
 export const getCanvas = async (
-    selectRect: ElementRect,
+    selectRect: ElementRect | undefined,
     drawLayerAction: DrawLayerActionType,
     drawCacheLayerAction: DrawCacheLayerActionType,
 ): Promise<HTMLCanvasElement | undefined> => {
+    if (!selectRect) {
+        return;
+    }
+
     drawCacheLayerAction.finishDraw();
 
     // 获取图像数据
@@ -47,27 +52,20 @@ export const getCanvas = async (
  */
 export const saveToFile = async (
     appSettings: AppSettingsData,
-    selectLayerAction: SelectLayerActionType,
-    drawLayerAction: DrawLayerActionType,
-    drawCacheLayerAction: DrawCacheLayerActionType,
+    imageCanvas: HTMLCanvasElement | undefined,
     beforeSaveFile?: (filePath: string) => Promise<void>,
     prevImageFormat?: ImageFormat,
     fastSavePath?: ImagePath,
 ) => {
-    const selectRect = selectLayerAction.getSelectRect();
-    if (!selectRect) {
-        return;
-    }
-
-    const canvasPromise = getCanvas(selectRect, drawLayerAction, drawCacheLayerAction);
-
     const imagePath = fastSavePath ?? (await showImageDialog(appSettings, prevImageFormat));
 
     if (!imagePath) {
         return;
     }
 
-    const imageDataPromise = canvasPromise
+    const imageDataPromise = new Promise<HTMLCanvasElement | undefined>((resolve) => {
+        resolve(imageCanvas);
+    })
         .then(async (canvas) => {
             if (!canvas) {
                 return;
@@ -104,6 +102,7 @@ export const saveToFile = async (
     const imageData = await imageDataPromise;
 
     if (!imageData) {
+        appError('[saveToFile] imageData is undefined');
         return;
     }
 
@@ -166,41 +165,31 @@ export const fixedToScreen = async (
     layerContainerElement.style.opacity = '1';
 };
 
-export const copyToClipboard = async (
-    selectLayerAction: SelectLayerActionType,
-    drawLayerAction: DrawLayerActionType,
-    drawCacheLayerAction: DrawCacheLayerActionType,
-    beforeCopy?: (imageData: Blob) => Promise<void>,
-) => {
-    const selectRect = selectLayerAction.getSelectRect();
-    if (!selectRect) {
-        return;
-    }
-
-    const imageCanvas = await getCanvas(selectRect, drawLayerAction, drawCacheLayerAction);
+export const copyToClipboard = async (imageCanvas: HTMLCanvasElement | undefined) => {
     if (!imageCanvas) {
+        appError('[copyToClipboard] imageCanvas is undefined');
         return;
     }
 
-    const imageData = await new Promise<Blob | null>((resolve) => {
-        imageCanvas.toBlob(
-            (blob) => {
-                resolve(blob);
-            },
-            'image/png',
-            1,
-        );
+    new Promise(async (resolve) => {
+        const imageData = await new Promise<Blob | null>((resolve) => {
+            imageCanvas.toBlob(
+                (blob) => {
+                    resolve(blob);
+                },
+                'image/png',
+                1,
+            );
+        });
+
+        if (!imageData) {
+            return;
+        }
+
+        await writeImageToClipboard(imageData);
+
+        resolve(undefined);
     });
-
-    if (!imageData) {
-        return;
-    }
-
-    if (beforeCopy) {
-        beforeCopy(imageData);
-    }
-
-    await writeImageToClipboard(imageData);
 };
 
 export const handleOcrDetect = async (

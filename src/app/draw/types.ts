@@ -7,7 +7,6 @@ import { MousePosition } from '@/utils/mousePosition';
 import { DrawCacheLayerActionType } from './components/drawCacheLayer/extra';
 import { OcrBlocksActionType } from './components/ocrBlocks';
 import { ColorPickerActionType } from './components/colorPicker';
-import { FixedContentActionType } from '../fixedContent/components/fixedContentCore';
 import { CaptureBoundingBoxInfo } from './extra';
 import { CaptureHistoryActionType } from './components/captureHistory';
 

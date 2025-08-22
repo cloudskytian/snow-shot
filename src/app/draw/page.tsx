@@ -34,7 +34,7 @@ import { zIndexs } from '@/utils/zIndex';
 import styles from './page.module.css';
 import dynamic from 'next/dynamic';
 import { DrawCacheLayerActionType } from './components/drawCacheLayer/extra';
-import { copyToClipboard, fixedToScreen, handleOcrDetect, saveToFile } from './actions';
+import { copyToClipboard, fixedToScreen, getCanvas, handleOcrDetect, saveToFile } from './actions';
 import {
     FixedContentActionType,
     FixedContentCore,
@@ -547,11 +547,15 @@ const DrawPageCore: React.FC<{
                 return;
             }
 
-            saveToFile(
-                getAppSettings(),
-                selectLayerActionRef.current,
+            const imageCanvas = await getCanvas(
+                selectLayerActionRef.current.getSelectRect(),
                 drawLayerActionRef.current,
                 drawCacheLayerActionRef.current,
+            );
+
+            saveToFile(
+                getAppSettings(),
+                imageCanvas,
                 async (filePath: string) => {
                     if (!fastSave) {
                         updateAppSettings(
@@ -698,30 +702,25 @@ const DrawPageCore: React.FC<{
                 return;
             }
 
-            copyToClipboard(
-                selectLayerActionRef.current,
+            const imageCanvas = await getCanvas(
+                selectLayerActionRef.current.getSelectRect(),
                 drawLayerActionRef.current,
                 drawCacheLayerActionRef.current,
-                enableAutoSave
-                    ? undefined
-                    : async () => {
-                          finishCapture();
-                      },
             );
-        }
 
-        if (enableAutoSave) {
-            await saveToFile(
-                getAppSettings(),
-                selectLayerActionRef.current,
-                drawLayerActionRef.current,
-                drawCacheLayerActionRef.current,
-                async () => {
-                    finishCapture();
-                },
-                undefined,
-                await getImagePathFromSettings(getAppSettings(), 'auto'),
-            );
+            finishCapture();
+
+            copyToClipboard(imageCanvas);
+
+            if (enableAutoSave) {
+                await saveToFile(
+                    getAppSettings(),
+                    imageCanvas,
+                    undefined,
+                    undefined,
+                    await getImagePathFromSettings(getAppSettings(), 'auto'),
+                );
+            }
         }
     }, [finishCapture, getAppSettings, getDrawState, saveCaptureHistory]);
 
