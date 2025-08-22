@@ -136,6 +136,7 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
     const selectWindowFromMousePositionLevelRef = useRef(0);
     const lastMouseMovePositionRef = useRef<MousePosition | undefined>(undefined); // 上一次鼠标移动事件触发的参数
     const drawSelectRectAnimationRef = useRef<TweenAnimation<ElementRect> | undefined>(undefined); // 绘制选取框的动画
+    const currentActiveMonitorRectRef = useRef<ElementRect | undefined>(undefined);
     const selectStateRef = useRef(SelectState.Auto); // 当前的选择状态
     const [getCaptureEvent] = useStateSubscriber(
         CaptureEventPublisher,
@@ -380,18 +381,9 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
                     : undefined,
                 enableAuxiliaryLine &&
                     monitorCenterAuxiliaryLineColorRef.current &&
-                    lastMouseMovePositionRef.current
+                    currentActiveMonitorRectRef.current
                     ? {
-                          activeMonitorRect: captureBoundingBoxInfo.transformMonitorRect(
-                              captureBoundingBoxInfo.getActiveMonitorRect(
-                                  captureBoundingBoxInfo.transformWindowRect({
-                                      min_x: lastMouseMovePositionRef.current.mouseX,
-                                      min_y: lastMouseMovePositionRef.current.mouseY,
-                                      max_x: lastMouseMovePositionRef.current.mouseX,
-                                      max_y: lastMouseMovePositionRef.current.mouseY,
-                                  }),
-                              ),
-                          ),
+                          activeMonitorRect: currentActiveMonitorRectRef.current,
                           color: monitorCenterAuxiliaryLineColorRef.current,
                       }
                     : undefined,
@@ -644,19 +636,21 @@ const SelectLayerCore: React.FC<SelectLayerProps> = ({ actionRef }) => {
             const captureBoundingBoxInfo = captureBoundingBoxInfoRef.current;
 
             if (captureBoundingBoxInfo) {
+                currentActiveMonitorRectRef.current = captureBoundingBoxInfo.transformMonitorRect(
+                    captureBoundingBoxInfo.getActiveMonitorRect(
+                        captureBoundingBoxInfo.transformWindowRect({
+                            min_x: rect.min_x,
+                            min_y: rect.min_y,
+                            max_x: rect.min_x,
+                            max_y: rect.min_y,
+                        }),
+                    ),
+                );
+
                 setDrawEvent({
                     event: DrawEvent.ChangeMonitor,
                     params: {
-                        monitorRect: captureBoundingBoxInfo.transformMonitorRect(
-                            captureBoundingBoxInfo.getActiveMonitorRect(
-                                captureBoundingBoxInfo.transformWindowRect({
-                                    min_x: rect.min_x,
-                                    min_y: rect.min_y,
-                                    max_x: rect.min_x,
-                                    max_y: rect.min_y,
-                                }),
-                            ),
-                        ),
+                        monitorRect: currentActiveMonitorRectRef.current,
                     },
                 });
                 setDrawEvent(undefined);
