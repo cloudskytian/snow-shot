@@ -1449,6 +1449,7 @@ dependencies = [
 [[package]]
 name = "device_query"
 version = "4.0.1"
+source = "git+https://github.com/mg-chao/device_query?branch=custom%2Fmaster#7b9a56c543e3c3b3822b209ea379a5b693020d66"
 dependencies = [
  "macos-accessibility-client",
  "pkg-config",

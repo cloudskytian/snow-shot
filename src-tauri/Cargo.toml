@@ -36,7 +36,7 @@ serde = { version = "^1.0", features = ["derive"] }
 # xcap = { git = "https://github.com/mg-chao/xcap", branch = "custom/master" }
 xcap = { git = "https://github.com/mg-chao/xcap", branch = "20250804_feats" }
 # device_query = "4.0.1"
-device_query = { path = "D:/my-workspace/device_query" }
+device_query = { git = "https://github.com/mg-chao/device_query", branch = "custom/master" }
 log = "^0.4"
 image = { version = "^0.25", features = ["png", "webp"] }
 imageproc = "^0.25"
