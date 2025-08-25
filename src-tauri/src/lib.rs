@@ -7,7 +7,6 @@ pub mod scroll_screenshot;
 pub mod video_record;
 
 use chrono::Local;
-use snow_shot_app_services::device_event_handler_service;
 use tauri::Emitter;
 use tokio::sync::Mutex;
 
@@ -43,9 +42,6 @@ pub fn run() {
         Mutex::new(scroll_screenshot_image_service::ScrollScreenshotImageService::new());
     let scroll_screenshot_capture_service =
         Mutex::new(scroll_screenshot_capture_service::ScrollScreenshotCaptureService::new());
-
-    let device_event_handler_service =
-        Mutex::new(device_event_handler_service::DeviceEventHandlerService::new());
 
     let free_drag_window_service =
         Mutex::new(free_drag_window_service::FreeDragWindowService::new());
@@ -140,7 +136,6 @@ pub fn run() {
         .manage(scroll_screenshot_image_service)
         .manage(scroll_screenshot_capture_service)
         .manage(video_record_service)
-        .manage(device_event_handler_service)
         .manage(free_drag_window_service)
         .manage(listen_key_service)
         .invoke_handler(tauri::generate_handler![

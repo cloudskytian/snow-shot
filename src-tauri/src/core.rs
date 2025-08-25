@@ -104,21 +104,12 @@ pub async fn create_video_record_window(
 #[command]
 pub async fn start_free_drag(
     window: tauri::Window,
-    device_event_handler_service: tauri::State<
-        '_,
-        Mutex<snow_shot_app_services::device_event_handler_service::DeviceEventHandlerService>,
-    >,
     free_drag_window_service: tauri::State<
         '_,
         Mutex<snow_shot_app_services::free_drag_window_service::FreeDragWindowService>,
     >,
 ) -> Result<(), String> {
-    snow_shot_tauri_commands_core::start_free_drag(
-        window,
-        device_event_handler_service,
-        free_drag_window_service,
-    )
-    .await
+    snow_shot_tauri_commands_core::start_free_drag(window, free_drag_window_service).await
 }
 
 #[command]

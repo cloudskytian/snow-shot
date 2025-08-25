@@ -8,6 +8,7 @@ pub struct FreeDragWindowService {
     target_window: Arc<Mutex<Option<tauri::Window>>>,
     _mouse_move_guard: Arc<Mutex<Option<Box<dyn std::any::Any + Send>>>>,
     _mouse_up_guard: Arc<Mutex<Option<Box<dyn std::any::Any + Send>>>>,
+    device_event_handler: Arc<Mutex<DeviceEventHandlerService>>,
 }
 
 impl FreeDragWindowService {
@@ -16,14 +17,11 @@ impl FreeDragWindowService {
             target_window: Arc::new(Mutex::new(None)),
             _mouse_move_guard: Arc::new(Mutex::new(None)),
             _mouse_up_guard: Arc::new(Mutex::new(None)),
+            device_event_handler: Arc::new(Mutex::new(DeviceEventHandlerService::new())),
         };
     }
 
-    pub fn start_drag(
-        &mut self,
-        window: tauri::Window,
-        device_event_handler: &mut DeviceEventHandlerService,
-    ) -> Result<(), String> {
+    pub fn start_drag(&mut self, window: tauri::Window) -> Result<(), String> {
         self.stop_drag();
 
         // 计算当前鼠标相对窗口的位置
@@ -66,6 +64,7 @@ impl FreeDragWindowService {
         let target_window = Arc::clone(&self.target_window);
         let relative_position = Arc::new(Mutex::new((mouse_x - window_x, mouse_y - window_y)));
 
+        let mut device_event_handler = self.device_event_handler.lock().unwrap();
         self._mouse_move_guard.lock().unwrap().replace(Box::new(
             device_event_handler.on_mouse_move(move |position: &MousePosition| {
                 let target_window = match target_window.lock() {
@@ -108,6 +107,7 @@ impl FreeDragWindowService {
 
         let _mouse_up_guard_clone = Arc::clone(&self._mouse_up_guard);
         let _mouse_move_guard_clone = Arc::clone(&self._mouse_move_guard);
+        let device_event_handler_clone = Arc::clone(&self.device_event_handler);
         self._mouse_up_guard
             .lock()
             .unwrap()
@@ -119,6 +119,7 @@ impl FreeDragWindowService {
                             &target_window_for_button,
                             &_mouse_move_guard_clone,
                             &_mouse_up_guard_clone,
+                            &device_event_handler_clone,
                         );
                     }
                 },
@@ -131,6 +132,7 @@ impl FreeDragWindowService {
         target_window: &Arc<Mutex<Option<tauri::Window>>>,
         mouse_move_guard: &Arc<Mutex<Option<Box<dyn std::any::Any + Send>>>>,
         mouse_up_guard: &Arc<Mutex<Option<Box<dyn std::any::Any + Send>>>>,
+        device_event_handler: &Arc<Mutex<DeviceEventHandlerService>>,
     ) {
         let mut target_window_lock = match target_window.lock() {
             Ok(window) => window,
@@ -148,6 +150,12 @@ impl FreeDragWindowService {
             Err(_) => return,
         };
         *mouse_up_guard_lock = None;
+
+        let mut device_event_handler_lock = match device_event_handler.lock() {
+            Ok(handler) => handler,
+            Err(_) => return,
+        };
+        device_event_handler_lock.release();
     }
 
     pub fn stop_drag(&mut self) {
@@ -155,6 +163,7 @@ impl FreeDragWindowService {
             &self.target_window,
             &self._mouse_move_guard,
             &self._mouse_up_guard,
+            &self.device_event_handler,
         );
     }
 }

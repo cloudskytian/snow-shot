@@ -9,10 +9,7 @@ use tauri::Manager;
 use tokio::{sync::Mutex, time::Duration};
 
 use snow_shot_app_os::notification;
-use snow_shot_app_services::{
-    device_event_handler_service::DeviceEventHandlerService,
-    free_drag_window_service::FreeDragWindowService,
-};
+use snow_shot_app_services::free_drag_window_service::FreeDragWindowService;
 use snow_shot_app_shared::{ElementRect, EnigoManager};
 use snow_shot_app_utils::get_target_monitor;
 
@@ -422,13 +419,11 @@ pub async fn create_video_record_window(
 
 pub async fn start_free_drag(
     window: tauri::Window,
-    device_event_handler_service: tauri::State<'_, Mutex<DeviceEventHandlerService>>,
     free_drag_window_service: tauri::State<'_, Mutex<FreeDragWindowService>>,
 ) -> Result<(), String> {
     let mut free_drag_window_service = free_drag_window_service.lock().await;
-    let mut device_event_handler_service = device_event_handler_service.lock().await;
 
-    free_drag_window_service.start_drag(window, &mut device_event_handler_service)?;
+    free_drag_window_service.start_drag(window)?;
 
     Ok(())
 }

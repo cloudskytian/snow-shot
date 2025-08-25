@@ -1,14 +1,15 @@
 use std::time::Duration;
 
 use device_query::{
-    CallbackGuard, DeviceEvents, DeviceEventsHandler, Keycode, MouseButton, MousePosition,
+    CallbackGuard, DeviceEvents, DeviceEventsHandlerInnerThread, Keycode, MouseButton,
+    MousePosition,
 };
 
 const DEVICE_EVENT_HANDLER_FPS: u64 = 100;
 
 pub struct DeviceEventHandlerService {
     /* 设备事件处理 */
-    device_event_handler: Option<DeviceEventsHandler>,
+    device_event_handler: Option<DeviceEventsHandlerInnerThread>,
 }
 
 impl DeviceEventHandlerService {
@@ -18,7 +19,7 @@ impl DeviceEventHandlerService {
         }
     }
 
-    pub fn get_device_event_handler(&mut self) -> Result<&DeviceEventsHandler, String> {
+    pub fn get_device_event_handler(&mut self) -> Result<&DeviceEventsHandlerInnerThread, String> {
         if self.device_event_handler.is_some() {
             return Ok(&self.device_event_handler.as_ref().unwrap());
         }
@@ -32,16 +33,9 @@ impl DeviceEventHandlerService {
             }
         }
 
-        let handler = match DeviceEventsHandler::new(Duration::from_millis(
+        let handler = DeviceEventsHandlerInnerThread::new(Duration::from_millis(
             1000 / DEVICE_EVENT_HANDLER_FPS,
-        )) {
-            Some(handler) => handler,
-            None => {
-                return Err(format!(
-                    "[DeviceEventHandlerService] Could not get device event handler"
-                ));
-            }
-        };
+        ));
 
         self.device_event_handler = Some(handler);
         Ok(&self.device_event_handler.as_ref().unwrap())
@@ -73,5 +67,9 @@ impl DeviceEventHandlerService {
         callback: Callback,
     ) -> Result<CallbackGuard<Callback>, String> {
         Ok(self.get_device_event_handler()?.on_key_up(callback))
+    }
+
+    pub fn release(&mut self) {
+        self.device_event_handler.take();
     }
 }
