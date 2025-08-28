@@ -51,9 +51,10 @@ import { MousePosition } from '@/utils/mousePosition';
 import { CaptureBoundingBoxInfo } from '@/app/draw/extra';
 import { useTextScaleFactor } from '@/hooks/useTextScaleFactor';
 import { AntdContext } from '@/components/globalLayoutExtra';
-import { appError, appWarn } from '@/utils/log';
+import { appError } from '@/utils/log';
 import { formatKey } from '@/utils/format';
 import { useTempInfo } from '@/hooks/useTempInfo';
+import { DrawLayer, FixedContentCoreDrawActionType } from './components';
 
 export type FixedContentInitDrawParams = {
     captureBoundingBoxInfo: CaptureBoundingBoxInfo;
@@ -97,7 +98,7 @@ const closeRightClickMenu = async () => {
         await rightClickMenu?.close();
         rightClickMenu = undefined;
     } catch (error) {
-        appWarn('[closeRightClickMenu] failed to close menu', error);
+        console.log('[closeRightClickMenu] failed to close menu', error);
     }
 };
 
@@ -113,6 +114,11 @@ const getSelectTextMode = (fixedContentType: FixedContentType | undefined) => {
         return 'ocr'; // 使用 OCR 选取文本
     }
     return 'text'; // 支持文本选取
+};
+
+export type FixedContentWindowSize = {
+    width: number;
+    height: number;
 };
 
 export const FixedContentCore: React.FC<{
@@ -145,10 +151,7 @@ export const FixedContentCore: React.FC<{
 
     const [getAppSettings] = useStateSubscriber(AppSettingsPublisher, undefined);
     const ocrResultActionRef = useRef<OcrResultActionType>(undefined);
-    const [windowSize, setWindowSize, windowSizeRef] = useStateRef<{
-        width: number;
-        height: number;
-    }>({
+    const [windowSize, setWindowSize, windowSizeRef] = useStateRef<FixedContentWindowSize>({
         width: 0,
         height: 0,
     });
@@ -156,10 +159,12 @@ export const FixedContentCore: React.FC<{
         width: number;
         height: number;
         scaleFactor: number;
+        ignoreTextScaleFactor?: boolean;
     }>({
         width: 0,
         height: 0,
         scaleFactor: 1,
+        ignoreTextScaleFactor: false,
     });
     const blobRef = useRef<Blob | undefined>(undefined);
     const [canvasImageUrl, setCanvasImageUrl] = useState<string | undefined>(undefined);
@@ -176,7 +181,8 @@ export const FixedContentCore: React.FC<{
     const [fixedContentType, setFixedContentType, fixedContentTypeRef] = useStateRef<
         FixedContentType | undefined
     >(undefined);
-    const [enableSelectText, setEnableSelectText] = useState(false);
+    const [enableDraw, setEnableDraw] = useStateRef(false);
+    const [enableSelectText, setEnableSelectText] = useStateRef(false);
     const [contentOpacity, setContentOpacity, contentOpacityRef] = useStateRef(1);
     const [isAlwaysOnTop, setIsAlwaysOnTop] = useStateRef(true);
     const dragRegionMouseDownMousePositionRef = useRef<MousePosition>(undefined);
@@ -350,6 +356,7 @@ export const FixedContentCore: React.FC<{
                                 textContentContainerRef.current.clientHeight *
                                 window.devicePixelRatio,
                             scaleFactor: window.devicePixelRatio,
+                            ignoreTextScaleFactor: true,
                         };
                     }
                 }, timeout);
@@ -398,7 +405,7 @@ export const FixedContentCore: React.FC<{
                     selectRect: ocrRect,
                     captureBoundingBoxInfo,
                     canvas,
-                    ocrResult: params.ocrResult,
+                    ocrResult: undefined,
                 };
             }
 
@@ -429,10 +436,7 @@ export const FixedContentCore: React.FC<{
                 }),
             );
 
-            if (
-                getAppSettings()[AppSettingsGroup.FunctionFixedContent].autoOcr &&
-                ocrResultActionRef.current
-            ) {
+            if (params.ocrResult && ocrResultActionRef.current) {
                 ocrResultActionRef.current.init({
                     selectRect: {
                         min_x: 0,
@@ -442,11 +446,12 @@ export const FixedContentCore: React.FC<{
                     },
                     captureBoundingBoxInfo,
                     canvas,
-                    ocrResult: params.ocrResult ?? undefined,
+                    ocrResult: params.ocrResult,
                 });
+                setEnableSelectText(true);
             }
         },
-        [getAppSettings, setFixedContentType, setWindowSize],
+        [getAppSettings, setEnableSelectText, setFixedContentType, setWindowSize],
     );
 
     useEffect(() => {
@@ -716,7 +721,7 @@ export const FixedContentCore: React.FC<{
         }
     }, [fixedContentTypeRef, getAppSettings]);
 
-    const switcSelectText = useCallback(async () => {
+    const switchSelectText = useCallback(async () => {
         if (getSelectTextMode(fixedContentTypeRef.current) === 'ocr') {
             if (initOcrParams.current) {
                 ocrResultActionRef.current?.init(initOcrParams.current);
@@ -730,9 +735,9 @@ export const FixedContentCore: React.FC<{
             }
 
             ocrResultActionRef.current?.setEnable((enable) => !enable);
-        } else if (getSelectTextMode(fixedContentTypeRef.current) === 'text') {
-            setEnableSelectText((enable) => !enable);
         }
+
+        setEnableSelectText((enable) => !enable);
     }, [fixedContentTypeRef, setEnableSelectText]);
 
     const switchAlwaysOnTop = useCallback(async () => {
@@ -740,6 +745,30 @@ export const FixedContentCore: React.FC<{
     }, [setIsAlwaysOnTop]);
 
     const [showScaleInfo, showScaleInfoTemporary] = useTempInfo();
+
+    const getWindowPhysicalSize = useCallback(
+        (targetScale: number) => {
+            const newWidth = Math.round(
+                ((canvasPropsRef.current.width * targetScale) / 100) *
+                    (window.devicePixelRatio /
+                        (canvasPropsRef.current.scaleFactor *
+                            (canvasPropsRef.current.ignoreTextScaleFactor ? 1 : textScaleFactor))),
+            );
+            const newHeight = Math.round(
+                ((canvasPropsRef.current.height * targetScale) / 100) *
+                    (window.devicePixelRatio /
+                        (canvasPropsRef.current.scaleFactor *
+                            (canvasPropsRef.current.ignoreTextScaleFactor ? 1 : textScaleFactor))),
+            );
+
+            return {
+                width: newWidth,
+                height: newHeight,
+            };
+        },
+        [canvasPropsRef, textScaleFactor],
+    );
+
     const scaleWindow = useCallback(
         async (scaleDelta: number, ignoreMouse: boolean = false) => {
             const appWindow = appWindowRef.current;
@@ -774,16 +803,7 @@ export const FixedContentCore: React.FC<{
             setDrawWindowStyle();
 
             // 计算新的窗口尺寸
-            const newWidth = Math.round(
-                ((canvasPropsRef.current.width * targetScale) / 100) *
-                    (window.devicePixelRatio /
-                        (canvasPropsRef.current.scaleFactor * textScaleFactor)),
-            );
-            const newHeight = Math.round(
-                ((canvasPropsRef.current.height * targetScale) / 100) *
-                    (window.devicePixelRatio /
-                        (canvasPropsRef.current.scaleFactor * textScaleFactor)),
-            );
+            const { width: newWidth, height: newHeight } = getWindowPhysicalSize(targetScale);
 
             if (zoomWithMouse && !ignoreMouse) {
                 try {
@@ -826,11 +846,11 @@ export const FixedContentCore: React.FC<{
         },
         [
             getAppSettings,
+            getWindowPhysicalSize,
             scaleRef,
             setScale,
             showScaleInfoTemporary,
             switchThumbnail,
-            textScaleFactor,
             windowSizeRef,
         ],
     );
@@ -873,7 +893,22 @@ export const FixedContentCore: React.FC<{
                             ? intl.formatMessage({ id: 'draw.showOrHideOcrResult' })
                             : intl.formatMessage({ id: 'draw.selectText' }),
                     accelerator: formatKey(hotkeys?.[KeyEventKey.FixedContentSelectText]?.hotKey),
-                    action: switcSelectText,
+                    checked: enableSelectText,
+                    action: switchSelectText,
+                },
+                {
+                    item: 'Separator',
+                },
+                {
+                    id: `${appWindow.label}-enableDrawTool`,
+                    text: intl.formatMessage({
+                        id: 'settings.hotKeySettings.fixedContent.fixedContentEnableDraw',
+                    }),
+                    checked: enableDraw,
+                    accelerator: formatKey(hotkeys?.[KeyEventKey.FixedContentEnableDraw]?.hotKey),
+                    action: () => {
+                        setEnableDraw((enable) => !enable);
+                    },
                 },
                 {
                     item: 'Separator',
@@ -1001,20 +1036,23 @@ export const FixedContentCore: React.FC<{
         });
         rightClickMenu = menu;
     }, [
-        changeContentOpacity,
-        copyToClipboard,
         disabled,
-        fixedContentType,
-        hotkeys,
         intl,
-        isAlwaysOnTop,
-        isThumbnail,
+        hotkeys,
+        copyToClipboard,
         saveToFile,
-        scaleRef,
-        scaleWindow,
-        switcSelectText,
+        fixedContentType,
+        enableSelectText,
+        switchSelectText,
+        enableDraw,
+        isThumbnail,
+        isAlwaysOnTop,
         switchAlwaysOnTop,
+        setEnableDraw,
         switchThumbnail,
+        changeContentOpacity,
+        scaleWindow,
+        scaleRef,
     ]);
     const initMenu = useCallbackRender(initMenuCore);
 
@@ -1025,10 +1063,6 @@ export const FixedContentCore: React.FC<{
             closeRightClickMenu();
         };
     }, [initMenu]);
-
-    useEffect(() => {
-        ocrResultActionRef.current?.setEnable(false);
-    }, [getAppSettings]);
 
     const onWheel = useCallback(
         (event: React.WheelEvent<HTMLDivElement>) => {
@@ -1083,6 +1117,7 @@ export const FixedContentCore: React.FC<{
                     width: width * window.devicePixelRatio,
                     height: height * window.devicePixelRatio,
                     scaleFactor: window.devicePixelRatio,
+                    ignoreTextScaleFactor: true,
                 };
             } else if (type === 'contextMenu') {
                 // 处理来自iframe的右键菜单事件
@@ -1121,6 +1156,8 @@ export const FixedContentCore: React.FC<{
         };
     }, [onHtmlLoad, setWindowSize, handleContextMenu, onWheel]);
 
+    const disableHotkey = useMemo(() => disabled || enableDraw, [disabled, enableDraw]);
+
     useHotkeys(
         hotkeys?.[KeyEventKey.FixedContentSwitchThumbnail]?.hotKey ?? '',
         switchThumbnail,
@@ -1128,10 +1165,10 @@ export const FixedContentCore: React.FC<{
             () => ({
                 keyup: true,
                 keydown: false,
-                enabled: !disabled,
+                enabled: !disableHotkey,
                 preventDefault: true,
             }),
-            [disabled],
+            [disableHotkey],
         ),
     );
     useHotkeys(
@@ -1141,10 +1178,10 @@ export const FixedContentCore: React.FC<{
             () => ({
                 keyup: false,
                 keydown: true,
-                enabled: !disabled,
+                enabled: !disableHotkey,
                 preventDefault: true,
             }),
-            [disabled],
+            [disableHotkey],
         ),
     );
     useHotkeys(
@@ -1154,23 +1191,23 @@ export const FixedContentCore: React.FC<{
             () => ({
                 keyup: false,
                 keydown: true,
-                enabled: !disabled,
+                enabled: !disableHotkey && !enableSelectText,
                 preventDefault: true,
             }),
-            [disabled],
+            [disableHotkey, enableSelectText],
         ),
     );
     useHotkeys(
         hotkeys?.[KeyEventKey.FixedContentSelectText]?.hotKey ?? '',
-        switcSelectText,
+        switchSelectText,
         useMemo(
             () => ({
                 keyup: false,
                 keydown: true,
-                enabled: !disabled,
+                enabled: !disableHotkey,
                 preventDefault: true,
             }),
-            [disabled],
+            [disableHotkey],
         ),
     );
     useHotkeys(
@@ -1180,10 +1217,10 @@ export const FixedContentCore: React.FC<{
             () => ({
                 keyup: false,
                 keydown: true,
-                enabled: !disabled,
+                enabled: !disableHotkey,
                 preventDefault: true,
             }),
-            [disabled],
+            [disableHotkey],
         ),
     );
     useHotkeys(
@@ -1193,10 +1230,10 @@ export const FixedContentCore: React.FC<{
             () => ({
                 keyup: false,
                 keydown: true,
-                enabled: !disabled,
+                enabled: !disableHotkey,
                 preventDefault: true,
             }),
-            [disabled],
+            [disableHotkey],
         ),
     );
 
@@ -1240,13 +1277,57 @@ export const FixedContentCore: React.FC<{
         dragRegionMouseDownMousePositionRef.current = undefined;
     }, []);
 
+    const drawActionRef = useRef<FixedContentCoreDrawActionType | undefined>(undefined);
+    const updateDrawWindowSize = useCallback(async () => {
+        if (!appWindowRef.current || !drawActionRef.current) {
+            return;
+        }
+
+        const currentWindowSize = await getWindowPhysicalSize(scale.x);
+        const targetWindowSize = {
+            ...currentWindowSize,
+        };
+
+        const toolbarSize = drawActionRef.current.getToolbarSize();
+        toolbarSize.width = Math.ceil(toolbarSize.width * window.devicePixelRatio);
+        toolbarSize.height = Math.ceil(toolbarSize.height * window.devicePixelRatio);
+
+        const drawMenuSize = drawActionRef.current.getDrawMenuSize();
+        drawMenuSize.width = Math.ceil(drawMenuSize.width * window.devicePixelRatio);
+        drawMenuSize.height = Math.ceil(drawMenuSize.height * window.devicePixelRatio);
+
+        const minHeight = Math.max(
+            currentWindowSize.height + toolbarSize.height,
+            drawMenuSize.height,
+        );
+        const minWidth = Math.max(drawMenuSize.width + currentWindowSize.width, toolbarSize.width);
+
+        if (enableDraw) {
+            targetWindowSize.height = minHeight;
+            targetWindowSize.width = minWidth;
+        }
+        appWindowRef.current.setSize(
+            new PhysicalSize(targetWindowSize.width, targetWindowSize.height),
+        );
+    }, [enableDraw, getWindowPhysicalSize, scale.x]);
+    useEffect(() => {
+        updateDrawWindowSize();
+    }, [updateDrawWindowSize]);
+
+    const documentSize = useMemo<FixedContentWindowSize>(() => {
+        return {
+            width: ((windowSize.width / contentScaleFactor) * scale.x) / 100,
+            height: ((windowSize.height / contentScaleFactor) * scale.y) / 100,
+        };
+    }, [contentScaleFactor, scale.x, scale.y, windowSize.height, windowSize.width]);
+
     return (
         <div
             className="fixed-image-container"
             style={{
                 position: 'absolute',
-                width: `${windowSize.width / contentScaleFactor}px`,
-                height: `${windowSize.height / contentScaleFactor}px`,
+                width: `${documentSize.width}px`,
+                height: `${documentSize.height}px`,
                 zIndex: zIndexs.Draw_FixedImage,
                 pointerEvents:
                     canvasImageUrl || htmlBlobUrl || textContent || imageUrl ? 'auto' : 'none',
@@ -1297,6 +1378,7 @@ export const FixedContentCore: React.FC<{
                                     width: image.naturalWidth,
                                     height: image.naturalHeight,
                                     scaleFactor: monitorInfo.monitor_scale_factor,
+                                    ignoreTextScaleFactor: false,
                                 };
                             } else {
                                 onDrawLoad?.();
@@ -1311,6 +1393,8 @@ export const FixedContentCore: React.FC<{
                     style={{
                         transformOrigin: 'top left',
                         transform: `scale(${scale.x / 100 / contentScaleFactor}, ${scale.y / 100 / contentScaleFactor})`,
+                        zIndex: enableSelectText ? 1 : 'unset',
+                        position: 'absolute',
                     }}
                     ref={htmlContentContainerRef}
                     src={htmlBlobUrl}
@@ -1323,12 +1407,34 @@ export const FixedContentCore: React.FC<{
                     style={{
                         transformOrigin: 'top left',
                         transform: `scale(${scale.x / 100 / contentScaleFactor}, ${scale.y / 100 / contentScaleFactor})`,
+                        zIndex: enableSelectText ? 1 : 'unset',
+                        position: 'absolute',
+                    }}
+                    onMouseDown={(event) => {
+                        event.stopPropagation();
+                    }}
+                    onMouseMove={(event) => {
+                        event.stopPropagation();
+                    }}
+                    onMouseUp={(event) => {
+                        event.stopPropagation();
                     }}
                 >
                     <div ref={textContentContainerRef} className="fixed-text-content">
-                        <div>{textContent}</div>
+                        <div style={{ userSelect: 'text', display: 'inline-block' }}>
+                            {textContent}
+                        </div>
                     </div>
                 </div>
+            )}
+
+            {!disabled && (
+                <DrawLayer
+                    actionRef={drawActionRef}
+                    documentSize={documentSize}
+                    contentScaleFactor={contentScaleFactor}
+                    disabled={!enableDraw}
+                />
             )}
 
             <div className="fixed-image-container-inner" onWheel={onWheel}>
@@ -1346,7 +1452,8 @@ export const FixedContentCore: React.FC<{
                         transition: `all ${token.motionDurationFast} ${token.motionEaseInOut}`,
                         backgroundColor: token.colorBgMask,
                         zIndex: 2,
-                        display: isThumbnail ? 'none' : 'block',
+                        // iframe 无法点击 close 按钮
+                        display: isThumbnail || enableDraw || enableSelectText ? 'none' : 'block',
                     }}
                     onClick={() => {
                         closeWindowComplete();
@@ -1382,20 +1489,15 @@ export const FixedContentCore: React.FC<{
                 }
 
                 .fixed-image-container-inner {
-                    width: calc(
-                        ${isThumbnail ? '100vw' : `${windowSize.width / contentScaleFactor}px`} -
-                            4px
-                    );
-                    height: calc(
-                        ${isThumbnail ? '100vh' : `${windowSize.height / contentScaleFactor}px`} -
-                            4px
-                    );
+                    width: calc(${isThumbnail ? '100vw' : `${documentSize.width}px`} - 4px);
+                    height: calc(${isThumbnail ? '100vh' : `${documentSize.height}px`} - 4px);
                     position: absolute;
                     top: 0;
                     left: 0;
                     cursor: grab;
                     box-sizing: border-box;
                     margin: 2px;
+                    pointer-events: ${enableSelectText ? 'none' : 'auto'};
                 }
 
                 .fixed-image-container-inner:after {
@@ -1416,7 +1518,6 @@ export const FixedContentCore: React.FC<{
 
                 .fixed-html-content,
                 .fixed-text-content {
-                    z-index: ${enableSelectText ? 1 : 'unset'};
                     position: absolute;
                     top: 0;
                     left: 0;

@@ -22,6 +22,7 @@ export enum KeyEventKey {
     ChatCopyAndHide = 'chatCopyAndHide',
     ChatCopy = 'chatCopy',
     ChatNewSession = 'chatNewSession',
+    FixedContentEnableDraw = 'fixedContentEnableDraw',
     FixedContentSwitchThumbnail = 'fixedContentSwitchThumbnail',
     FixedContentAlwaysOnTop = 'fixedContentAlwaysOnTop',
     FixedContentCloseWindow = 'fixedContentCloseWindow',
@@ -51,6 +52,10 @@ export const defaultKeyEventSettings: Record<KeyEventKey, KeyEventValue> = {
     [KeyEventKey.ChatNewSession]: {
         hotKey: getPlatformValue('Ctrl+N', 'Meta+N'),
         group: KeyEventGroup.Chat,
+    },
+    [KeyEventKey.FixedContentEnableDraw]: {
+        hotKey: getPlatformValue('E', 'E'),
+        group: KeyEventGroup.FixedContent,
     },
     [KeyEventKey.FixedContentSwitchThumbnail]: {
         hotKey: 'R',

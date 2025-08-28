@@ -14,14 +14,14 @@ import dynamic from 'next/dynamic';
 import { debounce } from 'es-toolkit';
 import { ElementRect } from '@/commands';
 import { theme } from 'antd';
-import { FullScreenDrawContext, FullScreenDrawContextType } from './extra';
-import { FullScreenDrawToolbar, FullScreenDrawToolbarActionType } from './components/toolbar';
+import { DrawToolbarActionType, FullScreenDrawToolbar } from './components/toolbar';
 import { useStateSubscriber } from '@/hooks/useStateSubscriber';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { withStatePublisher } from '@/hooks/useStatePublisher';
 import { MousePosition } from '@/utils/mousePosition';
 import { EnableKeyEventPublisher } from '../draw/components/drawToolbar/components/keyEventWrap/extra';
 import { EventListenerContext } from '@/components/eventListener';
+import { DrawContext, DrawContextType } from './extra';
 
 const DrawCore = dynamic(
     async () => (await import('../fullScreenDraw/components/drawCore')).DrawCore,
@@ -33,7 +33,7 @@ const DrawCore = dynamic(
 const FullScreenDrawPage = () => {
     const { token } = theme.useToken();
     const drawCoreActionRef = useRef<DrawCoreActionType | undefined>(undefined);
-    const toolbarActionRef = useRef<FullScreenDrawToolbarActionType | undefined>(undefined);
+    const toolbarActionRef = useRef<DrawToolbarActionType | undefined>(undefined);
 
     const [getDrawState] = useStateSubscriber(DrawStatePublisher, undefined);
     const [, setExcalidrawEvent] = useStateSubscriber(ExcalidrawEventPublisher, undefined);
@@ -113,7 +113,7 @@ const FullScreenDrawPage = () => {
         };
     }, [token.margin]);
 
-    const fullScreenDrawContextValue = useMemo<FullScreenDrawContextType>(() => {
+    const drawContextValue = useMemo<DrawContextType>(() => {
         return {
             getDrawCoreAction: () => drawCoreActionRef.current,
         };
@@ -147,7 +147,7 @@ const FullScreenDrawPage = () => {
         };
     }, [addListener, removeListener, getDrawState]);
     return (
-        <FullScreenDrawContext.Provider value={fullScreenDrawContextValue}>
+        <DrawContext.Provider value={drawContextValue}>
             <DrawCoreContext.Provider value={drawCoreContextValue}>
                 <div
                     className="full-screen-draw-page"
@@ -181,7 +181,7 @@ const FullScreenDrawPage = () => {
                     `}</style>
                 </div>
             </DrawCoreContext.Provider>
-        </FullScreenDrawContext.Provider>
+        </DrawContext.Provider>
     );
 };
 

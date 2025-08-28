@@ -1,15 +1,15 @@
 import { createContext, useContext } from 'react';
 import { DrawCoreActionType } from './components/drawCore/extra';
 
-export type FullScreenDrawContextType = {
+export type DrawContextType = {
     getDrawCoreAction: () => DrawCoreActionType | undefined;
 };
 
-export const FullScreenDrawContext = createContext<FullScreenDrawContextType>({
+export const DrawContext = createContext<DrawContextType>({
     getDrawCoreAction: () => undefined,
 });
 
-export const useFullScreenDrawContext = () => {
-    const context = useContext(FullScreenDrawContext);
+export const useDrawContext = () => {
+    const context = useContext(DrawContext);
     return context;
 };
